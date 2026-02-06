@@ -1,0 +1,13 @@
+services:
+  - type: worker
+    name: david-crew-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python telegram_bot.py
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TEST_CHAT_ID
+        sync: false
+      - key: WATCHLIST
+        value: NIFTY,SENSEX

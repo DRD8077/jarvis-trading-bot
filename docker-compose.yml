@@ -1,0 +1,20 @@
+version: '3.8'
+services:
+  bot:
+    build: .
+    restart: always
+    env_file: .env
+    environment:
+      - TELEGRAM_BOT_TOKEN
+      - TEST_CHAT_ID
+      - WATCHLIST=NIFTY,SENSEX
+    volumes:
+      - bot-data:/app/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  bot-data:

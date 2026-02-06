@@ -1,0 +1,11 @@
+[app]
+app_name = "david-crew-bot"
+primary_region = "sin"
+kill_signal = "SIGINT"
+kill_timeout = 5
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  WATCHLIST = "NIFTY,SENSEX"

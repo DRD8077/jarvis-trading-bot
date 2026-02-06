@@ -1,0 +1,16 @@
+requests
+pandas
+qrcode
+Pillow
+python-dotenv
+pytz
+schedule
+scikit-learn
+joblib
+shap
+fastapi
+uvicorn[standard]
+ta
+pandas-ta
+yfinance
+xgboost

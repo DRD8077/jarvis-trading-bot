@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.log
+*.db
+*.zip
+*.tar.gz
+*.deb
+last_chat_id.txt
+.env
+telegram_bot_backup.py
