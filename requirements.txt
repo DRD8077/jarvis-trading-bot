@@ -1,5 +1,6 @@
 requests
 pandas
+numpy
 qrcode
 Pillow
 python-dotenv
@@ -14,3 +15,14 @@ ta
 pandas-ta
 yfinance
 xgboost
+lightgbm
+openai
+groq
+anthropic
+beautifulsoup4
+feedparser
+textblob
+scipy
+edge-tts
+nltk
+google-generativeai

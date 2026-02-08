@@ -25,8 +25,8 @@ Railway gives you a **free cloud server** that runs your bot 24/7.
 
 5. **Add Environment Variables** (click your service → Variables tab):
    ```
-   TELEGRAM_BOT_TOKEN = 7897330325:AAF0opOkFdu0AiZk-tGAF_oGPrY5KMzjazE
-   TEST_CHAT_ID = 5647898018
+   TELEGRAM_BOT_TOKEN = <your-bot-token>
+   TEST_CHAT_ID = <your-chat-id>
    WATCHLIST = NIFTY,SENSEX
    ```
 
@@ -46,8 +46,8 @@ Railway gives you a **free cloud server** that runs your bot 24/7.
 
 4. Render auto-detects `render.yaml` — just add env vars:
    ```
-   TELEGRAM_BOT_TOKEN = 7897330325:AAF0opOkFdu0AiZk-tGAF_oGPrY5KMzjazE
-   TEST_CHAT_ID = 5647898018
+   TELEGRAM_BOT_TOKEN = <your-bot-token>
+   TEST_CHAT_ID = <your-chat-id>
    ```
 
 5. Click "Create Background Worker" — Bot runs 24/7!
@@ -67,8 +67,8 @@ Railway gives you a **free cloud server** that runs your bot 24/7.
    ```bash
    fly auth login
    fly launch    # Follow prompts, say YES to deploy
-   fly secrets set TELEGRAM_BOT_TOKEN=7897330325:AAF0opOkFdu0AiZk-tGAF_oGPrY5KMzjazE
-   fly secrets set TEST_CHAT_ID=5647898018
+   fly secrets set TELEGRAM_BOT_TOKEN=<your-bot-token>
+   fly secrets set TEST_CHAT_ID=<your-chat-id>
    fly deploy
    ```
 
@@ -100,8 +100,8 @@ Railway gives you a **free cloud server** that runs your bot 24/7.
    
    # Create .env file
    cat > .env << 'EOF'
-   TELEGRAM_BOT_TOKEN=7897330325:AAF0opOkFdu0AiZk-tGAF_oGPrY5KMzjazE
-   TEST_CHAT_ID=5647898018
+   TELEGRAM_BOT_TOKEN=<your-bot-token>
+   TEST_CHAT_ID=<your-chat-id>
    WATCHLIST=NIFTY,SENSEX
    EOF
    

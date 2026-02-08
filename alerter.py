@@ -22,7 +22,7 @@ MARKET_CLOSE_MIN = 30
 WATCHLIST = os.environ.get("WATCHLIST", "NIFTY,SENSEX").split(",")
 INTERVAL = int(os.environ.get("ALERTER_INTERVAL", "120"))
 
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") or "7897330325:AAF0opOkFdu0AiZk-tGAF_oGPrY5KMzjazE"
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
 TICKER_MAP = {

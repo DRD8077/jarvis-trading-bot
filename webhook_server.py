@@ -37,8 +37,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Replace with your bot token
-TELEGRAM_BOT_TOKEN = "7897330325:AAF0opOkFdu0AiZk-tGAF_oGPrY5KMzjazE"
+# Bot token from environment
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 
 # Flask app setup
 app = Flask(__name__)

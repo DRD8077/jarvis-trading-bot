@@ -1,0 +1,43 @@
+{
+  "123": {
+    "preferences": {
+      "risk_level": "aggressive"
+    },
+    "watchlist": [],
+    "last_intents": [],
+    "name": ""
+  },
+  "5647898018": {
+    "preferences": {},
+    "watchlist": [],
+    "last_intents": [
+      "chat",
+      "quick_profit",
+      "quick_profit",
+      "chat",
+      "chat",
+      "chat",
+      "chat",
+      "web3_all",
+      "chat",
+      "chat",
+      "chat",
+      "chat",
+      "chat",
+      "chat",
+      "chat",
+      "chat",
+      "chat",
+      "chat",
+      "chat",
+      "chat"
+    ],
+    "name": "Deepak Kumar"
+  },
+  "5136154943": {
+    "preferences": {},
+    "watchlist": [],
+    "last_intents": [],
+    "name": "Kuldeep Sharma"
+  }
+}

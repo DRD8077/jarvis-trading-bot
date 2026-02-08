@@ -56,6 +56,44 @@ def init_db(db_path: str = DB_PATH) -> None:
         """
     )
     conn.commit()
+    # SMS subscribers (phone numbers for SMS alerts)
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS sms_subscribers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id INTEGER NOT NULL,
+            phone TEXT NOT NULL,
+            user_name TEXT DEFAULT '',
+            investment_amount REAL DEFAULT 2000,
+            sms_active INTEGER DEFAULT 1,
+            ts INTEGER NOT NULL,
+            UNIQUE(chat_id, phone)
+        )
+        """
+    )
+    conn.commit()
+    # User positions (track active trades for exit alerts)
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS user_positions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id INTEGER NOT NULL,
+            phone TEXT DEFAULT '',
+            index_name TEXT NOT NULL,
+            option_type TEXT NOT NULL,
+            strike REAL NOT NULL,
+            entry_price REAL NOT NULL,
+            qty INTEGER NOT NULL,
+            investment REAL NOT NULL,
+            entry_time INTEGER NOT NULL,
+            status TEXT DEFAULT 'OPEN',
+            exit_price REAL DEFAULT 0,
+            pnl REAL DEFAULT 0,
+            exit_time INTEGER DEFAULT 0
+        )
+        """
+    )
+    conn.commit()
     conn.close()
 
 
@@ -167,3 +205,121 @@ def get_alert_threshold(chat_id: int, db_path: str = DB_PATH) -> float:
 if __name__ == "__main__":
     init_db()
     print("Initialized DB at", DB_PATH)
+
+
+# ═══════════════════════════════════════════════════════════
+#  SMS SUBSCRIBER FUNCTIONS
+# ═══════════════════════════════════════════════════════════
+
+def add_sms_subscriber(chat_id: int, phone: str, user_name: str = "", investment_amount: float = 2000, db_path: str = DB_PATH) -> None:
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT OR REPLACE INTO sms_subscribers (chat_id, phone, user_name, investment_amount, sms_active, ts) "
+            "VALUES (?, ?, ?, ?, 1, strftime('%s','now'))",
+            (chat_id, phone.strip(), user_name, investment_amount)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def remove_sms_subscriber(chat_id: int, db_path: str = DB_PATH) -> None:
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute("UPDATE sms_subscribers SET sms_active = 0 WHERE chat_id = ?", (chat_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_sms_subscriber(chat_id: int, db_path: str = DB_PATH) -> Optional[Dict[str, Any]]:
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT chat_id, phone, user_name, investment_amount, sms_active FROM sms_subscribers WHERE chat_id = ?", (chat_id,))
+        row = cur.fetchone()
+        if row:
+            return {
+                "chat_id": row[0], "phone": row[1], "user_name": row[2],
+                "investment_amount": row[3], "sms_active": bool(row[4])
+            }
+        return None
+    finally:
+        conn.close()
+
+
+def list_active_sms_subscribers(db_path: str = DB_PATH) -> List[Dict[str, Any]]:
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT chat_id, phone, user_name, investment_amount FROM sms_subscribers WHERE sms_active = 1")
+        rows = cur.fetchall()
+        return [{"chat_id": r[0], "phone": r[1], "user_name": r[2], "investment_amount": r[3]} for r in rows]
+    finally:
+        conn.close()
+
+
+def update_sms_investment(chat_id: int, investment_amount: float, db_path: str = DB_PATH) -> None:
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute("UPDATE sms_subscribers SET investment_amount = ? WHERE chat_id = ?", (investment_amount, chat_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+# ═══════════════════════════════════════════════════════════
+#  USER POSITION TRACKING
+# ═══════════════════════════════════════════════════════════
+
+def save_position(chat_id: int, phone: str, index_name: str, option_type: str,
+                  strike: float, entry_price: float, qty: int, investment: float,
+                  db_path: str = DB_PATH) -> int:
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO user_positions (chat_id, phone, index_name, option_type, strike, "
+            "entry_price, qty, investment, entry_time, status) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'), 'OPEN')",
+            (chat_id, phone, index_name, option_type, strike, entry_price, qty, investment)
+        )
+        conn.commit()
+        return cur.lastrowid
+    finally:
+        conn.close()
+
+
+def get_open_positions(chat_id: int = None, db_path: str = DB_PATH) -> List[Dict[str, Any]]:
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.cursor()
+        if chat_id:
+            cur.execute("SELECT id, chat_id, phone, index_name, option_type, strike, entry_price, qty, investment, entry_time FROM user_positions WHERE status = 'OPEN' AND chat_id = ?", (chat_id,))
+        else:
+            cur.execute("SELECT id, chat_id, phone, index_name, option_type, strike, entry_price, qty, investment, entry_time FROM user_positions WHERE status = 'OPEN'")
+        rows = cur.fetchall()
+        return [{
+            "id": r[0], "chat_id": r[1], "phone": r[2], "index_name": r[3],
+            "option_type": r[4], "strike": r[5], "entry_price": r[6],
+            "qty": r[7], "investment": r[8], "entry_time": r[9]
+        } for r in rows]
+    finally:
+        conn.close()
+
+
+def close_position(position_id: int, exit_price: float, pnl: float, db_path: str = DB_PATH) -> None:
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE user_positions SET status = 'CLOSED', exit_price = ?, pnl = ?, exit_time = strftime('%s','now') WHERE id = ?",
+            (exit_price, pnl, position_id)
+        )
+        conn.commit()
+    finally:
+        conn.close()

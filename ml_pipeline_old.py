@@ -1,31 +1,15 @@
-"""
-========================================================================================
-  ML PIPELINE — Advanced Model Training, Inference & SHAP Explainability
-========================================================================================
-
-Handles:
-  - Option chain snapshot-based training (from data_store)
-  - Full OHLCV-based training (from index_data)
-  - Model persistence (joblib)
-  - SHAP feature explanation
-  - Walk-forward evaluation
-  - Ensemble with XGBoost + LightGBM + RF
-"""
-
 import os
 import math
 from typing import Dict, Any, List, Optional
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.model_selection import train_test_split, TimeSeriesSplit
-from sklearn.metrics import classification_report, accuracy_score
-import logging
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
 
 from data_store import get_recent_snapshots
 
-logger = logging.getLogger("ml_pipeline")
 MODELS_DIR = "models"
 os.makedirs(MODELS_DIR, exist_ok=True)
 
@@ -38,7 +22,6 @@ def _safe_get(d: Dict[str, Any], keys: List[str], default=0):
 
 
 def _extract_features(snapshot: Dict[str, Any]) -> Dict[str, float]:
-    """Extract features from an option chain snapshot."""
     calls = snapshot.get("calls", [])
     puts = snapshot.get("puts", [])
     underlying = float(snapshot.get("underlying", 0.0) or 0.0)
@@ -51,93 +34,66 @@ def _extract_features(snapshot: Dict[str, Any]) -> Dict[str, float]:
     put_iv_mean, put_oi_sum = agg(puts, ["impliedVolatility", "IV"])
     call_chngoi = float(sum(float(_safe_get(x, ["changeinOpenInterest", "changeInOpenInterest"], 0) or 0) for x in calls))
     put_chngoi = float(sum(float(_safe_get(x, ["changeinOpenInterest", "changeInOpenInterest"], 0) or 0) for x in puts))
-    call_vol = float(sum(float(_safe_get(x, ["totalTradedVolume", "volume"], 0) or 0) for x in calls))
-    put_vol = float(sum(float(_safe_get(x, ["totalTradedVolume", "volume"], 0) or 0) for x in puts))
+    call_vol = float(sum(float(_safe_get(x, ["totalTradedVolume", "totalTradedVolume", "volume"], 0) or 0) for x in calls))
+    put_vol = float(sum(float(_safe_get(x, ["totalTradedVolume", "totalTradedVolume", "volume"], 0) or 0) for x in puts))
 
     features = {
         "underlying": underlying,
         "call_iv_mean": call_iv_mean,
         "put_iv_mean": put_iv_mean,
-        "iv_skew": put_iv_mean - call_iv_mean,
         "call_oi": call_oi_sum,
         "put_oi": put_oi_sum,
-        "pcr": put_oi_sum / (call_oi_sum + 1),
         "call_chng_oi": call_chngoi,
         "put_chng_oi": put_chngoi,
-        "net_oi_change": call_chngoi - put_chngoi,
         "call_vol": call_vol,
         "put_vol": put_vol,
-        "vol_ratio": call_vol / (put_vol + 1),
         "oi_ratio": (call_oi_sum / (put_oi_sum + 1)) if put_oi_sum >= 0 else 0,
     }
     return features
 
 
-def build_dataset(symbol: str, lookback: int = 500):
-    """Build ML dataset from option chain snapshots."""
+def build_dataset(symbol: str, lookback: int = 200):
     snaps = get_recent_snapshots(symbol, limit=lookback + 5)
     if not snaps or len(snaps) < 5:
         return None
+    # snapshots are returned newest-first; reverse to chronological
     snaps = list(reversed(snaps))
     rows = []
     for i in range(len(snaps) - 1):
         cur = snaps[i]
         nxt = snaps[i + 1]
         features = _extract_features(cur)
+        # target: whether underlying increases in next snapshot by threshold
         u0 = float(cur.get("underlying", 0) or 0)
         u1 = float(nxt.get("underlying", 0) or 0)
         if u0 == 0:
             continue
         pct = (u1 - u0) / u0
+        # label: 1 if up > 0.0005, 0 otherwise
         label = 1 if pct > 0.0005 else 0
         features["label"] = label
         rows.append(features)
     if not rows:
         return None
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    return df
 
 
 def train_model(symbol: str, lookback: int = 500) -> Optional[str]:
-    """Train ensemble model on snapshot data."""
     df = build_dataset(symbol, lookback=lookback)
     if df is None or df.empty:
         print("Not enough data to train model for", symbol)
         return None
-
     X = df.drop(columns=["label"]).fillna(0)
     y = df["label"].astype(int)
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
-
-    # Ensemble: RF + GB + optional XGB
-    models = {
-        'rf': RandomForestClassifier(n_estimators=200, max_depth=8, random_state=42, n_jobs=-1),
-        'gb': GradientBoostingClassifier(n_estimators=150, max_depth=5, learning_rate=0.05, random_state=42),
-    }
-    try:
-        from xgboost import XGBClassifier
-        models['xgb'] = XGBClassifier(n_estimators=200, max_depth=6, learning_rate=0.05,
-                                       use_label_encoder=False, eval_metric='logloss', verbosity=0, random_state=42)
-    except ImportError:
-        pass
-
-    best_model = None
-    best_acc = 0
-    for name, model in models.items():
-        model.fit(X_train, y_train)
-        acc = accuracy_score(y_test, model.predict(X_test))
-        print(f"  {name}: accuracy={acc:.3f}")
-        if acc > best_acc:
-            best_acc = acc
-            best_model = model
-
-    if best_model is None:
-        best_model = models['rf']
-
-    # Save best model
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    clf = RandomForestClassifier(n_estimators=100, random_state=42)
+    clf.fit(X_train, y_train)
+    preds = clf.predict(X_test)
+    print(classification_report(y_test, preds))
     path = os.path.join(MODELS_DIR, f"{symbol}_rf.joblib")
-    joblib.dump(best_model, path)
-    print(f"Saved model to {path} (accuracy: {best_acc:.3f})")
+    joblib.dump(clf, path)
+    print("Saved model to", path)
     return path
 
 
@@ -149,7 +105,6 @@ def load_model(symbol: str):
 
 
 def predict_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
-    """Predict direction for a symbol using trained model."""
     model = load_model(symbol)
     if model is None:
         return None
@@ -158,24 +113,19 @@ def predict_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
         return None
     features = _extract_features(snaps[0])
     X = pd.DataFrame([features]).fillna(0)
-    try:
-        prob = model.predict_proba(X)[0]
-        pred = int(model.predict(X)[0])
-        return {
-            "prediction": pred,
-            "prob_up": float(prob[1]) if len(prob) > 1 else float(pred),
-            "prob_down": float(prob[0]) if len(prob) > 1 else float(1 - pred),
-        }
-    except Exception as e:
-        logger.error(f"Prediction failed for {symbol}: {e}")
-        return None
+    prob = model.predict_proba(X)[0]
+    pred = int(model.predict(X)[0])
+    return {"prediction": int(pred), "prob_up": float(prob[1]), "prob_down": float(prob[0])}
 
 
-def explain_prediction(symbol: str, top_k: int = 5) -> Optional[List[Dict[str, Any]]]:
-    """SHAP-based feature explanation."""
+def explain_prediction(symbol: str, top_k: int = 3) -> Optional[List[Dict[str, Any]]]:
+    """Return top_k feature contributions for the latest snapshot using SHAP (TreeExplainer).
+
+    Returns a list of dicts: [{"feature": name, "shap_value": value, "feature_value": v}, ...]
+    """
     try:
         import shap
-    except ImportError:
+    except Exception:
         return None
 
     model = load_model(symbol)
@@ -190,26 +140,34 @@ def explain_prediction(symbol: str, top_k: int = 5) -> Optional[List[Dict[str, A
     try:
         explainer = shap.TreeExplainer(model)
         shap_vals = explainer.shap_values(X)
+        # For binary classification shap_values is [neg, pos]
         if isinstance(shap_vals, list) and len(shap_vals) == 2:
             vals = shap_vals[1][0]
         else:
             vals = shap_vals[0]
         feature_names = X.columns.tolist()
         contributions = []
+        import numpy as _np
         for name, v, fv in zip(feature_names, vals, X.iloc[0].tolist()):
             try:
-                sv = float(np.array(v).item())
+                sv = float(_np.array(v).item())
             except Exception:
-                sv = float(v)
-            contributions.append({"feature": name, "shap_value": sv, "feature_value": float(fv)})
+                sv = float(_np.array(v).astype(float).tolist()[0]) if hasattr(v, 'astype') else float(v)
+            try:
+                fv_s = float(_np.array(fv).item())
+            except Exception:
+                fv_s = float(fv)
+            contributions.append({"feature": name, "shap_value": sv, "feature_value": fv_s})
         contributions.sort(key=lambda x: abs(x["shap_value"]), reverse=True)
         return contributions[:top_k]
-    except Exception:
+    except Exception as e:
+        # surface exception for debugging
         import traceback
         traceback.print_exc()
         return None
 
 
 if __name__ == "__main__":
-    p = train_model("RELIANCE", lookback=500)
+    # Train for RELIANCE quickly (requires snapshots in DB)
+    p = train_model("RELIANCE", lookback=200)
     print("train result:", p)
