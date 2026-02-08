@@ -13,6 +13,24 @@ from datetime import datetime, timedelta
 import pytz
 import pandas as pd
 
+# Early logger setup (needed before imports that use logger)
+_log_file = os.environ.get("TELEGRAM_BOT_LOG", "telegram_bot.log")
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s %(message)s',
+    handlers=[
+        logging.FileHandler(_log_file, mode='a'),
+        logging.StreamHandler()
+    ]
+)
+# Prevent duplicate handlers on re-import
+logger = logging.getLogger("telegram_bot")
+logger.handlers.clear()
+logger.addHandler(logging.FileHandler(_log_file, mode='a'))
+logger.addHandler(logging.StreamHandler())
+logger.setLevel(logging.INFO)
+logger.propagate = False
+
 import qrcode
 from io import BytesIO
 
@@ -137,10 +155,51 @@ except ImportError:
 
 # ─── NEW SUPER-POWERED MODULE IMPORTS ───
 try:
+    from jarvis_tools import (
+        get_weather, web_search, identify_song, generate_image,
+        get_news_headlines, get_crypto_news,
+        mem0_add, mem0_search, mem0_get_all,
+        WEATHER_AVAILABLE, SEARCH_AVAILABLE, SONG_AVAILABLE,
+        IMAGE_AVAILABLE, NEWS_ENHANCED, MEM0_AVAILABLE,
+    )
+    TOOLS_AVAILABLE = True
+except ImportError:
+    TOOLS_AVAILABLE = False
+    WEATHER_AVAILABLE = SEARCH_AVAILABLE = SONG_AVAILABLE = False
+    IMAGE_AVAILABLE = NEWS_ENHANCED = MEM0_AVAILABLE = False
+
+try:
     from sentiment_engine import analyze_news_sentiment, calculate_fear_greed_index, format_sentiment_message
     SENTIMENT_AVAILABLE = True
 except ImportError:
     SENTIMENT_AVAILABLE = False
+
+# ─── JARVIS CODER — AI Programming Engine ───
+try:
+    from jarvis_coder import (
+        generate_code, save_project, install_dependencies, push_to_github,
+        format_code_result, start_coding_session, process_coding_input,
+        get_session, end_coding_session, is_in_coding_session,
+        CODER_AVAILABLE, CLAUDE_CONNECTED, GITHUB_CONNECTED,
+    )
+except ImportError:
+    CODER_AVAILABLE = CLAUDE_CONNECTED = GITHUB_CONNECTED = False
+
+# ─── JARVIS ADMIN — Approval + Per-User Personal AI ───
+try:
+    from jarvis_admin import (
+        register_user as ja_register_user,
+        get_user as ja_get_user,
+        get_user_tier, is_admin as ja_is_admin,
+        has_feature, request_approval, approve_request, reject_request,
+        get_pending_approvals, format_admin_dashboard,
+        grant_feature, upgrade_user,
+        get_user_prefs, set_user_pref, format_user_profile,
+        set_alerts as ja_set_alerts, are_alerts_on,
+        ADMIN_SYSTEM_AVAILABLE, ADMIN_CHAT_ID as JA_ADMIN_CHAT_ID,
+    )
+except ImportError:
+    ADMIN_SYSTEM_AVAILABLE = False
 
 try:
     from risk_manager import calculate_position_size, kelly_criterion, calculate_risk_reward, format_risk_report
@@ -155,11 +214,44 @@ try:
 except ImportError:
     REGIME_AVAILABLE = False
 
+# ─── NIFTY SUPER BRAIN — Ultimate Indian Market Intelligence ───
+try:
+    from nifty_super_brain import (
+        get_fii_dii_data, format_fii_dii,
+        get_india_vix, format_india_vix,
+        get_pcr_data, format_pcr_dashboard,
+        calculate_pivot_levels, format_pivot_levels,
+        get_gift_nifty, format_gift_nifty,
+        get_sector_heatmap, format_sector_heatmap,
+        get_oi_buildup, format_oi_buildup,
+        get_complete_dashboard,
+        get_ai_market_verdict, get_super_brain_analysis,
+    )
+    NIFTY_BRAIN_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Nifty Super Brain not available: {e}")
+    NIFTY_BRAIN_AVAILABLE = False
+
+# ─── NIFTY OPTIONS HUNTER — Budget Options + Position Guardian ───
+try:
+    from nifty_options_hunter import (
+        stop_all_crypto_alerts, start_all_crypto_alerts, is_crypto_alerts_enabled,
+        get_user_prefs, set_user_pref,
+        find_budget_options, format_budget_options,
+        generate_morning_picks,
+        track_position, check_position_guardian, get_my_positions_enhanced,
+        close_tracked_position,
+    )
+    OPTIONS_HUNTER_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Options Hunter not available: {e}")
+    OPTIONS_HUNTER_AVAILABLE = False
+
 try:
     from options_engine import (
-        generate_option_chain_with_greeks, suggest_strategy,
-        format_options_analysis, format_strategy_suggestion,
-        calculate_pcr, calculate_max_pain
+        generate_option_chain, recommend_strategy,
+        format_option_chain, format_strategy,
+        format_recommendations, calculate_iv_rank_percentile,
     )
     OPTIONS_AVAILABLE = True
 except ImportError:
@@ -270,7 +362,9 @@ try:
         airdrop_scan_full, airdrop_scan_solana, airdrop_upcoming,
         scan_all_airdrops, format_airdrop_scan, format_airdrop_voice,
         start_airdrop_hunter, stop_airdrop_hunter, set_alert_callback,
-        register_wallet, get_new_airdrop_alerts,
+        register_wallet, get_new_airdrop_alerts, get_user_wallet,
+        get_all_user_wallets, scan_ton_wallet, usd_to_inr,
+        OWNER_TON_WALLET,
     )
     AIRDROP_AVAILABLE = True
 except ImportError:
@@ -313,6 +407,55 @@ try:
 except ImportError:
     ULTRA_AI_AVAILABLE = False
 
+# ─── JARVIS GENIUS ENGINE — Super-Intelligence Layer ───
+try:
+    from jarvis_genius import (
+        genius_chat, genius_classify, get_next_suggestion,
+        get_personalized_alerts, semantic_memory, conversation_state,
+        extract_entities, record_feedback, detect_implicit_feedback,
+        proactive_engine, verify_response_quality,
+    )
+    GENIUS_AVAILABLE = True
+    logger.info("🧠 JARVIS GENIUS ENGINE loaded — Super-Intelligence ACTIVE")
+except ImportError as e:
+    GENIUS_AVAILABLE = False
+    logger.warning(f"JARVIS Genius not available: {e}")
+
+# ─── TRADE TRACKER — Self-Learning Prediction Accuracy ───
+try:
+    from trade_tracker import (
+        log_prediction, verify_predictions, get_calibrated_confidence,
+        get_real_win_rate, get_adaptive_weights, format_accuracy_report,
+    )
+    TRACKER_AVAILABLE = True
+    logger.info("📊 TRADE TRACKER loaded — Self-Learning ACTIVE")
+except ImportError as e:
+    TRACKER_AVAILABLE = False
+    logger.warning(f"Trade Tracker not available: {e}")
+
+# ─── MULTI-AGENT SPECIALISTS ───
+try:
+    from jarvis_agents import (
+        route_to_specialist, run_multi_specialist,
+        auto_research, format_research_context,
+    )
+    AGENTS_AVAILABLE = True
+    logger.info("🤖 MULTI-AGENT SPECIALISTS loaded — Expert Routing ACTIVE")
+except ImportError as e:
+    AGENTS_AVAILABLE = False
+    logger.warning(f"Agent Specialists not available: {e}")
+
+# ─── CROSS-ASSET CORRELATION ENGINE ───
+try:
+    from cross_asset_engine import (
+        get_correlation_insight, format_correlation_report, scan_all_correlations,
+    )
+    CORRELATION_AVAILABLE = True
+    logger.info("🔗 CROSS-ASSET CORRELATION loaded — Divergence Detection ACTIVE")
+except ImportError as e:
+    CORRELATION_AVAILABLE = False
+    logger.warning(f"Cross-Asset Engine not available: {e}")
+
 # ─── JARVIS MARKET BRAIN — Stock vs Crypto Intelligence ───
 try:
     from jarvis_market_brain import (
@@ -338,6 +481,29 @@ try:
     SUPER_ENGINE_AVAILABLE = True
 except ImportError:
     SUPER_ENGINE_AVAILABLE = False
+
+# ─── OTM↔ATM ENGINE — Smart Options Strike Analysis ───
+try:
+    from otm_atm_engine import (
+        full_otm_atm_analysis, rapid_momentum_signal,
+        format_otm_atm_report, format_momentum_signal,
+    )
+    OTM_ATM_AVAILABLE = True
+    logger.info("📊 OTM↔ATM ENGINE loaded — Smart Strike Analysis ACTIVE")
+except ImportError as e:
+    OTM_ATM_AVAILABLE = False
+    logger.warning(f"OTM↔ATM Engine not available: {e}")
+
+# ─── INDIA POWER PREDICTOR — 10-Signal Multi-Factor Prediction ───
+try:
+    from india_power_predictor import (
+        power_predict, format_power_prediction, format_power_voice,
+    )
+    POWER_PREDICT_AVAILABLE = True
+    logger.info("🔮 INDIA POWER PREDICTOR loaded — 10-Signal Engine ACTIVE")
+except ImportError as e:
+    POWER_PREDICT_AVAILABLE = False
+    logger.warning(f"India Power Predictor not available: {e}")
 
 # ─── QR WALLET CONNECT — Trust Wallet QR Engine ───
 try:
@@ -381,17 +547,7 @@ except ImportError:
 
 import requests
 
-# --- Logging setup ---
-LOG_FILE = os.environ.get("TELEGRAM_BOT_LOG", "telegram_bot.log")
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s %(message)s',
-    handlers=[
-        logging.FileHandler(LOG_FILE, mode='a'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger("telegram_bot")
+# Logger already configured early (above imports)
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 if not TELEGRAM_TOKEN:
@@ -405,6 +561,92 @@ IST = pytz.timezone('Asia/Kolkata')
 auto_thread = None
 auto_flag = threading.Event()
 chat_storage = {}
+
+# Restore stopped-users from disk so STOP survives bot restarts
+try:
+    _stop_file = "jarvis_stopped_users.json"
+    if os.path.exists(_stop_file):
+        with open(_stop_file, "r") as _f:
+            _stopped = json.load(_f)
+        for _cid_str, _val in _stopped.items():
+            if _val:
+                chat_storage[f"crypto_alerts_{_cid_str}"] = False
+        logger.info(f"[STARTUP] Restored {len(_stopped)} stopped-alert users from disk")
+except Exception:
+    pass
+
+
+def is_user_alerts_stopped(chat_id: int) -> bool:
+    """Check if user has stopped ALL alerts (crypto + market)."""
+    # Check in-memory flag
+    if chat_storage.get(f"crypto_alerts_{chat_id}") is False:
+        return True
+    # Check persisted file
+    try:
+        stop_file = "jarvis_stopped_users.json"
+        if os.path.exists(stop_file):
+            with open(stop_file, "r") as f:
+                stopped = json.load(f)
+            return stopped.get(str(chat_id), False)
+    except Exception:
+        pass
+    return False
+
+
+def guarded_alert_send(chat_id, text, **kwargs):
+    """GLOBAL guard: Only send alert if user hasn't stopped alerts.
+    ALL background modules (monitor, airdrop, dextools, web3) use this."""
+    try:
+        cid = int(chat_id)
+    except (ValueError, TypeError):
+        return
+    if is_user_alerts_stopped(cid):
+        logging.warning(f"[GUARD] BLOCKED alert to {cid} — user pressed STOP (guarded_alert_send)")
+        return
+    # Double check — nuclear level
+    if chat_storage.get(f"crypto_alerts_{cid}") is False:
+        logging.warning(f"[GUARD] BLOCKED alert to {cid} — in-memory flag (guarded_alert_send)")
+        return
+    send_message(cid, text, reply_markup=build_keyboard())
+
+
+def guarded_voice_send(chat_id, text, **kwargs):
+    """GLOBAL guard: Only send voice if user hasn't stopped alerts."""
+    try:
+        cid = int(chat_id)
+    except (ValueError, TypeError):
+        return
+    if is_user_alerts_stopped(cid):
+        logging.warning(f"[GUARD] BLOCKED voice to {cid} — user pressed STOP")
+        return
+    if chat_storage.get(f"crypto_alerts_{cid}") is False:
+        return
+    send_jarvis_voice(cid, text, **kwargs)
+
+
+def market_brain_send(chat_id, text, **kwargs):
+    """MARKET BRAIN send — BYPASSES crypto stop.
+    Only checks its own market_brain_stopped flag.
+    This allows market analysis to flow even when crypto alerts are OFF."""
+    try:
+        cid = int(chat_id)
+    except (ValueError, TypeError):
+        return
+    if chat_storage.get(f"market_brain_stopped_{cid}") is True:
+        logging.warning(f"[MARKET-BRAIN] BLOCKED to {cid} — market brain OFF")
+        return
+    send_message(cid, text, reply_markup=build_keyboard())
+
+
+def market_brain_voice_send(chat_id, text, **kwargs):
+    """MARKET BRAIN voice — BYPASSES crypto stop."""
+    try:
+        cid = int(chat_id)
+    except (ValueError, TypeError):
+        return
+    if chat_storage.get(f"market_brain_stopped_{cid}") is True:
+        return
+    send_jarvis_voice(cid, text, **kwargs)
 
 # ═══════════════════════════════════════════════════════════
 #  DECORATIVE UI CONSTANTS
@@ -431,7 +673,41 @@ def _is_owner(chat_id) -> bool:
 #  CORE TELEGRAM FUNCTIONS
 # ═══════════════════════════════════════════════════════════
 
+# NUCLEAR STOP: All background thread names that send CRYPTO alerts
+# MarketBrainNotifier is EXCLUDED — market brain always sends
+_BG_THREAD_NAMES = {
+    "AutoAlertEngine", "CryptoGemScanner", "RocketScanner",
+    "PredictionTracker", "jarvis-monitor", "keepalive-watchdog",
+    "new-token-detector", "web3-signal-scanner", "phantom-realtime",
+    "thread-supervisor", "AirdropHunter", "MainSupervisor",
+}
+# Market Brain thread is NEVER blocked by crypto stop
+_MARKET_BRAIN_THREAD = "MarketBrainNotifier"
+
 def send_message(chat_id: int, text: str, reply_markup: Optional[dict] = None):
+    # ══ NUCLEAR STOP CHECK ══
+    # Block ALL messages from background threads to stopped users
+    _tname = threading.current_thread().name
+    if _tname in _BG_THREAD_NAMES:
+        try:
+            _cid = int(chat_id)
+            # Check in-memory flag FIRST (fastest)
+            if chat_storage.get(f"crypto_alerts_{_cid}") is False:
+                logging.warning(f"[NUCLEAR-STOP] BLOCKED bg alert from {_tname} to {_cid} (in-memory)")
+                return
+            # Check disk file (fallback)
+            _sf = "jarvis_stopped_users.json"
+            if os.path.exists(_sf):
+                with open(_sf, "r") as _ff:
+                    _sd = json.load(_ff)
+                if _sd.get(str(_cid), False):
+                    # Also set in-memory for future fast checks
+                    chat_storage[f"crypto_alerts_{_cid}"] = False
+                    logging.warning(f"[NUCLEAR-STOP] BLOCKED bg alert from {_tname} to {_cid} (disk)")
+                    return
+        except Exception as _e:
+            logging.error(f"[NUCLEAR-STOP] Check error: {_e}")
+    # ══ END NUCLEAR STOP ══
     url = f"{API_URL}/sendMessage"
     # Auto-split long messages (Telegram limit = 4096 chars)
     if len(text) > 4000:
@@ -491,27 +767,67 @@ def _split_message(text: str, max_len: int = 4000) -> list:
     return chunks
 
 
-def send_photo(chat_id: int, image_bytes: bytes, caption: Optional[str] = None):
+def send_photo(chat_id: int, image_bytes: bytes, caption: Optional[str] = None, reply_markup: dict = None):
+    # ══ NUCLEAR STOP CHECK ══
+    _tname = threading.current_thread().name
+    if _tname in _BG_THREAD_NAMES:
+        try:
+            _cid = int(chat_id)
+            if chat_storage.get(f"crypto_alerts_{_cid}") is False:
+                return
+            _sf = "jarvis_stopped_users.json"
+            if os.path.exists(_sf):
+                with open(_sf, "r") as _ff:
+                    _sd = json.load(_ff)
+                if _sd.get(str(_cid), False):
+                    chat_storage[f"crypto_alerts_{_cid}"] = False
+                    return
+        except Exception:
+            pass
+    # ══ END NUCLEAR STOP ══
     url = f"{API_URL}/sendPhoto"
     files = {"photo": ("qrcode.png", image_bytes)}
     data = {"chat_id": chat_id, "parse_mode": "Markdown"}
     if caption:
         data["caption"] = caption
+    if reply_markup:
+        data["reply_markup"] = json.dumps(reply_markup)
     try:
-        r = requests.post(url, files=files, data=data, timeout=10)
+        r = requests.post(url, files=files, data=data, timeout=30)
         print(f"send_photo -> chat_id={chat_id} status={r.status_code}")
+        if r.status_code != 200:
+            logger.error(f"send_photo failed: {r.text[:200]}")
     except Exception as e:
-        print(f"send_photo exception for chat_id={chat_id}: {e}")
+        logger.error(f"send_photo exception for chat_id={chat_id}: {e}")
 
 
-def send_jarvis_voice(chat_id: int, text: str, intent: str = "", is_voice_input: bool = False):
+def _send_jarvis_voice_sync(chat_id: int, text: str, intent: str = "", is_voice_input: bool = False):
     """
     🎤 Send JARVIS voice — AUTO-PLAY video note (round bubble)!
-    1. Generate Gemini TTS audio (OGG)
+    1. Generate TTS audio (OGG)
     2. Convert to video note (MP4 with JARVIS avatar)
     3. Send as sendVideoNote → AUTO-PLAYS in Telegram!
     4. Fallback: regular sendVoice if video note fails
     """
+    # ══ NUCLEAR STOP CHECK ══
+    _tname = threading.current_thread().name
+    if _tname in _BG_THREAD_NAMES:
+        try:
+            _cid = int(chat_id)
+            if chat_storage.get(f"crypto_alerts_{_cid}") is False:
+                logging.warning(f"[NUCLEAR-STOP] BLOCKED bg voice from {_tname} to {_cid}")
+                return
+            _sf = "jarvis_stopped_users.json"
+            if os.path.exists(_sf):
+                with open(_sf, "r") as _ff:
+                    _sd = json.load(_ff)
+                if _sd.get(str(_cid), False):
+                    chat_storage[f"crypto_alerts_{_cid}"] = False
+                    logging.warning(f"[NUCLEAR-STOP] BLOCKED bg voice from {_tname} to {_cid}")
+                    return
+        except Exception:
+            pass
+    # ══ END NUCLEAR STOP ══
     if not VOICE_AVAILABLE:
         return
     
@@ -533,10 +849,24 @@ def send_jarvis_voice(chat_id: int, text: str, intent: str = "", is_voice_input:
         except Exception as ve:
             logger.warning(f"[JARVIS-VOICE] Video note failed, falling back to voice: {ve}")
         
-        # FALLBACK: regular voice message (press-to-play)
+        # FALLBACK: regular voice message (auto-play waveform in Telegram)
         send_voice_message(chat_id, voice_path, TELEGRAM_TOKEN)
     except Exception as e:
         logger.error(f"[JARVIS-VOICE] Failed to send voice: {e}")
+
+
+def send_jarvis_voice(chat_id: int, text: str, intent: str = "", is_voice_input: bool = False):
+    """
+    🎤 ASYNC wrapper — sends voice in background thread so text response comes FIRST.
+    This makes JARVIS feel INSTANT: text arrives in 2-3 sec, voice follows 3-5 sec later.
+    """
+    t = threading.Thread(
+        target=_send_jarvis_voice_sync,
+        args=(chat_id, text, intent, is_voice_input),
+        daemon=True,
+        name="JarvisVoiceSend",
+    )
+    t.start()
 
 
 def generate_qr(data: str) -> bytes:
@@ -613,11 +943,24 @@ def build_keyboard():
         ["⚡ 2-Min NIFTY Signal", "⚡ 2-Min SENSEX Signal"],
         ["🇮🇳⚡ NIFTY Call/Put AI", "📊 SENSEX Call/Put AI"],
         ["🏦 BankNIFTY Call/Put AI", "📅 Market Holidays 🇮🇳"],
+        ["🔮 NIFTY Power Predict 💪", "🔮 SENSEX Power Predict 💪"],
+        ["📊 NIFTY OTM↔ATM 🎯", "📊 SENSEX OTM↔ATM 🎯"],
+        ["📊 BankNIFTY OTM↔ATM 🎯", "⚡ 2-Min Momentum 🚀"],
         ["📈🇮🇳 Indian Stock AI 🧠", "🧠 Super Prediction 🔮"],
         ["📰 Market Sentiment 💬", "⚠️ Risk Calculator 🛡️"],
         ["🕯️ Candle Patterns 📊", "🌍 Market Trend 📈"],
         ["⏰ Market Status 🔔", "📊 Live Snapshot 🔴"],
         ["🔮 Tomorrow Prediction 🎯"],
+        ["🇮🇳 NIFTY Super Dashboard 🧠"],
+        ["🏛️ FII/DII Flow 📊", "😱 India VIX Gauge 📊"],
+        ["📊 NIFTY PCR 🔢", "📊 BankNIFTY PCR 🔢"],
+        ["📐 NIFTY Pivot Levels 📊", "📐 SENSEX Pivot Levels"],
+        ["🌅 GIFT NIFTY Gap 📊", "📊 OI Buildup Analysis"],
+        ["🏭 Sector Heatmap 📊", "⚡ Scalp Signal 🎯"],
+        ["📊 Multi-TF Signal 🔄"],
+        ["💰 Budget Options 🎯", "💰 BankNIFTY Budget 🎯"],
+        ["🔔 9AM Auto Picks 🌅", "🛡️ My Positions Guard"],
+        ["🛑 STOP All Crypto 🛑", "🟢 START Crypto Alerts"],
         ["🪙 Crypto Gems 💎", "🔥 Trending Crypto 📈"],
         ["🟣 Pump.fun Trending 🔥", "🆕 Pump.fun New Launches"],
         ["🏆 Pump.fun Top MCap", "🪙 All Gems (Pump+Dex)"],
@@ -644,8 +987,9 @@ def build_keyboard():
         ["👻 Wallet Scan 📊", "👻 Wallet Summary ⚡"],
         ["👻 Claim Airdrops 🎁", "👻 Transfer SOL 💸"],
         ["👻 Wallet Alerts ON", "👻 Disconnect Wallet"],
-        ["🎁 Airdrop Hunter 🚀", "🔮 Upcoming Airdrops"],
-        ["🎁 Solana Airdrops"],
+        ["💎 Telegram Wallet 💳", "🎁 Airdrop Hunter 🚀"],
+        ["📝 Set My Wallet 🔑", "👛 My Wallets 💰"],
+        ["🔮 Upcoming Airdrops", "🎁 Solana Airdrops"],
         ["🛡️ Security Dashboard", "🔐 Security Status"],
         ["🔗 Trust Wallet QR 📱", "◎ Solana Pay QR"],
         ["📲 SMS Alerts ON 🔔", "📲 SMS Alerts OFF 🔕"],
@@ -740,12 +1084,18 @@ def generate_tomorrow_prediction() -> str:
     
     for name, ticker in global_indices.items():
         try:
-            data = yf.download(ticker, period="5d", progress=False)
+            data = yf.download(ticker, period="5d", progress=False, timeout=15)
             if data is not None and len(data) >= 2:
+                # Handle yfinance MultiIndex columns robustly
                 if isinstance(data.columns, pd.MultiIndex):
-                    data.columns = data.columns.get_level_values(0)
+                    data = data.droplevel(1, axis=1)
+                    # Remove duplicate columns
+                    data = data.loc[:, ~data.columns.duplicated()]
                 col = 'Close' if 'Close' in data.columns else 'close'
-                close_vals = data[col].values
+                close_series = data[col]
+                if isinstance(close_series, pd.DataFrame):
+                    close_series = close_series.iloc[:, 0]
+                close_vals = close_series.values
                 prev = float(close_vals[-2])
                 curr = float(close_vals[-1])
                 if prev > 0:
@@ -905,6 +1255,9 @@ def auto_alert_loop():
             subs = list_subscribers()
             sms_subs = list_active_sms_subscribers()
             
+            # Filter out users who pressed STOP
+            subs = [s for s in subs if not is_user_alerts_stopped(s)]
+            
             if not subs and not sms_subs:
                 logger.info("[AUTO] No subscribers, sleeping 60s...")
                 time.sleep(60)
@@ -956,6 +1309,21 @@ def auto_alert_loop():
                                 f"📲 SMS subscribers will get alerts on phone!\n"
                                 f"{STAR_LINE}"
                             )
+                            
+                            # ━━━ 9 AM AUTO-PICKS: Budget Call/Put ━━━
+                            try:
+                                if OPTIONS_HUNTER_AVAILABLE:
+                                    morning_picks = generate_morning_picks()
+                                    for chat_id in subs:
+                                        try:
+                                            prefs = get_user_prefs(chat_id)
+                                            if prefs.get("morning_picks", True) and prefs.get("stock_alerts", True):
+                                                send_message(chat_id, morning_picks)
+                                        except Exception:
+                                            pass
+                                    logger.info("[AUTO] 🎯 9 AM Budget Options picks sent!")
+                            except Exception as e:
+                                logger.error(f"[AUTO] Morning picks error: {e}")
                             for chat_id in subs:
                                 try:
                                     send_message(chat_id, open_alert)
@@ -981,12 +1349,14 @@ def auto_alert_loop():
                 
                 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                 #  EXIT MONITORING FOR OPEN POSITIONS
+                #  + POSITION GUARDIAN (Trail SL)
                 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                 try:
                     open_positions = get_open_positions()
                     if open_positions:
                         nifty_spot = get_live_price("^NSEI")
                         sensex_spot = get_live_price("^BSESN")
+                        banknifty_spot = get_live_price("^NSEBANK")
                         
                         for pos in open_positions:
                             try:
@@ -1082,6 +1452,37 @@ def auto_alert_loop():
                 except Exception as e:
                     logger.error(f"[AUTO] Exit monitoring error: {e}")
                 
+                # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                #  POSITION GUARDIAN — Trail SL Auto-Protect
+                # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                try:
+                    if OPTIONS_HUNTER_AVAILABLE:
+                        guardian_positions = get_open_positions()
+                        if guardian_positions:
+                            for pos in guardian_positions:
+                                try:
+                                    idx_name = pos["index_name"].upper()
+                                    if "BANK" in idx_name:
+                                        spot = get_live_price("^NSEBANK")
+                                    elif "NIFTY" in idx_name:
+                                        spot = get_live_price("^NSEI")
+                                    else:
+                                        spot = get_live_price("^BSESN")
+                                    
+                                    guardian_alert = check_position_guardian(pos, spot)
+                                    if guardian_alert and guardian_alert.get("msg"):
+                                        guardian_key = f"guardian_{pos['id']}_{guardian_alert['type']}"
+                                        if time.time() - last_auto_alert_time.get(guardian_key, 0) > 300:
+                                            last_auto_alert_time[guardian_key] = time.time()
+                                            try:
+                                                send_message(pos["chat_id"], guardian_alert["msg"])
+                                            except Exception:
+                                                pass
+                                except Exception as e:
+                                    logger.error(f"[GUARDIAN] Check failed for {pos.get('id')}: {e}")
+                except Exception as e:
+                    logger.error(f"[GUARDIAN] Guardian loop error: {e}")
+
                 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                 #  2-MIN CANDLE ANALYSIS + SMS ALERTS
                 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1354,6 +1755,13 @@ def crypto_alert_loop():
                 if k.startswith("crypto_alerts_") and v:
                     try:
                         cid = int(k.replace("crypto_alerts_", ""))
+                        # Respect STOP flag
+                        if is_user_alerts_stopped(cid):
+                            continue
+                        # Also check OPTIONS_HUNTER prefs (STOP ALL)
+                        if OPTIONS_HUNTER_AVAILABLE:
+                            if not is_crypto_alerts_enabled(cid):
+                                continue
                         crypto_subscribers.append(cid)
                     except ValueError:
                         pass
@@ -1440,6 +1848,25 @@ def handle_update(update: dict):
     if voice and VOICE_AVAILABLE:
         file_id = voice.get("file_id", "")
         if file_id:
+            # ── SONG RECOGNITION MODE ──
+            if chat_storage.get(f"awaiting_song_{chat_id}") and SONG_AVAILABLE:
+                chat_storage[f"awaiting_song_{chat_id}"] = False
+                send_message(chat_id, "🎵 Listening to the song... 🎶")
+                try:
+                    audio_path = download_telegram_voice(file_id, TELEGRAM_TOKEN)
+                    if audio_path:
+                        with open(audio_path, "rb") as _af:
+                            audio_bytes = _af.read()
+                        result = identify_song(audio_bytes)
+                        send_message(chat_id, result, reply_markup=build_keyboard())
+                        send_jarvis_voice(chat_id, result[:200], intent="chat")
+                    else:
+                        send_message(chat_id, "⚠️ Audio download failed. Try again!", reply_markup=build_keyboard())
+                except Exception as e:
+                    logger.error(f"Song recognition error: {e}")
+                    send_message(chat_id, f"⚠️ Song recognition error: {e}", reply_markup=build_keyboard())
+                return
+
             send_message(chat_id, "🎤🌸 *आपकी आवाज़ सुन रही हूँ...* ⏳💕")
             try:
                 # Download voice message
@@ -1529,6 +1956,22 @@ def handle_update(update: dict):
         except:
             pass
     
+    # 🔐 Admin System: Register user on every interaction
+    if ADMIN_SYSTEM_AVAILABLE:
+        try:
+            _username = msg.get("chat", {}).get("username", "")
+            ja_register_user(chat_id, user_name, _username)
+        except Exception:
+            pass
+    
+    # ════════════════════════════════════════════════════════
+    #  Ignore section-header buttons (decorative, non-functional)
+    # ════════════════════════════════════════════════════════
+    if text and "━━" in text:
+        # These are category headers in the keyboard, not commands
+        send_message(chat_id, f"{greeting}ℹ️ Yeh section header hai. Neeche ke buttons press karo! 🌸", reply_markup=build_keyboard())
+        return
+
     # ════════════════════════════════════════════════════════
     #  🔁 REPLY-BASED CRYPTO DEEP ANALYSIS — When user replies
     #  to any bot message containing a crypto token
@@ -2012,6 +2455,455 @@ def handle_update(update: dict):
             send_message(chat_id, f"{greeting}❌ Prediction temporarily unavailable. Try again later.")
         return
 
+    # ════════════════════════════════════════════════════════
+    #   🇮🇳 NIFTY SUPER BRAIN — All Indian Market Intelligence
+    # ════════════════════════════════════════════════════════
+
+    # --- NIFTY Super Dashboard (Master) ---
+    if text in ("🇮🇳 NIFTY Super Dashboard 🧠", "nifty dashboard", "/niftydashboard",
+                "nifty super dashboard", "market dashboard"):
+        if NIFTY_BRAIN_AVAILABLE:
+            send_message(chat_id, f"{greeting}🇮🇳🧠 *Loading SUPER DASHBOARD...*\n_FII/DII + VIX + PCR + OI + Pivots 🔄_ ⏳")
+            try:
+                msg = get_complete_dashboard()
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            except Exception as e:
+                logger.error(f"Dashboard error: {e}")
+                send_message(chat_id, f"❌ Dashboard load error: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Nifty Super Brain module unavailable.", reply_markup=build_keyboard())
+        return
+
+    # --- 🧠⚡ SUPER BRAIN AI ANALYSIS (Claude-Powered) ---
+    if text.lower() in ("/superbrain", "super brain", "superbrain", "nifty brain", "ai analysis",
+                         "brain analysis", "jarvis brain", "market brain"):
+        if NIFTY_BRAIN_AVAILABLE:
+            send_message(chat_id, 
+                f"{greeting}🧠⚡ *SUPER BRAIN ACTIVATING...*\n"
+                f"_Claude Opus 4 + Multi-Factor Intelligence 🔄_ ⏳\n"
+                f"_FII/DII + VIX + PCR + OI + AI Verdict..._")
+            try:
+                msg = get_super_brain_analysis()
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+                send_jarvis_voice(chat_id, "Boss, Super Brain analysis complete. Screen pe dekh lo, full AI verdict di hai NIFTY aur market ki!", intent="market_summary")
+            except Exception as e:
+                logger.error(f"Super Brain AI error: {e}")
+                # Fallback to regular dashboard
+                try:
+                    msg = get_complete_dashboard()
+                    send_message(chat_id, msg, reply_markup=build_keyboard())
+                except Exception:
+                    send_message(chat_id, f"❌ Super Brain error: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Nifty Super Brain module unavailable.", reply_markup=build_keyboard())
+        return
+
+    # --- FII/DII Flow Data ---
+    if text in ("🏛️ FII/DII Flow 📊", "fii dii", "/fiidii", "fii dii flow",
+                "fii data", "dii data", "fii/dii"):
+        if NIFTY_BRAIN_AVAILABLE:
+            send_message(chat_id, f"{greeting}🏛️ *Loading FII/DII data...* ⏳")
+            try:
+                msg = format_fii_dii()
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            except Exception as e:
+                logger.error(f"FII/DII error: {e}")
+                send_message(chat_id, f"❌ FII/DII data error: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Module unavailable.", reply_markup=build_keyboard())
+        return
+
+    # --- India VIX Fear Gauge ---
+    if text in ("😱 India VIX Gauge 📊", "india vix", "/indiavix", "vix",
+                "vix gauge", "fear gauge", "india vix gauge"):
+        if NIFTY_BRAIN_AVAILABLE:
+            send_message(chat_id, f"{greeting}😱 *Loading India VIX Fear Gauge...* ⏳")
+            try:
+                msg = format_india_vix()
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            except Exception as e:
+                logger.error(f"VIX error: {e}")
+                send_message(chat_id, f"❌ VIX data error: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Module unavailable.", reply_markup=build_keyboard())
+        return
+
+    # --- NIFTY PCR Dashboard ---
+    if text in ("📊 NIFTY PCR 🔢", "nifty pcr", "/niftypcr", "pcr nifty", "pcr"):
+        if NIFTY_BRAIN_AVAILABLE:
+            send_message(chat_id, f"{greeting}📊 *Loading NIFTY PCR dashboard...* ⏳")
+            try:
+                msg = format_pcr_dashboard(index="NIFTY")
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            except Exception as e:
+                logger.error(f"PCR error: {e}")
+                send_message(chat_id, f"❌ PCR data error: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Module unavailable.", reply_markup=build_keyboard())
+        return
+
+    # --- BankNIFTY PCR Dashboard ---
+    if text in ("📊 BankNIFTY PCR 🔢", "banknifty pcr", "/bankniftypcr", "pcr banknifty"):
+        if NIFTY_BRAIN_AVAILABLE:
+            send_message(chat_id, f"{greeting}📊 *Loading BankNIFTY PCR...* ⏳")
+            try:
+                msg = format_pcr_dashboard(index="BANKNIFTY")
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            except Exception as e:
+                logger.error(f"BankNIFTY PCR error: {e}")
+                send_message(chat_id, f"❌ PCR error: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Module unavailable.", reply_markup=build_keyboard())
+        return
+
+    # --- NIFTY Pivot Levels ---
+    if text in ("📐 NIFTY Pivot Levels 📊", "nifty pivots", "/niftypivots",
+                "pivot levels", "pivot nifty", "nifty pivot"):
+        if NIFTY_BRAIN_AVAILABLE:
+            send_message(chat_id, f"{greeting}📐 *Calculating NIFTY Pivot Levels...* ⏳")
+            try:
+                msg = format_pivot_levels(index="NIFTY")
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            except Exception as e:
+                logger.error(f"Pivot error: {e}")
+                send_message(chat_id, f"❌ Pivot error: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Module unavailable.", reply_markup=build_keyboard())
+        return
+
+    # --- SENSEX Pivot Levels ---
+    if text in ("📐 SENSEX Pivot Levels", "sensex pivots", "/sensexpivots", "pivot sensex"):
+        if NIFTY_BRAIN_AVAILABLE:
+            send_message(chat_id, f"{greeting}📐 *Calculating SENSEX Pivot Levels...* ⏳")
+            try:
+                msg = format_pivot_levels(index="SENSEX")
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            except Exception as e:
+                logger.error(f"SENSEX Pivot error: {e}")
+                send_message(chat_id, f"❌ Pivot error: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Module unavailable.", reply_markup=build_keyboard())
+        return
+
+    # --- GIFT NIFTY Gap Prediction ---
+    if text in ("🌅 GIFT NIFTY Gap 📊", "gift nifty", "/giftnifty", "sgx nifty",
+                "gift nifty gap", "gap prediction"):
+        if NIFTY_BRAIN_AVAILABLE:
+            send_message(chat_id, f"{greeting}🌅 *Loading GIFT NIFTY / Gap Prediction...* ⏳")
+            try:
+                msg = format_gift_nifty()
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            except Exception as e:
+                logger.error(f"GIFT NIFTY error: {e}")
+                send_message(chat_id, f"❌ GIFT NIFTY error: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Module unavailable.", reply_markup=build_keyboard())
+        return
+
+    # --- OI Buildup Analysis ---
+    if text in ("📊 OI Buildup Analysis", "oi buildup", "/oibuildup", "oi analysis",
+                "open interest", "oi nifty"):
+        if NIFTY_BRAIN_AVAILABLE:
+            send_message(chat_id, f"{greeting}📊 *Analyzing OI Buildup...* ⏳")
+            try:
+                msg = format_oi_buildup(index="NIFTY")
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            except Exception as e:
+                logger.error(f"OI error: {e}")
+                send_message(chat_id, f"❌ OI analysis error: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Module unavailable.", reply_markup=build_keyboard())
+        return
+
+    # --- Sector Rotation Heatmap ---
+    if text in ("🏭 Sector Heatmap 📊", "sector heatmap", "/sectorheatmap",
+                "sector rotation", "sectors", "nse sectors"):
+        if NIFTY_BRAIN_AVAILABLE:
+            send_message(chat_id, f"{greeting}🏭 *Loading Sector Rotation Heatmap...*\n_11 sectors scanning..._ ⏳")
+            try:
+                msg = format_sector_heatmap()
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            except Exception as e:
+                logger.error(f"Sector error: {e}")
+                send_message(chat_id, f"❌ Sector data error: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Module unavailable.", reply_markup=build_keyboard())
+        return
+
+    # ════════════════════════════════════════════════════════
+    #   🛑 STOP ALL CRYPTO ALERTS — Smart NLU matching
+    # ════════════════════════════════════════════════════════
+    _stop_exact = {
+        "🛑 STOP All Crypto 🛑", "stop all crypto", "stop crypto",
+        "/stopcrypto", "stop all crypto alerts", "stop alerts", "stop notification",
+        "stop notifications", "stop all notifications", "stop all alerts",
+        "stop all crypto notification", "stop all crypto notifications",
+        "stop", "band karo", "alert band", "alerts off", "notifications off",
+        "notification off", "alert off", "sab band karo", "sab band kar do",
+        "band kar do", "band kardo", "alert band karo", "alert band kar do",
+        "notification band karo", "notification band kar do",
+        "notifications band karo", "notifications band kar do",
+        "sab notifications band karo", "sab notification band kar do",
+        "sab alert band karo", "sab kuch band karo", "sab kuch band kar do",
+        "crypto band karo", "crypto band kar do", "airdrop band karo",
+        "airdrop band kar do", "alert hatao", "notification hatao",
+        "stop everything", "turn off alerts", "turn off notifications",
+        "mute", "mute alerts", "mute all", "silence", "quiet",
+        "no more alerts", "no alerts", "no notifications",
+        "chup karo", "chup ho jao", "mat bhejo", "mat bhejna",
+        "alert mat bhejo", "notification mat bhejo", "kuch mat bhejo",
+    }
+    # Smart regex patterns for Hindi/English/Hinglish stop intent
+    _stop_patterns = [
+        r'(?:sab|all|सब|सारे?|sabhi|सभी).*(?:band|बंद|stop|off|hatao|हटाओ)',
+        r'(?:band|बंद|stop|off).*(?:karo|kar do|करो|कर दो|kar|करें)',
+        r'(?:notification|alert|नोटिफिकेशन|अलर्ट).*(?:band|बंद|stop|off|hatao|हटाओ|mat|मत)',
+        r'(?:band|बंद).*(?:notification|alert|नोटिफिकेशन|अलर्ट|crypto|airdrop|dextools)',
+        r'(?:mat|मत).*(?:bhej|भेज|send)',
+        r'(?:stop|रोक|बंद).*(?:crypto|airdrop|dextools|web3|notification|alert)',
+        r'(?:airdrop|dextools|crypto|web3).*(?:stop|band|बंद|off|hatao|हटाओ)',
+        r'(?:chup|चुप|silence|quiet|mute).*(?:karo|करो|kar|ho)',
+    ]
+    _text_lower = text.lower().strip()
+    _is_stop = _text_lower in _stop_exact
+    if not _is_stop:
+        for pat in _stop_patterns:
+            if re.search(pat, _text_lower, re.IGNORECASE):
+                _is_stop = True
+                break
+    if _is_stop:
+        # ══════════════════════════════════════════════════════
+        #  🛑 STOP CRYPTO ALERTS ONLY
+        #  Background threads keep running! Only crypto notifications OFF
+        #  Market Brain notifications remain unaffected
+        # ══════════════════════════════════════════════════════
+        # Stop crypto-specific alerts
+        if OPTIONS_HUNTER_AVAILABLE:
+            try:
+                stop_all_crypto_alerts(chat_id)
+            except Exception:
+                pass
+        # Set in-memory CRYPTO flag only
+        chat_storage[f"crypto_alerts_{chat_id}"] = False
+        # Remove from crypto subscriber list
+        try:
+            from data_store import remove_subscriber
+            remove_subscriber(chat_id)
+        except Exception:
+            pass
+        # Persist stop flag to disk
+        try:
+            stop_file = "jarvis_stopped_users.json"
+            stopped = {}
+            if os.path.exists(stop_file):
+                with open(stop_file, "r") as f:
+                    stopped = json.load(f)
+            stopped[str(chat_id)] = True
+            with open(stop_file, "w") as f:
+                json.dump(stopped, f)
+        except Exception:
+            pass
+        send_message(chat_id, 
+            f"🛑 *Crypto Alerts बंद!*\n\n"
+            f"❌ Crypto alerts: *OFF*\n"
+            f"❌ Airdrop notifications: *OFF*\n"
+            f"❌ DexTools alerts: *OFF*\n"
+            f"❌ Web3 signals: *OFF*\n\n"
+            f"✅ Background threads: *RUNNING*\n"
+            f"✅ Market Brain: *RUNNING* (9:15-3:30 IST)\n"
+            f"✅ JARVIS AI: *ACTIVE*\n\n"
+            f"_\"🟢 START Crypto Alerts\" दबाइए वापस शुरू करने के लिए_",
+            reply_markup=build_keyboard())
+        logger.info(f"[STOP] 🛑 User {chat_id} STOPPED crypto alerts (bg threads still running)")
+        return
+
+    # ════════════════════════════════════════════════════════
+    #   🟢 START All Crypto Alerts — Smart NLU matching
+    # ════════════════════════════════════════════════════════
+    _start_exact = {
+        "🟢 START Crypto Alerts", "start crypto", "/startcrypto",
+        "start all crypto alerts", "start alerts", "alerts on",
+        "start", "shuru karo", "alert chalu", "notifications on",
+        "notification on", "alert on", "start notifications",
+        "start all alerts", "start all notifications",
+        "chalu karo", "chalu kar do", "shuru kar do",
+        "alert shuru karo", "notification shuru karo",
+        "alert chalu karo", "notification chalu karo",
+        "sab chalu karo", "sab shuru karo",
+    }
+    _start_patterns = [
+        r'(?:sab|all|सब|सारे?|sabhi|सभी).*(?:chalu|shuru|start|on|चालू|शुरू)',
+        r'(?:chalu|shuru|start|on|चालू|शुरू).*(?:karo|kar do|करो|कर दो)',
+        r'(?:notification|alert|नोटिफिकेशन|अलर्ट).*(?:chalu|shuru|start|on|चालू|शुरू)',
+    ]
+    _is_start = _text_lower in _start_exact
+    if not _is_start:
+        for pat in _start_patterns:
+            if re.search(pat, _text_lower, re.IGNORECASE):
+                _is_start = True
+                break
+    if _is_start:
+        # ══════════════════════════════════════════════════════
+        #  🟢 START CRYPTO ALERTS
+        # ══════════════════════════════════════════════════════
+        if OPTIONS_HUNTER_AVAILABLE:
+            try:
+                start_all_crypto_alerts(chat_id)
+            except Exception:
+                pass
+        chat_storage[f"crypto_alerts_{chat_id}"] = True
+        # Re-add to subscriber list
+        try:
+            from data_store import add_subscriber
+            add_subscriber(chat_id)
+        except Exception:
+            pass
+        # Remove from stopped users file
+        try:
+            stop_file = "jarvis_stopped_users.json"
+            if os.path.exists(stop_file):
+                with open(stop_file, "r") as f:
+                    stopped = json.load(f)
+                stopped.pop(str(chat_id), None)
+                with open(stop_file, "w") as f:
+                    json.dump(stopped, f)
+        except Exception:
+            pass
+        send_message(chat_id, 
+            f"🟢 *Crypto Alerts शुरू!*\n\n"
+            f"✅ Crypto alerts: *ON*\n"
+            f"✅ Airdrop notifications: *ON*\n"
+            f"✅ DexTools alerts: *ON*\n"
+            f"✅ Web3 signals: *ON*\n"
+            f"✅ Market Brain: *RUNNING* (9:15-3:30 IST)\n"
+            f"✅ All background threads: *RUNNING*",
+            reply_markup=build_keyboard())
+        logger.info(f"[START] 🟢 User {chat_id} STARTED crypto alerts")
+        return
+
+    # ════════════════════════════════════════════════════════
+    #   💰 BUDGET OPTIONS HUNTER — ₹4-5 Options
+    # ════════════════════════════════════════════════════════
+    if text in ("💰 Budget Options 🎯", "budget options", "/budgetoptions",
+                "budget calls", "₹5 options", "cheap options", "saste options"):
+        if OPTIONS_HUNTER_AVAILABLE:
+            send_message(chat_id, f"{greeting}💰🎯 *BUDGET OPTIONS HUNT...*\n_₹4-8 ke options dhundh raha hoon + ML/AI analysis_ ⏳")
+            try:
+                data = find_budget_options(index="NIFTY", direction="AUTO")
+                msg = format_budget_options(data)
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            except Exception as e:
+                logger.error(f"Budget options error: {e}")
+                send_message(chat_id, f"❌ Budget options error: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Options Hunter module unavailable.", reply_markup=build_keyboard())
+        return
+
+    if text in ("💰 BankNIFTY Budget 🎯", "banknifty budget", "banknifty budget options"):
+        if OPTIONS_HUNTER_AVAILABLE:
+            send_message(chat_id, f"{greeting}💰🏦 *BankNIFTY BUDGET HUNT...* ⏳")
+            try:
+                data = find_budget_options(index="BANKNIFTY", direction="AUTO")
+                msg = format_budget_options(data)
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            except Exception as e:
+                send_message(chat_id, f"❌ Error: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Module unavailable.", reply_markup=build_keyboard())
+        return
+
+    # ════════════════════════════════════════════════════════
+    #   🔔 9 AM MORNING PICKS
+    # ════════════════════════════════════════════════════════
+    if text in ("🔔 9AM Auto Picks 🌅", "9am picks", "/morningpicks",
+                "morning picks", "auto picks", "9 am picks"):
+        if OPTIONS_HUNTER_AVAILABLE:
+            send_message(chat_id, f"{greeting}🔔🌅 *Generating Morning Picks...*\n_NIFTY + BankNIFTY budget options_ ⏳")
+            try:
+                msg = generate_morning_picks()
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            except Exception as e:
+                logger.error(f"Morning picks error: {e}")
+                send_message(chat_id, f"❌ Morning picks error: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Module unavailable.", reply_markup=build_keyboard())
+        return
+
+    # ════════════════════════════════════════════════════════
+    #   🛡️ MY POSITIONS (Enhanced with Guardian)
+    # ════════════════════════════════════════════════════════
+    if text in ("🛡️ My Positions Guard", "my positions guard", "position guardian",
+                "/mypositions", "position status"):
+        if OPTIONS_HUNTER_AVAILABLE:
+            send_message(chat_id, f"{greeting}🛡️ *Loading Positions + Guardian...* ⏳")
+            try:
+                msg = get_my_positions_enhanced(chat_id)
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            except Exception as e:
+                send_message(chat_id, f"❌ Error: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Module unavailable.", reply_markup=build_keyboard())
+        return
+
+    # ════════════════════════════════════════════════════════
+    #   /track — Track a new position
+    # ════════════════════════════════════════════════════════
+    if text.startswith("/track") or text.startswith("track "):
+        if OPTIONS_HUNTER_AVAILABLE:
+            # Parse: /track NIFTY 23000CE 5
+            parts = text.replace("/track", "").strip().split()
+            if len(parts) >= 3:
+                try:
+                    index = parts[0].upper()
+                    strike_str = parts[1].upper()
+                    entry_price = float(parts[2])
+                    
+                    # Parse strike+type (e.g., 23000CE)
+                    opt_type = "CE" if "CE" in strike_str else "PE"
+                    strike = float(strike_str.replace("CE", "").replace("PE", ""))
+                    
+                    qty = int(parts[3]) if len(parts) > 3 else 0
+                    
+                    result = track_position(chat_id, index, strike, opt_type, entry_price, qty)
+                    if "error" in result:
+                        send_message(chat_id, f"❌ {result['error']}", reply_markup=build_keyboard())
+                    else:
+                        send_message(chat_id, result["msg"], reply_markup=build_keyboard())
+                except Exception as e:
+                    send_message(chat_id, f"❌ Parse error: {str(e)[:100]}\n\n💡 Format: /track NIFTY 23000CE 5", reply_markup=build_keyboard())
+            else:
+                send_message(chat_id, (
+                    "📝 *Position Track karne ka format:*\n\n"
+                    "`/track NIFTY 23000CE 5`\n"
+                    "`/track BANKNIFTY 50000PE 8`\n"
+                    "`/track SENSEX 75000CE 4`\n\n"
+                    "📊 Format: /track [INDEX] [STRIKE][CE/PE] [ENTRY_PRICE]\n"
+                    "🛡️ Guardian auto-activate hoga!\n"
+                ), reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Module unavailable.", reply_markup=build_keyboard())
+        return
+
+    # ════════════════════════════════════════════════════════
+    #   /close — Close a tracked position
+    # ════════════════════════════════════════════════════════
+    if text.startswith("/close"):
+        if OPTIONS_HUNTER_AVAILABLE:
+            parts = text.replace("/close", "").strip().split()
+            if len(parts) >= 2:
+                try:
+                    pos_id = int(parts[0])
+                    exit_price = float(parts[1])
+                    msg = close_tracked_position(chat_id, pos_id, exit_price)
+                    send_message(chat_id, msg, reply_markup=build_keyboard())
+                except Exception as e:
+                    send_message(chat_id, f"❌ Error: {str(e)[:100]}\n\n💡 Format: /close [ID] [EXIT_PRICE]", reply_markup=build_keyboard())
+            else:
+                send_message(chat_id, "💡 Format: /close [POSITION_ID] [EXIT_PRICE]\nEx: /close 1 25", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Module unavailable.", reply_markup=build_keyboard())
+        return
+
     # ════════════════════════════
     #   GENERATE QR
     # ════════════════════════════
@@ -2024,11 +2916,11 @@ def handle_update(update: dict):
                 f"Scan to join the #1 AI Trading Bot! 🌸\n"
                 f"🌸 राधे राधे 🌸"
             )
-            send_photo(chat_id, qr, caption=caption)
+            send_photo(chat_id, qr, caption=caption, reply_markup=build_keyboard())
             send_message(chat_id, f"{greeting}✅ QR Code बन गया! अपने दोस्तों को शेयर कीजिए 🌸", reply_markup=build_keyboard())
         except Exception as e:
             logger.error(f"QR failed: {e}", exc_info=True)
-            send_message(chat_id, f"{greeting}❌ Failed to generate QR code.")
+            send_message(chat_id, f"{greeting}❌ QR Code generation failed. Please try again.", reply_markup=build_keyboard())
         return
 
     # ════════════════════════════════════════════════════════
@@ -2323,6 +3215,86 @@ def handle_update(update: dict):
                 send_message(chat_id, f"{greeting}❌ BankNIFTY option analysis failed: {str(e)[:100]}")
         else:
             send_message(chat_id, f"{greeting}❌ Indian Super Engine not loaded.")
+        return
+
+    # ════════════════════════════════════════════════════
+    #  🔮 POWER PREDICT — 10-Signal Multi-Factor Prediction
+    # ════════════════════════════════════════════════════
+    power_predict_map = {
+        "🔮 NIFTY Power Predict 💪": "NIFTY",
+        "🔮 SENSEX Power Predict 💪": "SENSEX",
+        "nifty power": "NIFTY",
+        "sensex power": "SENSEX",
+        "banknifty power": "BANKNIFTY",
+        "/powerpredict": "NIFTY",
+    }
+    if text in power_predict_map:
+        idx_name = power_predict_map[text]
+        if POWER_PREDICT_AVAILABLE:
+            send_message(chat_id, f"{greeting}🔮 *{idx_name} POWER PREDICTION bana rahi hoon...*\n_10 signals combine ho rahe hain — ML + TA + FII + VIX + PCR + Pivot + GIFT + News + Correlation... ~15s_ ⏳")
+            try:
+                result = power_predict(idx_name)
+                if result.get("error"):
+                    send_message(chat_id, f"{greeting}❌ {result['error']}", reply_markup=build_keyboard())
+                else:
+                    pages = format_power_prediction(result)
+                    for page in pages:
+                        send_message(chat_id, page, reply_markup=build_keyboard())
+                    if VOICE_AVAILABLE:
+                        try:
+                            voice_text = format_power_voice(result)
+                            send_voice_message(chat_id, voice_text, intent="analysis")
+                        except Exception:
+                            pass
+            except Exception as e:
+                logger.error(f"Power Predict error ({idx_name}): {e}", exc_info=True)
+                send_message(chat_id, f"{greeting}❌ Power Prediction failed: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, f"{greeting}❌ Power Predictor not loaded.", reply_markup=build_keyboard())
+        return
+
+    # ════════════════════════════════════════════════════
+    #  📊 OTM↔ATM ANALYSIS — Smart Strike Scoring
+    # ════════════════════════════════════════════════════
+    otm_atm_map = {
+        "📊 NIFTY OTM↔ATM 🎯": "NIFTY",
+        "📊 SENSEX OTM↔ATM 🎯": "SENSEX",
+        "📊 BankNIFTY OTM↔ATM 🎯": "BANKNIFTY",
+        "nifty otm atm": "NIFTY",
+        "sensex otm atm": "SENSEX",
+        "banknifty otm atm": "BANKNIFTY",
+        "/otmatm": "NIFTY",
+    }
+    if text in otm_atm_map:
+        idx_name = otm_atm_map[text]
+        if OTM_ATM_AVAILABLE:
+            send_message(chat_id, f"{greeting}📊 *{idx_name} OTM↔ATM Analysis...*\n_Strike scoring + Greeks + ATM probability + profit scenarios... ~20s_ ⏳")
+            try:
+                report = full_otm_atm_analysis(idx_name)
+                pages = format_otm_atm_report(report)
+                for page in pages:
+                    send_message(chat_id, page, reply_markup=build_keyboard())
+            except Exception as e:
+                logger.error(f"OTM↔ATM error ({idx_name}): {e}", exc_info=True)
+                send_message(chat_id, f"{greeting}❌ OTM↔ATM analysis failed: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, f"{greeting}❌ OTM↔ATM Engine not loaded.", reply_markup=build_keyboard())
+        return
+
+    # ════════════════════════════════════════════════════
+    #  ⚡ 2-MIN MOMENTUM — Rapid Scalping Signal
+    # ════════════════════════════════════════════════════
+    if text in ("⚡ 2-Min Momentum 🚀", "2 min momentum", "/momentum"):
+        if OTM_ATM_AVAILABLE:
+            send_message(chat_id, f"{greeting}⚡ *2-Min Momentum Signal bana rahi hoon...*\n_NIFTY rapid scalping signal... ~10s_ ⏳")
+            try:
+                signal = rapid_momentum_signal("NIFTY")
+                msg = format_momentum_signal(signal)
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            except Exception as e:
+                send_message(chat_id, f"{greeting}❌ Momentum signal failed: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, f"{greeting}❌ Momentum Engine not loaded.", reply_markup=build_keyboard())
         return
 
     # ════════════════════════════════════════════════════
@@ -3055,6 +4027,39 @@ def handle_update(update: dict):
             send_message(chat_id, msg, reply_markup=build_keyboard())
         except Exception as e:
             send_message(chat_id, f"{greeting}❌ Accuracy report error: {str(e)[:100]}", reply_markup=build_keyboard())
+        return
+
+    # ════════════════════════════
+    #   JARVIS PREDICTION ACCURACY (Self-Learning)
+    # ════════════════════════════
+    if text in ("/accuracy", "accuracy", "prediction accuracy", "jarvis accuracy",
+                "kitni sahi thi", "accuracy report", "accuracy kya hai"):
+        if TRACKER_AVAILABLE:
+            try:
+                # First verify any pending predictions
+                verify_predictions(max_verify=20)
+                msg = format_accuracy_report()
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            except Exception as e:
+                send_message(chat_id, f"{greeting}❌ Accuracy report error: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, f"{greeting}📊 Trade Tracker module not loaded.", reply_markup=build_keyboard())
+        return
+
+    # ════════════════════════════
+    #   CROSS-ASSET CORRELATION REPORT
+    # ════════════════════════════
+    if text in ("/correlation", "correlation", "correlations", "cross asset",
+                "divergence", "market regime", "asset correlation"):
+        if CORRELATION_AVAILABLE:
+            try:
+                send_message(chat_id, f"{greeting}🔗 Scanning cross-asset correlations... ⏳")
+                msg = format_correlation_report()
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            except Exception as e:
+                send_message(chat_id, f"{greeting}❌ Correlation scan error: {str(e)[:100]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, f"{greeting}🔗 Cross-Asset Engine not loaded.", reply_markup=build_keyboard())
         return
 
     # ════════════════════════════
@@ -4572,8 +5577,29 @@ def handle_update(update: dict):
             try:
                 stock_data = analyze_indian_stock_deep(text)
                 pages = format_indian_stock_report(stock_data)
+                
+                # Add cross-asset correlation insight
+                if CORRELATION_AVAILABLE:
+                    try:
+                        corr_insight = get_correlation_insight("NIFTY")
+                        if corr_insight:
+                            pages.append(f"🔗 *Cross-Asset Correlations:*\n{corr_insight}")
+                    except Exception:
+                        pass
+                
                 for page in pages:
                     send_message(chat_id, page, reply_markup=build_keyboard())
+                
+                # Log prediction for accuracy tracking
+                if TRACKER_AVAILABLE and stock_data:
+                    try:
+                        verdict = stock_data.get("verdict", stock_data.get("action", ""))
+                        score = stock_data.get("score", stock_data.get("confidence", 50))
+                        price = stock_data.get("price", stock_data.get("current_price", 0))
+                        log_prediction(text, verdict, score, price, source="stock_ai")
+                    except Exception:
+                        pass
+                
                 voice_text = format_indian_stock_voice(stock_data)
                 send_jarvis_voice(chat_id, voice_text, intent="buy_sell_stock", is_voice_input=is_voice)
             except Exception as e:
@@ -4634,8 +5660,45 @@ def handle_update(update: dict):
                 try:
                     deep_data = analyze_crypto_token_deep(token)
                     pages = format_crypto_deep_report(deep_data)
+                    
+                    # Add cross-asset correlation insight
+                    if CORRELATION_AVAILABLE:
+                        try:
+                            corr_insight = get_correlation_insight(token)
+                            if corr_insight:
+                                pages.append(f"🔗 *Cross-Asset Correlations:*\n{corr_insight}")
+                        except Exception:
+                            pass
+                    
+                    # Add calibrated confidence if tracker available
+                    if TRACKER_AVAILABLE and deep_data:
+                        try:
+                            raw_score = deep_data.get("ultra_score", deep_data.get("score", 50))
+                            real_conf = get_calibrated_confidence(raw_score)
+                            pages.append(f"📐 *Calibrated Confidence:* {real_conf*100:.0f}% (based on past accuracy)")
+                        except Exception:
+                            pass
+                    
                     for page in pages:
                         send_message(chat_id, page, reply_markup=build_keyboard())
+                    
+                    # Log prediction for accuracy tracking
+                    if TRACKER_AVAILABLE and deep_data:
+                        try:
+                            verdict = deep_data.get("verdict", deep_data.get("action", ""))
+                            score = deep_data.get("ultra_score", deep_data.get("score", 50))
+                            price = deep_data.get("price", deep_data.get("current_price", 0))
+                            indicators = {
+                                "ai_signal": deep_data.get("ai_signal"),
+                                "rug_risk": deep_data.get("rug_score"),
+                                "money_flow": deep_data.get("money_flow"),
+                                "whale": deep_data.get("whale_signal"),
+                            }
+                            log_prediction(token, verdict, score, price, 
+                                         source="crypto_deep", indicators=indicators)
+                        except Exception:
+                            pass
+                    
                     voice_text = format_crypto_deep_voice(deep_data)
                     send_jarvis_voice(chat_id, voice_text, intent="buy_sell_crypto", is_voice_input=is_voice)
                 except Exception as e:
@@ -5261,6 +6324,134 @@ def handle_update(update: dict):
             send_message(chat_id, "❌ Solana Engine उपलब्ध नहीं है।", reply_markup=build_keyboard())
         return
 
+    # --- Telegram Wallet (@wallet) Integration ---
+    if text in ("💎 Telegram Wallet 💳", "telegram wallet", "/telegramwallet",
+                "ton wallet", "connect telegram wallet"):
+        ton_addr = OWNER_TON_WALLET if AIRDROP_AVAILABLE else "N/A"
+        sol_addr = OWNER_SOLANA_WALLET if PHANTOM_AVAILABLE else "N/A"
+        msg = (
+            f"💎💳 *JARVIS — TELEGRAM WALLET INTEGRATION* 💳💎\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"Telegram ka built-in @wallet use karke aap directly\n"
+            f"bot se crypto send/receive kar sakte ho! 🚀\n\n"
+            f"📲 *SETUP STEPS (1-time):*\n"
+            f"1️⃣ Telegram mein @wallet open karo\n"
+            f"2️⃣ 'Start' button dabo\n"
+            f"3️⃣ Wallet create / import karo\n"
+            f"4️⃣ TON, USDT, BTC, ETH — sab available!\n\n"
+            f"💰 *SUPPORTED ACTIONS:*\n"
+            f"  🔹 Send/Receive TON, USDT, BTC, ETH\n"
+            f"  🔹 P2P trading inside Telegram\n"
+            f"  🔹 Swap tokens instantly\n"
+            f"  🔹 Buy crypto with card/bank\n"
+            f"  🔹 Send crypto to any Telegram user\n\n"
+            f"🔗 *QUICK LINKS:*\n"
+            f"  🏦 [Open Telegram Wallet](https://t.me/wallet)\n"
+            f"  💱 [CryptoBot (another option)](https://t.me/CryptoBot)\n"
+            f"  🔄 [xRocket Wallet](https://t.me/xRocket)\n\n"
+            f"👛 *YOUR WALLETS:*\n"
+            f"  💎 *TON:* `{ton_addr}`\n"
+            f"  🟣 *Solana:* `{sol_addr[:8]}...{sol_addr[-6:]}`\n"
+            f"  🔗 [View TON on TonViewer](https://tonviewer.com/{ton_addr})\n"
+            f"  🔗 [View SOL on Solscan](https://solscan.io/account/{sol_addr})\n\n"
+            f"📝 *SET YOUR OWN WALLET:*\n"
+            f"  Type: `/setwallet ton YOUR_ADDRESS`\n"
+            f"  Type: `/setwallet solana YOUR_ADDRESS`\n\n"
+            f"💡 *Tips:*\n"
+            f"  • @wallet se USDT send karo — instant transfer!\n"
+            f"  • P2P se Indian Rupees (₹) se buy karo\n"
+            f"  • Airdrops auto-track ho rahe hain dono wallets par!\n\n"
+            f"⚠️ _Apna seed phrase kisi ko share mat karo!_"
+        )
+        send_message(chat_id, msg, reply_markup=build_keyboard())
+        return
+
+    # --- Set My Wallet (any user can set their own wallet) ---
+    if text in ("📝 Set My Wallet 🔑", "set my wallet", "set wallet") or text.startswith("/setwallet"):
+        if AIRDROP_AVAILABLE:
+            # Parse: /setwallet ton <addr> or /setwallet solana <addr>
+            parts = text.split()
+            if len(parts) >= 3 and parts[0].lower() in ("/setwallet", "setwallet"):
+                chain = parts[1].lower()
+                addr = parts[2]
+                if chain in ("ton", "solana", "evm", "ethereum", "bsc", "arbitrum"):
+                    register_wallet(chat_id, chain, addr)
+                    msg = (
+                        f"✅ *Wallet Registered Successfully!*\n\n"
+                        f"⛓️ Chain: *{chain.upper()}*\n"
+                        f"📍 Address: `{addr}`\n\n"
+                        f"🎁 Airdrop Hunter ab is wallet ko bhi scan karega!\n"
+                        f"📊 Auto-detection ON — naye tokens milenge toh alert aayega.\n\n"
+                        f"💡 _Other wallets add karne ke liye:_\n"
+                        f"  `/setwallet ton YOUR_TON_ADDRESS`\n"
+                        f"  `/setwallet solana YOUR_SOL_ADDRESS`\n"
+                        f"  `/setwallet evm YOUR_ETH_ADDRESS`"
+                    )
+                else:
+                    msg = (
+                        f"❌ Unknown chain: *{chain}*\n\n"
+                        f"Supported chains: *ton, solana, evm, ethereum, bsc, arbitrum*\n\n"
+                        f"Example: `/setwallet ton UQBl...zkC`"
+                    )
+            else:
+                msg = (
+                    f"📝🔑 *SET YOUR WALLET ADDRESS*\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"Apna wallet address set karo — airdrops auto-track honge!\n\n"
+                    f"📲 *Commands:*\n"
+                    f"  `/setwallet ton YOUR_TON_ADDRESS`\n"
+                    f"  `/setwallet solana YOUR_SOL_ADDRESS`\n"
+                    f"  `/setwallet evm YOUR_ETH_ADDRESS`\n\n"
+                    f"📝 *Example:*\n"
+                    f"  `/setwallet ton UQBlUgQZt_EGCpWC1...`\n"
+                    f"  `/setwallet solana 8F1PJhuJ...`\n\n"
+                    f"🎁 Set karne ke baad:\n"
+                    f"  ✅ Airdrop auto-scan ON\n"
+                    f"  ✅ Token alerts ON\n"
+                    f"  ✅ Value in ₹ INR shown\n"
+                    f"  ✅ Swap links auto-generated\n\n"
+                    f"⚠️ _Sirf PUBLIC wallet address dalo — private key KABHI nahi!_"
+                )
+            send_message(chat_id, msg, reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Airdrop module not available.", reply_markup=build_keyboard())
+        return
+
+    # --- My Wallets (show all registered wallets) ---
+    if text in ("👛 My Wallets 💰", "my wallets", "/mywallets", "my wallet"):
+        if AIRDROP_AVAILABLE:
+            wallets = get_all_user_wallets(chat_id)
+            if not wallets:
+                msg = (
+                    f"👛 *YOUR WALLETS*\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"❌ Koi wallet registered nahi hai!\n\n"
+                    f"📝 Set karo: `/setwallet ton YOUR_ADDRESS`\n"
+                    f"📝 Ya: `/setwallet solana YOUR_ADDRESS`"
+                )
+            else:
+                msg = f"👛💰 *YOUR REGISTERED WALLETS*\n"
+                msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                chain_icons = {"solana": "🟣", "ton": "💎", "evm": "🔵", "ethereum": "🔵", "bsc": "🟡", "arbitrum": "🔷"}
+                for chain, addr in wallets.items():
+                    icon = chain_icons.get(chain, "🔹")
+                    msg += f"{icon} *{chain.upper()}:*\n"
+                    msg += f"   📍 `{addr}`\n"
+                    if chain == "solana":
+                        msg += f"   🔗 [Solscan](https://solscan.io/account/{addr})\n"
+                    elif chain == "ton":
+                        msg += f"   🔗 [TonViewer](https://tonviewer.com/{addr})\n"
+                    elif chain in ("evm", "ethereum"):
+                        msg += f"   🔗 [Etherscan](https://etherscan.io/address/{addr})\n"
+                    msg += "\n"
+                msg += "🎁 _Sab wallets par airdrop auto-scan chal raha hai!_\n"
+                msg += "⚡ _Scan interval: Every 30 seconds_\n\n"
+                msg += "📝 _Aur wallet add karo:_ `/setwallet chain address`"
+            send_message(chat_id, msg, reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Airdrop module not available.", reply_markup=build_keyboard())
+        return
+
     # --- Claim Airdrops to Phantom Wallet ---
     if text in ("👻 Claim Airdrops 🎁", "claim airdrops", "/claimairdrops"):
         if SOLANA_ENGINE_AVAILABLE:
@@ -5614,31 +6805,33 @@ def handle_update(update: dict):
         if OPTIONS_AVAILABLE:
             send_message(chat_id, "🤖📊 *NIFTY Options Analysis...* ⏳\n_Greeks, IV, PCR, Max Pain, Strategy सब दे रही हूँ!_")
             try:
-                chain = generate_option_chain_with_greeks("^NSEI")
-                strategy = suggest_strategy("^NSEI")
-                pcr = calculate_pcr("^NSEI")
-                max_p = calculate_max_pain("^NSEI")
+                chain = generate_option_chain("NIFTY")
+                reco = recommend_strategy("NIFTY")
+                iv_data = calculate_iv_rank_percentile("NIFTY")
 
-                msg = format_options_analysis(chain, "NIFTY")
-                if strategy:
-                    msg += "\n\n" + format_strategy_suggestion(strategy, "NIFTY")
-                if pcr:
-                    msg += f"\n\n📊 *PCR:* {pcr.get('pcr', 'N/A')}"
-                    pcr_val = pcr.get('pcr', 0)
-                    if isinstance(pcr_val, (int, float)):
+                msg = format_option_chain(chain, "hi")
+                if reco:
+                    msg += "\n\n" + format_recommendations(reco, "hi")
+                if iv_data:
+                    msg += f"\n\n📊 *IV Rank:* {iv_data.get('iv_rank', 'N/A'):.1f}%"
+                    msg += f"\n📊 *IV Percentile:* {iv_data.get('iv_percentile', 'N/A'):.1f}%"
+                if chain:
+                    mp = chain.get("max_pain", 0)
+                    pcr_val = chain.get("pcr", 0)
+                    if mp: msg += f"\n💥 *Max Pain:* ₹{mp:,.0f}"
+                    if pcr_val:
+                        msg += f"\n📊 *PCR:* {pcr_val:.2f}"
                         if pcr_val > 1.2:
                             msg += " 🟢 (Bullish — Heavy put writing)"
                         elif pcr_val < 0.7:
                             msg += " 🔴 (Bearish — Heavy call writing)"
                         else:
                             msg += " 🟡 (Neutral)"
-                if max_p:
-                    msg += f"\n💥 *Max Pain:* ₹{max_p.get('max_pain', 'N/A'):,}"
 
                 send_message(chat_id, msg, reply_markup=build_keyboard())
                 if VOICE_AVAILABLE:
                     try:
-                        voice_text = f"Options analysis ready. PCR is {pcr.get('pcr', 'not available')}. Strategy suggestion: {strategy.get('strategy', 'Check report')}."
+                        voice_text = f"Options analysis ready. IV Rank {iv_data.get('iv_rank', 'N/A'):.0f} percent. Strategy: {reco.get('primary', {}).get('strategy', 'Check report')}."
                         asyncio.run(send_jarvis_voice(chat_id, voice_text))
                     except Exception:
                         pass
@@ -5801,13 +6994,25 @@ def handle_update(update: dict):
     #   JARVIS SUPER BRAIN COMMANDS — News, Intelligence, SPOC
     # ════════════════════════════
 
-    # /news — Worldwide News Digest
+    # /news — Worldwide News Digest (enhanced with NewsAPI)
     if text.lower() in ("/news", "news", "khabar", "headlines", "/newsall") or text in ("📰 News Digest",):
         if SUPER_BRAIN_AVAILABLE:
             send_message(chat_id, jarvis_animated_header("thinking"))
             digest = format_news_digest()
+            # Append NewsAPI headlines if available
+            if NEWS_ENHANCED:
+                try:
+                    extra = get_news_headlines("business", "in", 5)
+                    if extra:
+                        digest += f"\n\n{extra}"
+                except Exception:
+                    pass
             send_message(chat_id, digest, reply_markup=build_keyboard())
             send_jarvis_voice(chat_id, format_news_voice(), intent="market_summary")
+        elif NEWS_ENHANCED:
+            send_message(chat_id, "📰 Fetching news...", reply_markup=build_keyboard())
+            headlines = get_news_headlines("general", "in", 10)
+            send_message(chat_id, headlines or "📰 No headlines available.", reply_markup=build_keyboard())
         else:
             send_message(chat_id, "📰 News engine loading...", reply_markup=build_keyboard())
         return
@@ -5838,6 +7043,338 @@ def handle_update(update: dict):
     if text.lower() in ("/spocquick", "quick status", "jarvis quick") or text in ("📊 Quick Status",):
         if SPOC_AVAILABLE:
             send_message(chat_id, format_spoc_quick(), reply_markup=build_keyboard())
+        return
+
+    # ════════════════════════════════════════════════════════
+    #   🛠️ JARVIS TOOLS — Weather, Search, Song, Image, Memory
+    # ════════════════════════════════════════════════════════
+
+    # 🌤️ Weather
+    if text in ("🌤️ Weather",) or text.lower().startswith(("/weather", "weather", "mausam")):
+        if WEATHER_AVAILABLE:
+            # Extract city from command
+            _city = "Mumbai"  # default
+            _text_clean = text.replace("🌤️", "").strip()
+            for _prefix in ["/weather", "weather", "mausam batao", "mausam kaisa hai", "mausam"]:
+                _text_clean = _text_clean.lower().replace(_prefix, "").strip()
+            if _text_clean and len(_text_clean) > 1:
+                _city = _text_clean.title()
+            send_message(chat_id, f"🌤️ Checking weather for {_city}...", reply_markup=build_keyboard())
+            result = get_weather(_city)
+            send_message(chat_id, result, reply_markup=build_keyboard())
+            send_jarvis_voice(chat_id, f"Weather in {_city}: {result[:200]}", intent="chat")
+        else:
+            send_message(chat_id, "⚠️ Weather feature not available (API key missing).", reply_markup=build_keyboard())
+        return
+
+    # 🔍 Web Search
+    if text in ("🔍 Web Search",) or text.lower().startswith(("/search", "search", "google")):
+        if SEARCH_AVAILABLE:
+            _query = text.lower().replace("/search", "").replace("search", "").replace("google", "").strip()
+            if not _query or _query == "🔍 web":
+                # Ask user what to search
+                send_message(chat_id, "🔍 *Web Search*\n\nKya search karna hai? Type karo:\n_Example: search Bitcoin price today_", reply_markup=build_keyboard())
+                chat_storage[f"awaiting_search_{chat_id}"] = True
+            else:
+                send_message(chat_id, "🔍 Searching...", reply_markup=build_keyboard())
+                result = web_search(_query)
+                send_message(chat_id, result, reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "⚠️ Web Search not available (API key missing).", reply_markup=build_keyboard())
+        return
+
+    # Handle awaiting search query
+    if chat_storage.get(f"awaiting_search_{chat_id}") and SEARCH_AVAILABLE:
+        chat_storage[f"awaiting_search_{chat_id}"] = False
+        send_message(chat_id, "🔍 Searching...", reply_markup=build_keyboard())
+        result = web_search(text)
+        send_message(chat_id, result, reply_markup=build_keyboard())
+        return
+
+    # 🎵 Song Recognition
+    if text in ("🎵 Identify Song 🎶",) or text.lower() in ("/song", "song", "gaana pehchano", "identify song", "kya gaana hai", "shazam"):
+        if SONG_AVAILABLE:
+            send_message(chat_id, "🎵 *Song Recognition*\n\nMujhe ek voice message bhejo audio ke saath — main gaana pehchaan lungi! 🎶\n\n_Record the song playing near you and send as voice message._", reply_markup=build_keyboard())
+            chat_storage[f"awaiting_song_{chat_id}"] = True
+        else:
+            send_message(chat_id, "⚠️ Song recognition not available (ACRCloud API key missing).", reply_markup=build_keyboard())
+        return
+
+    # 🎨 Image Generation
+    if text in ("🎨 Generate Image",) or text.lower().startswith(("/imagine", "imagine", "generate image", "create image", "tasveer banao")):
+        if IMAGE_AVAILABLE:
+            _prompt = text.lower().replace("/imagine", "").replace("imagine", "").replace("generate image", "").replace("create image", "").replace("tasveer banao", "").strip()
+            if not _prompt or _prompt in ("🎨",):
+                send_message(chat_id, "🎨 *Image Generation*\n\nBatao kya image banana hai?\n_Example: /imagine a cute robot trading stocks_", reply_markup=build_keyboard())
+                chat_storage[f"awaiting_image_{chat_id}"] = True
+            else:
+                send_message(chat_id, "🎨 Generating image... (10-30 sec)", reply_markup=build_keyboard())
+                img_bytes = generate_image(_prompt)
+                if img_bytes:
+                    send_photo(chat_id, img_bytes, caption=f"🎨 *Generated:* _{_prompt}_", reply_markup=build_keyboard())
+                else:
+                    send_message(chat_id, "⚠️ Image generation failed. Try a different prompt.", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "⚠️ Image generation not available (Stability API key missing).", reply_markup=build_keyboard())
+        return
+
+    # Handle awaiting image prompt
+    if chat_storage.get(f"awaiting_image_{chat_id}") and IMAGE_AVAILABLE:
+        chat_storage[f"awaiting_image_{chat_id}"] = False
+        send_message(chat_id, "🎨 Generating image... (10-30 sec)", reply_markup=build_keyboard())
+        img_bytes = generate_image(text)
+        if img_bytes:
+            send_photo(chat_id, img_bytes, caption=f"🎨 *Generated:* _{text}_", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "⚠️ Image generation failed. Try a different prompt.", reply_markup=build_keyboard())
+        return
+
+    # 🧠 Memory
+    if text in ("🧠 My Memory",) or text.lower() in ("/memory", "memory", "meri memory", "yaad karo", "what do you remember"):
+        if MEM0_AVAILABLE:
+            memories = mem0_get_all(str(chat_id))
+            if memories:
+                msg = "🧠 *Your JARVIS Memory:*\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                for i, m in enumerate(memories[:15], 1):
+                    content = m.get("memory", m.get("content", ""))[:100]
+                    msg += f"{i}. {content}\n"
+                msg += f"\n📊 Total: {len(memories)} memories stored"
+                send_message(chat_id, msg, reply_markup=build_keyboard())
+            else:
+                send_message(chat_id, "🧠 No memories stored yet. I'll learn about you as we chat! 💕", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "🧠 Memory: Using local storage (Mem0 API not configured).", reply_markup=build_keyboard())
+        return
+
+    # 📰 Crypto News (enhanced with NewsAPI)
+    if text in ("📰 Crypto News",) or text.lower() in ("/cryptonews", "crypto news", "crypto khabar"):
+        if NEWS_ENHANCED:
+            send_message(chat_id, "📰 Fetching crypto news...", reply_markup=build_keyboard())
+            news = get_crypto_news()
+            if news:
+                send_message(chat_id, news, reply_markup=build_keyboard())
+            else:
+                send_message(chat_id, "📰 No crypto news available right now.", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "📰 Crypto news (enhanced) not available.", reply_markup=build_keyboard())
+        return
+
+    # ════════════════════════════════════════════════════════
+
+    # ════════════════════════════════════════════════════════
+    #   💻 JARVIS CODER — AI Programming Engine
+    # ════════════════════════════════════════════════════════
+    _coder_triggers = {
+        "💻 JARVIS Coder 🚀", "jarvis coder", "/code", "/coder",
+        "code banao", "code likho", "programming kar",
+        "program banao", "code generate", "code create",
+        "app banao", "script banao", "project banao",
+        "programming karo", "code karo",
+    }
+    if text in _coder_triggers or text.lower() in _coder_triggers:
+        if CODER_AVAILABLE:
+            # Check permission for non-admin
+            if ADMIN_SYSTEM_AVAILABLE and not ja_is_admin(chat_id) and not has_feature(chat_id, "coding"):
+                result = request_approval(chat_id, "coding", "Wants to use JARVIS Coder")
+                if result.get("status") == "pending":
+                    send_message(chat_id, 
+                        f"🔒 *Permission Required*\n\n"
+                        f"💻 JARVIS Coder ke liye Admin approval chahiye.\n"
+                        f"📋 Request sent to Boss Deepak Kumar sir!\n\n"
+                        f"_Approval milne par access mil jayega_ 🌸",
+                        reply_markup=build_keyboard())
+                    # Notify admin
+                    if result.get("admin_notification"):
+                        try:
+                            send_message(JA_ADMIN_CHAT_ID, result["admin_notification"])
+                        except Exception:
+                            pass
+                    return
+            session = start_coding_session(chat_id)
+            _claude_status = "✅ Claude Opus 4 Connected" if CLAUDE_CONNECTED else "⚠️ Groq Fallback (Claude key missing)"
+            _github_status = "✅ GitHub Connected" if GITHUB_CONNECTED else "⚠️ GitHub not connected"
+            send_message(chat_id,
+                f"💻🚀 *JARVIS CODER — AI Programming Engine*\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"🧠 *AI:* {_claude_status}\n"
+                f"🔗 *GitHub:* {_github_status}\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"Batao kya banana hai? 🤖\n\n"
+                f"_Examples:_\n"
+                f"• `Python web scraper for crypto prices`\n"
+                f"• `React dashboard for trading`\n"
+                f"• `FastAPI server with auth`\n"
+                f"• `Telegram bot for reminders`\n\n"
+                f"Type your project description:",
+                reply_markup=build_keyboard())
+            chat_storage[f"coding_active_{chat_id}"] = True
+        else:
+            send_message(chat_id, "❌ JARVIS Coder module not available.", reply_markup=build_keyboard())
+        return
+
+    # Handle active coding session input
+    if chat_storage.get(f"coding_active_{chat_id}") and CODER_AVAILABLE:
+        _code_text = text.lower().strip()
+        
+        # Check for coding sub-commands
+        if _code_text in ("done", "exit", "cancel", "back", "wapas"):
+            chat_storage[f"coding_active_{chat_id}"] = False
+            send_message(chat_id, "✅ Coding session ended. Main menu par wapas!", reply_markup=build_keyboard())
+            return
+        
+        if _code_text.startswith("install"):
+            send_message(chat_id, "📦 Installing dependencies...", reply_markup=build_keyboard())
+            session = get_session(chat_id)
+            if session and session.get("project") and session.get("project_dir"):
+                ok, result_msg = install_dependencies(session["project"], session["project_dir"])
+                send_message(chat_id, result_msg, reply_markup=build_keyboard())
+            else:
+                send_message(chat_id, "⚠️ Pehle koi code generate karo!", reply_markup=build_keyboard())
+            return
+        
+        if _code_text.startswith(("github", "push", "git push")):
+            send_message(chat_id, "🔗 Pushing to GitHub...", reply_markup=build_keyboard())
+            session = get_session(chat_id)
+            if session and session.get("project") and session.get("project_dir"):
+                _parts = text.split()
+                _repo = _parts[1] if len(_parts) > 1 else session["project"].get("project_name", f"jarvis-project-{int(time.time())}")
+                _desc = session["project"].get("description", "Generated by JARVIS AI Coder")
+                ok, result_msg = push_to_github(session["project_dir"], _repo, _desc)
+                if ok:
+                    send_message(chat_id, f"✅ *GitHub Push Successful!*\n🔗 {result_msg}", reply_markup=build_keyboard())
+                else:
+                    send_message(chat_id, f"❌ GitHub push failed: {result_msg}", reply_markup=build_keyboard())
+            else:
+                send_message(chat_id, "⚠️ Pehle koi code generate karo!", reply_markup=build_keyboard())
+            return
+        
+        # Generate code using process_coding_input
+        send_message(chat_id, 
+            f"💻🧠 *Generating Code...*\n"
+            f"_AI soch raha hai..._ ⏳\n\n"
+            f"Prompt: _{text[:100]}{'...' if len(text) > 100 else ''}_",
+            reply_markup=build_keyboard())
+        
+        result = process_coding_input(chat_id, text)
+        if result and result.get("message"):
+            # process_coding_input returns {"message": str, "done": bool}
+            send_message(chat_id, result["message"], reply_markup=build_keyboard())
+            if not result.get("done"):
+                send_message(chat_id, 
+                    f"💡 *Commands:*\n"
+                    f"• `install` — Install dependencies\n"
+                    f"• `github <repo-name>` — Push to GitHub\n"
+                    f"• `run` — Run the project\n"
+                    f"• Type modifications — Update code\n"
+                    f"• `done` — Exit coding mode",
+                    reply_markup=build_keyboard())
+            else:
+                chat_storage[f"coding_active_{chat_id}"] = False
+        else:
+            send_message(chat_id, "❌ Code generation failed. Try again with a different prompt.", reply_markup=build_keyboard())
+        return
+
+    # ════════════════════════════════════════════════════════
+    #   👑 JARVIS ADMIN COMMANDS — Boss Deepak Kumar
+    # ════════════════════════════════════════════════════════
+    if text in ("👑 Admin Dashboard",) or text.lower() in ("/dashboard", "admin dashboard"):
+        if ADMIN_SYSTEM_AVAILABLE and ja_is_admin(chat_id):
+            dashboard = format_admin_dashboard()
+            send_message(chat_id, dashboard, reply_markup=build_keyboard())
+        elif ADMIN_SYSTEM_AVAILABLE:
+            send_message(chat_id, "🚫 Sirf Boss Deepak Kumar ke liye! 🌸", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Admin system not available.", reply_markup=build_keyboard())
+        return
+
+    # /approve command
+    if text.lower().startswith("/approve ") and ADMIN_SYSTEM_AVAILABLE:
+        if ja_is_admin(chat_id):
+            req_id = text.split(maxsplit=1)[1].strip()
+            result = approve_request(req_id)
+            send_message(chat_id, result["message"], reply_markup=build_keyboard())
+            # Notify the user
+            if result.get("chat_id"):
+                try:
+                    send_message(result["chat_id"],
+                        f"✅ *Approval Granted!*\n\n"
+                        f"Boss Deepak Kumar ne aapka request approve kar diya!\n"
+                        f"Feature: {result.get('feature', 'unknown')}\n\n"
+                        f"Ab aap isse use kar sakte ho! 🎉",
+                        reply_markup=build_keyboard())
+                except Exception:
+                    pass
+        else:
+            send_message(chat_id, "🚫 Sirf Admin ke liye!", reply_markup=build_keyboard())
+        return
+
+    # /reject command
+    if text.lower().startswith("/reject ") and ADMIN_SYSTEM_AVAILABLE:
+        if ja_is_admin(chat_id):
+            parts = text.split(maxsplit=2)
+            req_id = parts[1].strip()
+            reason = parts[2] if len(parts) > 2 else ""
+            result = reject_request(req_id, reason)
+            send_message(chat_id, result["message"], reply_markup=build_keyboard())
+            if result.get("chat_id"):
+                try:
+                    send_message(result["chat_id"],
+                        f"❌ *Request Rejected*\n\n"
+                        f"Boss ne aapka request reject kiya.\n"
+                        f"{'Reason: ' + reason if reason else ''}\n\n"
+                        f"_Kuch aur chahiye toh batao_ 🌸",
+                        reply_markup=build_keyboard())
+                except Exception:
+                    pass
+        else:
+            send_message(chat_id, "🚫 Sirf Admin ke liye!", reply_markup=build_keyboard())
+        return
+
+    # /grant command
+    if text.lower().startswith("/grant ") and ADMIN_SYSTEM_AVAILABLE:
+        if ja_is_admin(chat_id):
+            parts = text.split()
+            if len(parts) >= 3:
+                _target_cid = int(parts[1])
+                _feature = parts[2]
+                result = grant_feature(_target_cid, _feature)
+                send_message(chat_id, result, reply_markup=build_keyboard())
+            else:
+                send_message(chat_id, "Usage: `/grant <chat_id> <feature>`", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "🚫 Sirf Admin ke liye!", reply_markup=build_keyboard())
+        return
+
+    # /upgrade command
+    if text.lower().startswith("/upgrade"):
+        if ADMIN_SYSTEM_AVAILABLE:
+            parts = text.split()
+            if ja_is_admin(chat_id) and len(parts) >= 2:
+                _target_cid = int(parts[1])
+                result = upgrade_user(_target_cid)
+                send_message(chat_id, result, reply_markup=build_keyboard())
+            elif not ja_is_admin(chat_id):
+                # User requesting upgrade for themselves
+                result = request_approval(chat_id, "coding", "Requesting Premium upgrade")
+                send_message(chat_id, 
+                    f"⭐ *Premium Upgrade Request*\n\n"
+                    f"Request Boss Deepak Kumar ko bhej diya!\n"
+                    f"Jald hi approval milega! 🌸",
+                    reply_markup=build_keyboard())
+                if result.get("admin_notification"):
+                    try:
+                        send_message(JA_ADMIN_CHAT_ID, result["admin_notification"])
+                    except Exception:
+                        pass
+        return
+
+    # 👤 User Profile
+    if text in ("👤 My Profile",) or text.lower() in ("/profile", "my profile", "meri profile", "mera account"):
+        if ADMIN_SYSTEM_AVAILABLE:
+            profile = format_user_profile(chat_id)
+            send_message(chat_id, profile, reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Profile system not available.", reply_markup=build_keyboard())
         return
 
     # Super Brain command router (handles news-related natural language)
@@ -5881,13 +7418,36 @@ def handle_update(update: dict):
     if is_ai_mode_final or (is_question and len(text) > 1):
         # ── JARVIS NLU: Try to classify intent first ──
         if JARVIS_AVAILABLE and len(text) > 2:
-            intent, confidence = classify_intent(text)
+            # 🧠 GENIUS: Use smart hybrid classification (regex + LLM)
+            if GENIUS_AVAILABLE:
+                try:
+                    intent, confidence = genius_classify(text, chat_id)
+                except Exception:
+                    intent, confidence = classify_intent(text)
+            else:
+                intent, confidence = classify_intent(text)
             
             # 🧠 Memory: Save user intent to conversation
             try:
                 add_to_conversation(chat_id, "user", text, intent)
             except Exception as e:
                 logger.warning(f"[MEMORY] Failed to save user message: {e}")
+            
+            # 🧠 Mem0: Store in semantic cloud memory
+            if MEM0_AVAILABLE:
+                try:
+                    mem0_add(str(chat_id), text, {"intent": str(intent), "source": "chat"})
+                except Exception:
+                    pass
+            
+            # 🧠 GENIUS: Store in semantic memory + track entities
+            if GENIUS_AVAILABLE:
+                try:
+                    entities = extract_entities(text)
+                    semantic_memory.store_interaction(chat_id, text, "", intent=intent, 
+                        entities=entities.get('stocks', []) + entities.get('crypto', []))
+                except Exception:
+                    pass
             
             # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             #  🚀 QUICK PROFIT / ROCKET SCAN — Direct handler
@@ -6146,31 +7706,198 @@ def handle_update(update: dict):
                 logger.error(f"[JARVIS-CRYPTO-NLU] Error: {e}")
                 # Fall through to regular AI chat
         
-        # ── Default: Send to AI Chat with JARVIS persona + Memory ──
-        is_voice = chat_storage.pop(f"voice_input_{chat_id}", False)
-        send_message(chat_id, f"🤖🌸 *जार्विस सोच रही है...* ⏳💕")
-        try:
-            # Build enhanced context with memory
-            memory_context = ""
-            if JARVIS_AVAILABLE:
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        #  🧠 SMART INTENT DETECTION — Catch STOP/START in free-form text
+        #  This catches Hindi voice & natural language before AI chat
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        _intent_lower = text.lower()
+        _stop_intent_patterns = [
+            r'(?:sab|all|सब|सारे?|sabhi|सभी|jitne|जितने).*(?:band|बंद|stop|off|hatao|हटाओ|rok|रोक)',
+            r'(?:band|बंद|stop|off).*(?:karo|kar\s*do|करो|कर\s*दो|kar|करें|kijiye|कीजिए)',
+            r'(?:notification|alert|नोटिफिकेशन|अलर्ट).*(?:band|बंद|stop|off|hatao|हटाओ|mat|मत|nahi|नहीं)',
+            r'(?:mat|मत|nahi|नहीं|na).*(?:bhej|भेज|send|dena|देना)',
+            r'(?:stop|band|बंद|rok|रोक).*(?:notification|alert|नोटिफिकेशन|अलर्ट|message|crypto|airdrop)',
+            r'(?:airdrop|dextools|crypto|web3).*(?:band|बंद|stop|off|rok|रोक)',
+            r'(?:kuch\s*(?:bhi\s*)?(?:mat|nahi)|कुछ\s*(?:भी\s*)?(?:मत|नहीं)).*(?:bhej|भेज|send|dena|देना)',
+            r'(?:chup|चुप|silence|mute|quiet)',
+        ]
+        _start_intent_patterns = [
+            r'(?:sab|all|सब|सारे?|sabhi|सभी).*(?:chalu|shuru|start|on|चालू|शुरू)',
+            r'(?:chalu|shuru|start|on|चालू|शुरू).*(?:karo|kar\s*do|करो|कर\s*दो)',
+            r'(?:notification|alert|नोटिफिकेशन|अलर्ट).*(?:chalu|shuru|start|on|चालू|शुरू)',
+            r'(?:phir\s*se|फिर\s*से|wapas|वापस|dobara|दोबारा).*(?:chalu|shuru|on|bhej|चालू|शुरू|भेज)',
+        ]
+        _detected_stop = any(re.search(p, _intent_lower) for p in _stop_intent_patterns)
+        _detected_start = any(re.search(p, _intent_lower) for p in _start_intent_patterns)
+        
+        if _detected_stop and not _detected_start:
+            logger.info(f"[NLU-INTENT] 🧠 Detected STOP intent from: '{text[:60]}'")
+            # Execute STOP logic
+            chat_storage[f"crypto_alerts_{chat_id}"] = False
+            try:
+                from data_store import remove_subscriber
+                remove_subscriber(chat_id)
+            except Exception:
+                pass
+            try:
+                stop_file = "jarvis_stopped_users.json"
+                stopped = {}
+                if os.path.exists(stop_file):
+                    with open(stop_file, "r") as f:
+                        stopped = json.load(f)
+                stopped[str(chat_id)] = True
+                with open(stop_file, "w") as f:
+                    json.dump(stopped, f)
+            except Exception:
+                pass
+            if OPTIONS_HUNTER_AVAILABLE:
                 try:
-                    memory_context = get_user_context(chat_id)
+                    stop_all_crypto_alerts(chat_id)
+                except Exception:
+                    pass
+            send_message(chat_id, (
+                f"{greeting}🛑 *बॉस, सब बंद कर दिया!* 🙏\n\n"
+                f"✅ Airdrop alerts: *OFF*\n"
+                f"✅ DexTools notifications: *OFF*\n"
+                f"✅ Web3 signals: *OFF*\n"
+                f"✅ Crypto alerts: *OFF*\n"
+                f"✅ Market signals: *OFF*\n"
+                f"✅ ALL notifications: *OFF*\n\n"
+                f"_अब कोई भी notification नहीं आएगा_ 🔇\n"
+                f"_वापस शुरू करने के लिए \"🟢 START Crypto Alerts\" दबाइए_ 🌸"
+            ), reply_markup=build_keyboard())
+            send_jarvis_voice(chat_id, "बॉस, सब notifications बंद कर दिया! अब कोई भी alert नहीं आएगा। जब चाहें START बटन दबा दीजिए।", intent="stop_alerts")
+            return
+        
+        if _detected_start and not _detected_stop:
+            logger.info(f"[NLU-INTENT] 🧠 Detected START intent from: '{text[:60]}'")
+            chat_storage[f"crypto_alerts_{chat_id}"] = True
+            try:
+                from data_store import add_subscriber
+                add_subscriber(chat_id)
+            except Exception:
+                pass
+            try:
+                stop_file = "jarvis_stopped_users.json"
+                if os.path.exists(stop_file):
+                    with open(stop_file, "r") as f:
+                        stopped = json.load(f)
+                    stopped.pop(str(chat_id), None)
+                    with open(stop_file, "w") as f:
+                        json.dump(stopped, f)
+            except Exception:
+                pass
+            if OPTIONS_HUNTER_AVAILABLE:
+                try:
+                    start_all_crypto_alerts(chat_id)
+                except Exception:
+                    pass
+            send_message(chat_id, (
+                f"{greeting}🟢 *बॉस, सब शुरू कर दिया!* 🚀\n\n"
+                f"✅ ALL notifications: *ON*\n"
+                f"✅ Crypto + Airdrop + DexTools + Web3: *ON*\n\n"
+                f"_अब सभी alerts आने लगेंगे!_ 🌸"
+            ), reply_markup=build_keyboard())
+            send_jarvis_voice(chat_id, "बॉस, सभी notifications शुरू कर दिया! अब सारे alerts आने लगेंगे।", intent="start_alerts")
+            return
+
+        # ── Default: Send to JARVIS GENIUS AI (or fallback to ai_chat) ──
+        is_voice = chat_storage.pop(f"voice_input_{chat_id}", False)
+        send_message(chat_id, f"🤖🧠 *जार्विस GENIUS सोच रही है...* ⏳💕")
+        try:
+            # 🧠 MULTI-AGENT: Route to specialist if agents available
+            agent_response = None
+            if AGENTS_AVAILABLE:
+                try:
+                    routing = route_to_specialist(text)
+                    if routing and routing[0][1] > 0.5:
+                        specialist = routing[0][0]
+                        
+                        # Auto-research: gather real data BEFORE specialist answers
+                        research_ctx = ""
+                        try:
+                            research = auto_research(text.split()[-1] if text.split() else text, 
+                                                    asset_type=specialist if specialist in ("stock", "crypto") else "auto")
+                            research_ctx = format_research_context(research)
+                        except Exception:
+                            pass
+                        
+                        result = run_multi_specialist(text, data=research_ctx)
+                        if result.get("response") and len(result["response"]) > 30:
+                            agent_response = result["response"]
+                            specialist_name = result.get("specialist", "general")
+                            logger.info(f"[AGENTS] Routed to {specialist_name} (conf={routing[0][1]:.2f})")
                 except Exception as e:
-                    logger.warning(f"[MEMORY] Failed to get user context: {e}")
+                    logger.debug(f"[AGENTS] Specialist routing failed: {e}")
+
+            # 🧠 GENIUS: Use autonomous agent with tool calling & deep reasoning
+            if GENIUS_AVAILABLE:
+                from ai_chat import _chat_histories
+                history = _chat_histories.get(chat_id, [])
+                
+                # If agent already answered, use it as context for genius
+                genius_context = text
+                if agent_response:
+                    genius_context = f"{text}\n\n[SPECIALIST ANALYSIS]:\n{agent_response[:600]}"
+                
+                response = genius_chat(genius_context, chat_id, intent="chat", chat_history=history)
+                
+                # If genius gave a short/generic response but agent had good one, prefer agent
+                if agent_response and len(response) < 50 and len(agent_response) > 100:
+                    response = agent_response
+                
+                # Store in ai_chat history too for consistency
+                _chat_histories.setdefault(chat_id, [])
+                _chat_histories[chat_id].append({"role": "user", "content": text})
+                _chat_histories[chat_id].append({"role": "assistant", "content": response})
+                if len(_chat_histories[chat_id]) > 20:
+                    _chat_histories[chat_id] = _chat_histories[chat_id][-12:]
+                
+                # Check response quality
+                try:
+                    is_good, quality_note = verify_response_quality(text, response)
+                    if not is_good:
+                        logger.warning(f"[GENIUS] Quality issue: {quality_note}")
+                        # If quality is bad and agent had a response, use agent's
+                        if agent_response and len(agent_response) > 50:
+                            response = agent_response
+                except Exception:
+                    pass
+            elif agent_response:
+                # No genius available but agent answered
+                response = agent_response
+            else:
+                # Fallback to regular ai_chat
+                response = ai_chat(text, chat_id)
             
-            response = ai_chat(text, chat_id)
             send_message(chat_id, f"{greeting}{response}", reply_markup=build_keyboard())
+            
             # 🧠 Memory: Save response
             if JARVIS_AVAILABLE:
                 try:
                     add_to_conversation(chat_id, "jarvis", response[:300], "chat")
                 except Exception as e:
                     logger.warning(f"[MEMORY] Failed to save JARVIS response: {e}")
+            
+            # 🧠 GENIUS: Suggest next action
+            if GENIUS_AVAILABLE:
+                try:
+                    suggestion = get_next_suggestion(chat_id, intent if 'intent' in dir() else 'chat')
+                    if suggestion:
+                        send_message(chat_id, f"💡 _{suggestion}_")
+                except Exception:
+                    pass
+            
             # 🎤 JARVIS speaks the response
             send_jarvis_voice(chat_id, response, intent="chat", is_voice_input=is_voice)
         except Exception as e:
             logger.error(f"AI chat failed: {e}", exc_info=True)
-            send_message(chat_id, f"{greeting}❌ AI response failed. Try again or use menu buttons.")
+            # Emergency fallback
+            try:
+                response = ai_chat(text, chat_id)
+                send_message(chat_id, f"{greeting}{response}", reply_markup=build_keyboard())
+            except Exception:
+                send_message(chat_id, f"{greeting}❌ AI response failed. Try again or use menu buttons.")
         return
 
     # ════════════════════════════
@@ -6199,6 +7926,23 @@ def poll_updates():
     Main polling loop with exponential backoff and auto-reconnect.
     Designed to keep running 24/7 even through network failures.
     """
+    # ━━━ FLUSH STALE UPDATES ON STARTUP ━━━
+    # Skip all pending updates from when bot was offline
+    # This prevents "buttons not responding" due to processing old presses
+    try:
+        flush_r = requests.get(f"{API_URL}/getUpdates", params={"offset": -1, "timeout": 1}, timeout=10)
+        flush_js = flush_r.json()
+        stale = flush_js.get("result", [])
+        if stale:
+            last_id = stale[-1]["update_id"]
+            # Confirm offset to skip all stale updates
+            requests.get(f"{API_URL}/getUpdates", params={"offset": last_id + 1, "timeout": 1}, timeout=10)
+            logger.info(f"[POLL] ✅ Flushed stale updates (last_id={last_id}) — fresh start!")
+        else:
+            logger.info("[POLL] No stale updates to flush")
+    except Exception as e:
+        logger.warning(f"[POLL] Flush failed (non-critical): {e}")
+
     offset = None
     backoff = 1          # Start at 1 second
     MAX_BACKOFF = 120    # Max 2 minutes between retries
@@ -6230,10 +7974,14 @@ def poll_updates():
             for u in updates:
                 offset = u["update_id"] + 1
                 total_updates += 1
-                try:
-                    handle_update(u)
-                except Exception as e:
-                    logger.error(f"[POLL] Error handling update: {e}", exc_info=True)
+                # Process each update in a thread so slow handlers don't block polling
+                def _process_update(update):
+                    try:
+                        handle_update(update)
+                    except Exception as e:
+                        logger.error(f"[POLL] Error handling update: {e}", exc_info=True)
+                t = threading.Thread(target=_process_update, args=(u,), daemon=True)
+                t.start()
 
         except requests.exceptions.Timeout:
             # Normal for long-polling — NOT an error
@@ -6376,6 +8124,15 @@ if __name__ == "__main__":
                         if k.startswith("crypto_alerts_") and v:
                             try:
                                 cid = int(k.replace("crypto_alerts_", ""))
+                                # Respect STOP flag — skip users who stopped alerts
+                                if is_user_alerts_stopped(cid):
+                                    continue
+                                if OPTIONS_HUNTER_AVAILABLE:
+                                    try:
+                                        if not is_crypto_alerts_enabled(cid):
+                                            continue
+                                    except Exception:
+                                        pass
                                 crypto_subscribers.append(cid)
                             except ValueError:
                                 pass
@@ -6404,13 +8161,37 @@ if __name__ == "__main__":
         _register_main_thread("rocket_scanner", rocket_thread, _make_rocket_thread, "🚀 Rocket Scanner")
         logger.info("[STARTUP] 🚀 Rocket Scanner started (background thread)")
     
+    # Start Prediction Verification background thread (self-learning)
+    if TRACKER_AVAILABLE:
+        def prediction_verify_loop():
+            """Background: verify predictions every 2 minutes for rapid learning."""
+            logger.info("📊 Prediction Tracker STARTED — RAPID 2-min self-learning loop")
+            while not auto_flag.is_set():
+                try:
+                    stats = verify_predictions(max_verify=50)
+                    if stats.get("verified", 0) > 0:
+                        logger.info(f"[TRACKER] Verified {stats['verified']} predictions: "
+                                   f"{stats.get('correct', 0)} correct, {stats.get('wrong', 0)} wrong")
+                    time.sleep(120)  # 2 minutes — rapid verification
+                except Exception as e:
+                    logger.error(f"[TRACKER] Verify loop error: {e}")
+                    time.sleep(60)
+        
+        def _make_tracker_thread():
+            return threading.Thread(target=prediction_verify_loop, daemon=True, name="PredictionTracker")
+        
+        tracker_thread = _make_tracker_thread()
+        tracker_thread.start()
+        _register_main_thread("prediction_tracker", tracker_thread, _make_tracker_thread, "📊 Prediction Tracker")
+        logger.info("[STARTUP] 📊 Prediction Tracker started (self-learning)")
+    
     # Start JARVIS Monitor (auto price alerts + rug detection + keep-alive + new token alerts + Web3 signals)
     if MONITOR_AVAILABLE:
         try:
             _owner_id = int(os.environ.get("TEST_CHAT_ID", "0"))
             start_monitor(
-                send_fn=lambda cid, txt, **kw: send_message(cid, txt, reply_markup=build_keyboard()),
-                voice_fn=send_jarvis_voice,
+                send_fn=guarded_alert_send,
+                voice_fn=guarded_voice_send,
                 token=TELEGRAM_TOKEN,
                 owner_id=_owner_id
             )
@@ -6434,8 +8215,8 @@ if __name__ == "__main__":
     # 🎁 Start Airdrop Hunter — Auto scans every 5 minutes
     if AIRDROP_AVAILABLE:
         try:
-            # Set alert callback so airdrop hunter can send messages
-            set_alert_callback(lambda cid, txt: send_message(cid, txt, reply_markup=build_keyboard()))
+            # Set alert callback so airdrop hunter can send messages (GUARDED — respects STOP)
+            set_alert_callback(guarded_alert_send)
             # Register owner's Solana wallet
             register_wallet(OWNER_CHAT_ID, "solana", os.environ.get("OWNER_SOLANA_WALLET", ""))
             # Start background scanner
@@ -6447,12 +8228,10 @@ if __name__ == "__main__":
     # 🔥 Start DexTools Scanner — Multi-chain token intelligence
     if DEXTOOLS_AVAILABLE:
         try:
-            set_dextools_alert_callback(
-                lambda cid, txt: send_message(
-                    int(os.environ.get("TEST_CHAT_ID", "0")) if cid is None else cid,
-                    txt, reply_markup=build_keyboard()
-                )
-            )
+            def _guarded_dextools_send(cid, txt):
+                actual_cid = int(os.environ.get("TEST_CHAT_ID", "0")) if cid is None else cid
+                guarded_alert_send(actual_cid, txt)
+            set_dextools_alert_callback(_guarded_dextools_send)
             start_dextools_scanner()
             logger.info("[STARTUP] 🔥 DexTools Scanner LAUNCHED — multi-chain alerts every 3 min!")
         except Exception as e:
@@ -6462,8 +8241,8 @@ if __name__ == "__main__":
     if SOLANA_ENGINE_AVAILABLE:
         try:
             start_tx_monitor(
-                alert_fn=lambda cid, txt: send_message(cid, txt, reply_markup=build_keyboard()),
-                token_fn=lambda cid, txt: send_message(cid, txt, reply_markup=build_keyboard()),
+                alert_fn=guarded_alert_send,
+                token_fn=guarded_alert_send,
             )
             logger.info("[STARTUP] ⚡ Solana TX Monitor LAUNCHED — 24/7 FREE blockchain monitoring!")
         except Exception as e:
@@ -6474,8 +8253,8 @@ if __name__ == "__main__":
         try:
             _owner_id = int(os.environ.get("TEST_CHAT_ID", "0"))
             start_spoc(
-                send_fn=lambda cid, txt, **kw: send_message(cid, txt, reply_markup=build_keyboard()),
-                voice_fn=send_jarvis_voice,
+                send_fn=guarded_alert_send,
+                voice_fn=guarded_voice_send,
                 token=TELEGRAM_TOKEN
             )
             logger.info("[STARTUP] 🧠 JARVIS SPOC started (system health + daily briefing)")
@@ -6486,13 +8265,135 @@ if __name__ == "__main__":
     if SUPER_BRAIN_AVAILABLE:
         try:
             start_super_brain(
-                send_fn=lambda cid, txt, **kw: send_message(cid, txt, reply_markup=build_keyboard()),
-                voice_fn=send_jarvis_voice,
+                send_fn=guarded_alert_send,
+                voice_fn=guarded_voice_send,
                 token=TELEGRAM_TOKEN
             )
             logger.info("[STARTUP] 🧠⚡ JARVIS Super Brain started (news + intelligence + SPOC)")
         except Exception as e:
             logger.error(f"[STARTUP] Super Brain start failed: {e}")
+
+    # ═══════════════════════════════════════════════════════════
+    #  🧠⚡ MARKET BRAIN 2-MIN NOTIFIER
+    #  Sends NIFTY/SENSEX Super Brain analysis every 2 min
+    #  ONLY during 9:15 AM → 3:30 PM IST, Mon-Fri
+    #  BYPASSES crypto stop — uses market_brain_send()
+    # ═══════════════════════════════════════════════════════════
+    _market_brain_running = True
+    _market_brain_owner = int(os.environ.get("TEST_CHAT_ID", os.environ.get("OWNER_CHAT_ID", "5647898018")))
+
+    def _market_brain_loop():
+        """Background thread: Super Brain notification every 2 minutes during market hours."""
+        logger.info("[MARKET-BRAIN] 🧠⚡ Market Brain Notifier STARTED — 2-min cycle, 9:15-15:30 IST Mon-Fri")
+        _cycle = 0
+        while _market_brain_running:
+            try:
+                now = datetime.now(IST)
+                weekday = now.weekday()  # 0=Mon, 6=Sun
+                hour = now.hour
+                minute = now.minute
+                time_mins = hour * 60 + minute
+
+                market_open = 9 * 60 + 15    # 9:15 AM
+                market_close = 15 * 60 + 30   # 3:30 PM
+
+                # Skip weekends (Saturday=5, Sunday=6)
+                if weekday >= 5:
+                    # Sleep longer on weekends
+                    logger.debug("[MARKET-BRAIN] Weekend — sleeping 5 min")
+                    time.sleep(300)
+                    continue
+
+                # Check if within market hours
+                if time_mins < market_open or time_mins > market_close:
+                    # Before market: check every 2 min if close to open
+                    if time_mins >= (market_open - 15):
+                        logger.debug(f"[MARKET-BRAIN] Pre-market ({now.strftime('%H:%M')}) — waiting for 9:15")
+                        time.sleep(60)
+                    else:
+                        # Far from market hours — sleep 5 min
+                        time.sleep(300)
+                    continue
+
+                # ══ MARKET HOURS — Send Super Brain analysis ══
+                _cycle += 1
+                logger.info(f"[MARKET-BRAIN] 📊 Cycle #{_cycle} — {now.strftime('%H:%M IST')}")
+
+                try:
+                    # Try full Super Brain with AI
+                    if NIFTY_BRAIN_AVAILABLE:
+                        from nifty_super_brain import get_complete_dashboard, get_ai_market_verdict
+                        dashboard = get_complete_dashboard()
+
+                        # Every 5th cycle (~10 min), add AI verdict too
+                        if _cycle % 5 == 1:
+                            ai_verdict = get_ai_market_verdict(dashboard)
+                            full_msg = f"{dashboard}\n\n{'═' * 30}\n\n{ai_verdict}"
+                        else:
+                            full_msg = dashboard
+
+                        header = (
+                            f"🧠⚡ *MARKET BRAIN — Auto Update #{_cycle}*\n"
+                            f"⏰ {now.strftime('%I:%M %p IST')} | "
+                            f"{'Mon Tue Wed Thu Fri'.split()[weekday]}\n"
+                            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        )
+                        market_brain_send(_market_brain_owner, header + full_msg)
+
+                        # Voice every 10th cycle (~20 min)
+                        if _cycle % 10 == 1:
+                            try:
+                                market_brain_voice_send(
+                                    _market_brain_owner,
+                                    f"Boss, market brain update number {_cycle}. "
+                                    f"Time hai {now.strftime('%I:%M %p')}. "
+                                    f"Full analysis screen pe dekh lo!",
+                                    intent="market_summary"
+                                )
+                            except Exception:
+                                pass
+                    else:
+                        # Fallback: basic live price
+                        try:
+                            from live_index_engine import get_live_price
+                            nifty = get_live_price("NIFTY")
+                            sensex = get_live_price("SENSEX")
+                            n_price = nifty.get("price", 0) if nifty else 0
+                            n_chg = nifty.get("change_pct", 0) if nifty else 0
+                            s_price = sensex.get("price", 0) if sensex else 0
+                            s_chg = sensex.get("change_pct", 0) if sensex else 0
+                            n_icon = "🟢" if n_chg >= 0 else "🔴"
+                            s_icon = "🟢" if s_chg >= 0 else "🔴"
+                            msg = (
+                                f"🧠 *Market Brain #{_cycle}* — {now.strftime('%I:%M %p IST')}\n"
+                                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                                f"{n_icon} NIFTY: {n_price:,.2f} ({n_chg:+.2f}%)\n"
+                                f"{s_icon} SENSEX: {s_price:,.2f} ({s_chg:+.2f}%)\n"
+                            )
+                            market_brain_send(_market_brain_owner, msg)
+                        except Exception as e:
+                            logger.error(f"[MARKET-BRAIN] Fallback price error: {e}")
+
+                except Exception as e:
+                    logger.error(f"[MARKET-BRAIN] Analysis error: {e}")
+                    market_brain_send(_market_brain_owner,
+                        f"⚠️ *Market Brain #{_cycle}* — {now.strftime('%I:%M %p IST')}\n"
+                        f"Analysis error: {str(e)[:100]}\nRetrying in 2 min...")
+
+                # Sleep 2 minutes
+                time.sleep(120)
+
+            except Exception as e:
+                logger.error(f"[MARKET-BRAIN] Loop error: {e}", exc_info=True)
+                time.sleep(60)
+
+    def _make_market_brain_thread():
+        return threading.Thread(target=_market_brain_loop, daemon=True, name="MarketBrainNotifier")
+
+    _mb_thread = _make_market_brain_thread()
+    _mb_thread.start()
+    _register_main_thread("market_brain", _mb_thread, _make_market_brain_thread, "🧠⚡ Market Brain Notifier")
+    logger.info("[STARTUP] 🧠⚡ Market Brain 2-min Notifier started (9:15-15:30 IST, Mon-Fri)")
 
     # Send JARVIS startup message
     test_chat_id = os.environ.get("TEST_CHAT_ID")
@@ -6609,12 +8510,12 @@ if __name__ == "__main__":
                 f"🤖 ML Prediction: Random Forest + Gradient Boosting!\n"
                 f"💰 ₹2K → ₹2L Strategy: 5 proven compound growth plans!\n"
                 f"⚡ Auto-Alert: Top 100 signals every 5 minutes!\n"
-                f"� ULTRA AI: Har token ke saath BUY/SELL + Risk + Health!\n"
+                f"⚡ ULTRA AI: Har token ke saath BUY/SELL + Risk + Health!\n"
                 f"🛡️ Rug Risk + 🐳 Whale Detection + 💰 Smart Money Flow!\n"
                 f"🎯 Price Targets + R:R Ratio har token ke saath!\n"
-                f"�🔗 Trust Wallet QR: Scan karke wallet connect! 📱\n"
+                f"🔗 Trust Wallet QR: Scan karke wallet connect! 📱\n"
                 f"◎ Solana Pay QR: Universal wallet QR support!\n"
-                f"� DexTools Top 15: Multi-chain hot tokens with deep links!\n"
+                f"🔥 DexTools Top 15: Multi-chain hot tokens with deep links!\n"
                 f"🧠 AI/ML Signals: RSI, MACD, Bollinger, VWAP, Fibonacci!\n"
                 f"🐸 Meme Board: Top meme coins across all chains!\n"
                 f"🆕 Live New Pairs: Brand new token launches!\n"

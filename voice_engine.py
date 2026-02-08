@@ -35,11 +35,15 @@ logger = logging.getLogger("voice_engine")
 #  VOICE CONFIGURATION — GEMINI LIVE QUALITY
 # ═══════════════════════════════════════════════════════════
 
+# ── ENV-CONFIGURABLE VOICE SETTINGS ──
+_JARVIS_VOICE = os.environ.get("JARVIS_VOICE", "").strip()
+_JARVIS_PERSONA = os.environ.get("JARVIS_PERSONA", "female").strip().lower()
+
 # ── OpenAI TTS (PRIMARY — ultra-natural, best quality) ──
 # nova = warm female | alloy = neutral | shimmer = expressive female
 OPENAI_TTS_MODEL = "tts-1-hd"  # HD quality
-OPENAI_TTS_VOICE = "nova"  # warm, natural female — perfect for JARVIS
-OPENAI_TTS_VOICE_BACKUP = "shimmer"  # expressive female backup
+OPENAI_TTS_VOICE = "nova" if _JARVIS_PERSONA == "female" else "onyx"
+OPENAI_TTS_VOICE_BACKUP = "shimmer" if _JARVIS_PERSONA == "female" else "echo"
 OPENAI_TTS_SPEED = 1.05  # slightly faster for natural feel
 
 # ── Deepgram TTS (SECONDARY — fast, natural) ──
@@ -47,18 +51,19 @@ DEEPGRAM_TTS_MODEL = "aura-asteria-en"  # warm female
 DEEPGRAM_TTS_MODEL_HI = "aura-asteria-en"  # Hindi content in English voice
 
 # ── Gemini TTS (TERTIARY — Gemini Live quality)
-GEMINI_VOICE_PRIMARY = "Kore"
-GEMINI_VOICE_BACKUP = "Aoede"
+# Use JARVIS_VOICE env var if set, otherwise defaults
+GEMINI_VOICE_PRIMARY = _JARVIS_VOICE if _JARVIS_VOICE else ("Kore" if _JARVIS_PERSONA == "female" else "Orus")
+GEMINI_VOICE_BACKUP = "Aoede" if _JARVIS_PERSONA == "female" else "Charon"
 GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts"
 
 # ── Edge TTS (FALLBACK — free but less natural) ──
-EDGE_HINDI_VOICE = "hi-IN-SwaraNeural"
-EDGE_ENGLISH_VOICE = "en-IN-NeerjaNeural"
+EDGE_HINDI_VOICE = "hi-IN-SwaraNeural" if _JARVIS_PERSONA == "female" else "hi-IN-MadhurNeural"
+EDGE_ENGLISH_VOICE = "en-IN-NeerjaNeural" if _JARVIS_PERSONA == "female" else "en-IN-PrabhatNeural"
 EDGE_VOICE_RATE = "+5%"
 EDGE_VOICE_PITCH = "+2Hz"
 
-# API Keys
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+# API Keys — support both GOOGLE_API_KEY and GEMINI_API_KEY
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "") or os.environ.get("GOOGLE_API_KEY", "")
 OPENAI_API_KEY_TTS = os.environ.get("OPENAI_API_KEY", "")
 DEEPGRAM_API_KEY = os.environ.get("DEEPGRAM_API_KEY", "")
 
@@ -528,16 +533,15 @@ def _generate_edge_tts(text: str, output_path: str, language: str = "auto") -> b
 #  MAIN VOICE GENERATOR — Gemini → Edge fallback
 # ═══════════════════════════════════════════════════════════
 
-# FREE_MODE: Use only free APIs (Edge TTS primary)
-# Set to False to try paid APIs first
+# FREE_MODE: Use free APIs
+# Gemini TTS first (best quality free), then Edge TTS
 FREE_MODE = True
 
 
 def generate_voice(text: str, language: str = "auto") -> Optional[str]:
     """
     Generate beautiful voice audio.
-    FREE MODE (default): Edge TTS first (unlimited, free)
-    PAID MODE: OpenAI → Deepgram → Gemini → Edge TTS
+    PRIORITY: Gemini TTS (free, Gemini Live quality) → Edge TTS (free, unlimited)
     Returns: Path to OGG Opus file or None.
     """
     if not text or len(text.strip()) < 5:
@@ -553,15 +557,18 @@ def generate_voice(text: str, language: str = "auto") -> Optional[str]:
                 return cache_path
 
         if FREE_MODE:
-            # ═══ FREE MODE — Edge TTS first (unlimited, zero cost) ═══
-            # 1. Edge TTS (FREE, fast, reliable, Hindi+English)
-            if _generate_edge_tts(text, cache_path, language):
-                return cache_path
-
-            # 2. Gemini TTS (free tier available)
+            # ═══ FREE MODE — Gemini TTS first (best quality), then Edge ═══
+            # 1. Gemini TTS (free tier — Gemini Live quality voice!)
             if GEMINI_API_KEY:
                 if _generate_gemini_tts(text, cache_path):
                     return cache_path
+                # Try backup voice
+                if _generate_gemini_tts(text, cache_path, voice=GEMINI_VOICE_BACKUP):
+                    return cache_path
+
+            # 2. Edge TTS (FREE, fast, reliable, Hindi+English)
+            if _generate_edge_tts(text, cache_path, language):
+                return cache_path
 
             return None
         else:

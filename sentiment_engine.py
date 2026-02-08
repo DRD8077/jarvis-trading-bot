@@ -130,6 +130,135 @@ def _textblob_score(text: str) -> Optional[float]:
         return None
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+#  LLM-POWERED SENTIMENT (AI BRAIN)
+# ═══════════════════════════════════════════════════════════════════════════
+
+_llm_sentiment_cache: Dict[str, Tuple[float, float]] = {}  # headline -> (score, timestamp)
+_LLM_CACHE_TTL = 3600  # 1 hour
+
+def _llm_batch_sentiment(headlines: List[str]) -> Dict[str, float]:
+    """Use LLM to score a batch of headlines at once. Much smarter than keywords.
+    Returns dict of headline -> score (-1 to +1).
+    """
+    if not headlines:
+        return {}
+    
+    # Check cache first
+    now = time.time()
+    uncached = []
+    results = {}
+    for h in headlines:
+        if h in _llm_sentiment_cache:
+            cached_score, cached_time = _llm_sentiment_cache[h]
+            if now - cached_time < _LLM_CACHE_TTL:
+                results[h] = cached_score
+                continue
+        uncached.append(h)
+    
+    if not uncached:
+        return results
+    
+    # Batch up to 20 headlines per LLM call
+    batch = uncached[:20]
+    numbered = "\n".join(f"{i+1}. {h}" for i, h in enumerate(batch))
+    
+    prompt = f"""You are a financial market sentiment analyzer for the INDIAN stock market.
+Score each headline from -1.0 (very bearish for markets) to +1.0 (very bullish).
+Consider: negation, sarcasm, context, actual market impact (not just words).
+
+Headlines:
+{numbered}
+
+Reply with ONLY a JSON array of numbers, one per headline. Example: [-0.8, 0.5, 0.0, 0.7]
+No text, no explanation, just the JSON array."""
+
+    scores_list = None
+    
+    # Try Groq first (fastest + free tier)
+    try:
+        import os
+        groq_key = os.getenv("GROQ_API_KEY")
+        if groq_key:
+            from groq import Groq
+            client = Groq(api_key=groq_key)
+            resp = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=200,
+                temperature=0.1,
+            )
+            raw = resp.choices[0].message.content.strip()
+            import json
+            scores_list = json.loads(raw)
+    except Exception as e:
+        logger.debug(f"Groq sentiment failed: {e}")
+    
+    # Try Gemini next
+    if scores_list is None:
+        try:
+            import os
+            gemini_key = os.getenv("GEMINI_API_KEY")
+            if gemini_key:
+                import google.generativeai as genai
+                genai.configure(api_key=gemini_key)
+                model = genai.GenerativeModel("gemini-2.5-flash-lite")
+                resp = model.generate_content(prompt)
+                raw = resp.text.strip()
+                import json
+                # Extract JSON array from response
+                match = re.search(r'\[[\d\s,.\-]+\]', raw)
+                if match:
+                    scores_list = json.loads(match.group(0))
+        except Exception as e:
+            logger.debug(f"Gemini sentiment failed: {e}")
+    
+    if scores_list and len(scores_list) == len(batch):
+        for h, s in zip(batch, scores_list):
+            score = max(-1.0, min(1.0, float(s)))
+            results[h] = score
+            _llm_sentiment_cache[h] = (score, now)
+    
+    return results
+
+
+def _llm_summarize_sentiment(bullish_headlines: List[str], bearish_headlines: List[str]) -> str:
+    """Get LLM to summarize the overall market mood from top headlines."""
+    combined = ""
+    if bullish_headlines:
+        combined += "Bullish:\n" + "\n".join(f"- {h}" for h in bullish_headlines[:5]) + "\n"
+    if bearish_headlines:
+        combined += "Bearish:\n" + "\n".join(f"- {h}" for h in bearish_headlines[:5]) + "\n"
+    
+    if not combined:
+        return ""
+    
+    prompt = f"""Based on these Indian market headlines, give a 2-3 line market mood summary in Hindi-English mix (like a smart friend talking).
+Focus on: What's driving the market? Should traders be careful or aggressive?
+
+{combined}
+
+Reply short, direct, no fluff."""
+
+    try:
+        import os
+        groq_key = os.getenv("GROQ_API_KEY")
+        if groq_key:
+            from groq import Groq
+            client = Groq(api_key=groq_key)
+            resp = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=200,
+                temperature=0.7,
+            )
+            return resp.choices[0].message.content.strip()
+    except Exception:
+        pass
+    
+    return ""
+
+
 def score_headline_sentiment(headline: str) -> float:
     """Score a single headline using multi-model ensemble.
     Returns -1.0 (very bearish) to +1.0 (very bullish).
@@ -166,8 +295,11 @@ def score_headline_sentiment(headline: str) -> float:
     return max(-1.0, min(1.0, ensemble))
 
 
-def analyze_news_sentiment() -> Dict[str, Any]:
-    """Fetch and analyze sentiment from all Indian market news sources."""
+def analyze_news_sentiment(use_ai: bool = True) -> Dict[str, Any]:
+    """Fetch and analyze sentiment from all Indian market news sources.
+    
+    Now uses LLM-powered sentiment as primary scorer with keyword fallback.
+    """
     headlines = fetch_news_headlines()
 
     if not headlines:
@@ -180,8 +312,20 @@ def analyze_news_sentiment() -> Dict[str, Any]:
             "bearish_count": 0,
             "neutral_count": 0,
             "headlines": [],
+            "ai_summary": "",
             "error": "Could not fetch news headlines",
         }
+
+    # Try LLM batch scoring first (smarter: understands context, negation, sarcasm)
+    llm_scores = {}
+    if use_ai:
+        try:
+            all_titles = [h["title"] for h in headlines]
+            llm_scores = _llm_batch_sentiment(all_titles)
+            if llm_scores:
+                logger.info(f"[SENTIMENT] AI scored {len(llm_scores)}/{len(headlines)} headlines")
+        except Exception as e:
+            logger.debug(f"LLM sentiment batch failed: {e}")
 
     scores = []
     bullish_headlines = []
@@ -189,7 +333,15 @@ def analyze_news_sentiment() -> Dict[str, Any]:
     neutral_headlines = []
 
     for h in headlines:
-        score = score_headline_sentiment(h["title"])
+        title = h["title"]
+        # Use LLM score if available, else fall back to keyword ensemble
+        if title in llm_scores:
+            score = llm_scores[title]
+            h["score_source"] = "ai"
+        else:
+            score = score_headline_sentiment(title)
+            h["score_source"] = "keyword"
+        
         h["sentiment_score"] = score
         scores.append(score)
 
@@ -208,7 +360,10 @@ def analyze_news_sentiment() -> Dict[str, Any]:
         recent_avg = np.mean(scores[:10])  # Most recent
         avg_score = 0.6 * recent_avg + 0.4 * avg_score
 
-    confidence = min(abs(avg_score) * 2, 1.0) * (1 - std_score)  # higher std = less confident
+    # AI-scored headlines get higher confidence
+    ai_count = sum(1 for h in headlines if h.get("score_source") == "ai")
+    ai_boost = 1.15 if ai_count > len(headlines) * 0.5 else 1.0
+    confidence = min(abs(avg_score) * 2 * ai_boost, 1.0) * (1 - std_score)
 
     if avg_score > 0.15:
         sentiment = "BULLISH"
@@ -221,6 +376,17 @@ def analyze_news_sentiment() -> Dict[str, Any]:
     else:
         sentiment = "NEUTRAL"
 
+    # Get AI summary of market mood
+    ai_summary = ""
+    if use_ai:
+        try:
+            ai_summary = _llm_summarize_sentiment(
+                [h["title"] for h in bullish_headlines[:5]],
+                [h["title"] for h in bearish_headlines[:5]],
+            )
+        except Exception:
+            pass
+
     return {
         "sentiment": sentiment,
         "score": float(avg_score),
@@ -232,6 +398,8 @@ def analyze_news_sentiment() -> Dict[str, Any]:
         "top_bullish": [h["title"] for h in bullish_headlines[:3]],
         "top_bearish": [h["title"] for h in bearish_headlines[:3]],
         "source_breakdown": _source_breakdown(headlines),
+        "ai_summary": ai_summary,
+        "ai_scored_pct": round(ai_count / max(len(headlines), 1) * 100, 1),
     }
 
 

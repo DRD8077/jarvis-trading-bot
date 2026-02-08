@@ -46,11 +46,16 @@ logger = logging.getLogger("airdrop_hunter")
 
 OWNER_CHAT_ID = int(os.environ.get("OWNER_CHAT_ID", "5647898018"))
 OWNER_SOLANA_WALLET = os.environ.get("OWNER_SOLANA_WALLET", "8F1PJhuJa45RMWMJwgDASXL6bm6GYd1MtReJSTcWugaR")
+OWNER_TON_WALLET = os.environ.get("OWNER_TON_WALLET", "UQBlUgQZt_EGCpWC1_SLSlybImldwtPZXJnB7uwRULcgYzkC")
 
-# Scanning intervals
-SCAN_INTERVAL = 90      # 90 seconds — FAST quick scan
-DEEP_SCAN_INTERVAL = 600   # 10 minutes for deep scan
-ALERT_COOLDOWN = 180    # 3 min cooldown per airdrop (fast alerts)
+# Scanning intervals — ULTRA FAST REALTIME
+SCAN_INTERVAL = 30       # 30 seconds — ULTRA FAST quick scan
+DEEP_SCAN_INTERVAL = 300   # 5 minutes for deep scan
+ALERT_COOLDOWN = 120     # 2 min cooldown per airdrop (fast alerts)
+
+# INR conversion rate (updated periodically)
+_usd_to_inr_rate = 83.5  # default fallback
+_inr_rate_ts = 0
 
 # Data storage
 AIRDROP_DB_FILE = "jarvis_airdrops.json"
@@ -75,7 +80,8 @@ AIRDROP_SOURCES = [
 _airdrop_cache: Dict[str, Any] = {}
 _airdrop_cache_ts: Dict[str, float] = {}
 _alerted_airdrops: Dict[str, float] = {}  # airdrop_id -> last_alert_time
-_user_wallets: Dict[int, Dict] = {}  # chat_id -> {solana: addr, evm: addr}
+_user_wallets: Dict[int, Dict] = {}  # chat_id -> {solana: addr, evm: addr, ton: addr}
+WALLET_DB_FILE = "jarvis_user_wallets.json"
 
 # ═══════════════════════════════════════════════════════════
 #  AIRDROP DATABASE — Track all found airdrops
@@ -127,20 +133,79 @@ _load_airdrop_db()
 #  WALLET MANAGEMENT
 # ═══════════════════════════════════════════════════════════
 
+def _load_user_wallets():
+    """Load user wallets from persistent storage."""
+    global _user_wallets
+    try:
+        if os.path.exists(WALLET_DB_FILE):
+            with open(WALLET_DB_FILE) as f:
+                raw = json.load(f)
+                _user_wallets = {int(k): v for k, v in raw.items()}
+    except Exception:
+        _user_wallets = {}
+
+
+def _save_user_wallets():
+    """Save user wallets to persistent file."""
+    try:
+        with open(WALLET_DB_FILE, 'w') as f:
+            json.dump({str(k): v for k, v in _user_wallets.items()}, f)
+    except Exception:
+        pass
+
+
+_load_user_wallets()
+
+
 def register_wallet(chat_id: int, chain: str, address: str):
     """Register a user's wallet for airdrop tracking."""
     if chat_id not in _user_wallets:
         _user_wallets[chat_id] = {}
     _user_wallets[chat_id][chain] = address
+    _save_user_wallets()
     logger.info(f"[AIRDROP] Wallet registered: chat={chat_id} chain={chain}")
 
 
 def get_user_wallet(chat_id: int, chain: str = "solana") -> Optional[str]:
     """Get user's wallet address for a chain."""
     wallet = _user_wallets.get(chat_id, {}).get(chain)
-    if not wallet and chat_id == OWNER_CHAT_ID and chain == "solana":
-        return OWNER_SOLANA_WALLET
+    if not wallet and chat_id == OWNER_CHAT_ID:
+        if chain == "solana":
+            return OWNER_SOLANA_WALLET
+        if chain == "ton":
+            return OWNER_TON_WALLET
     return wallet
+
+
+def get_all_user_wallets(chat_id: int) -> Dict[str, str]:
+    """Get all wallet addresses for a user."""
+    wallets = _user_wallets.get(chat_id, {})
+    if chat_id == OWNER_CHAT_ID:
+        if "solana" not in wallets:
+            wallets["solana"] = OWNER_SOLANA_WALLET
+        if "ton" not in wallets:
+            wallets["ton"] = OWNER_TON_WALLET
+    return wallets
+
+
+def get_usd_to_inr() -> float:
+    """Get current USD to INR rate."""
+    global _usd_to_inr_rate, _inr_rate_ts
+    if time.time() - _inr_rate_ts < 3600:  # Cache 1 hour
+        return _usd_to_inr_rate
+    try:
+        r = requests.get("https://api.exchangerate-api.com/v4/latest/USD", timeout=5)
+        if r.status_code == 200:
+            _usd_to_inr_rate = r.json().get("rates", {}).get("INR", 83.5)
+            _inr_rate_ts = time.time()
+    except Exception:
+        pass
+    return _usd_to_inr_rate
+
+
+def usd_to_inr(usd: float) -> float:
+    """Convert USD to INR."""
+    return usd * get_usd_to_inr()
 
 
 # ═══════════════════════════════════════════════════════════
@@ -243,9 +308,13 @@ def scan_solana_airdrops(wallet: str = None) -> List[Dict]:
                 amount = float(info.get("tokenAmount", {}).get("uiAmount", 0) or 0)
                 mint = info.get("mint", "")
 
-                # Check if this is a potential airdropped token (small balance, unknown)
-                if 0 < amount < 1000000 and mint:
-                    # Try to identify the token
+                # Show ALL tokens with balance — even without price
+                if amount > 0 and mint:
+                    token_name = mint[:8]
+                    token_symbol = "?"
+                    value_usd = 0
+                    
+                    # Try to get price from Jupiter
                     try:
                         price_r = requests.get(
                             f"https://api.jup.ag/price/v2?ids={mint}",
@@ -254,27 +323,57 @@ def scan_solana_airdrops(wallet: str = None) -> List[Dict]:
                         if price_r.status_code == 200:
                             price_data = price_r.json().get("data", {}).get(mint, {})
                             price = float(price_data.get("price", 0) or 0)
+                            if price_data.get("mintSymbol"):
+                                token_name = price_data["mintSymbol"]
+                                token_symbol = price_data["mintSymbol"]
                             if price > 0:
                                 value_usd = amount * price
-                                if value_usd > 0.01:  # Worth at least 1 cent
-                                    airdrops.append({
-                                        "id": f"sol_token_{mint[:12]}",
-                                        "name": price_data.get("mintSymbol", mint[:8]),
-                                        "symbol": price_data.get("mintSymbol", "?"),
-                                        "type": "wallet_token",
-                                        "chain": "solana",
-                                        "source": "wallet_scan",
-                                        "status": "in_wallet",
-                                        "amount": amount,
-                                        "estimated_value_usd": value_usd,
-                                        "mint": mint,
-                                        "url": f"https://solscan.io/token/{mint}",
-                                        "description": f"{amount:.2f} tokens in wallet (${value_usd:.2f})",
-                                        "found_at": time.time(),
-                                        "claimable": False,
-                                    })
                     except Exception:
                         pass
+                    
+                    # Try DexScreener for price if Jupiter didn't have it
+                    if value_usd == 0:
+                        try:
+                            dx_r = requests.get(
+                                f"https://api.dexscreener.com/latest/dex/tokens/{mint}",
+                                timeout=5
+                            )
+                            if dx_r.status_code == 200:
+                                pairs = dx_r.json().get("pairs", [])
+                                if pairs:
+                                    pair = pairs[0]
+                                    price = float(pair.get("priceUsd", 0) or 0)
+                                    if price > 0:
+                                        value_usd = amount * price
+                                    if pair.get("baseToken", {}).get("symbol"):
+                                        token_name = pair["baseToken"]["symbol"]
+                                        token_symbol = pair["baseToken"]["symbol"]
+                        except Exception:
+                            pass
+
+                    # Add token regardless of price — user needs to see ALL wallet tokens
+                    desc = f"{amount:,.2f} tokens in wallet"
+                    if value_usd > 0:
+                        desc += f" (${value_usd:,.4f})"
+                    else:
+                        desc += " (price unknown — could be new airdrop!)"
+                    
+                    airdrops.append({
+                        "id": f"sol_token_{mint[:12]}",
+                        "name": token_name,
+                        "symbol": token_symbol,
+                        "type": "wallet_token",
+                        "chain": "solana",
+                        "source": "wallet_scan",
+                        "status": "in_wallet",
+                        "amount": amount,
+                        "estimated_value_usd": value_usd,
+                        "mint": mint,
+                        "url": f"https://solscan.io/token/{mint}",
+                        "description": desc,
+                        "found_at": time.time(),
+                        "claimable": False,
+                    })
 
     except Exception as e:
         logger.debug(f"[AIRDROP] Solana wallet scan error: {e}")
@@ -463,6 +562,264 @@ def check_airdrop_scam(airdrop: Dict) -> Tuple[bool, str]:
 
 
 # ═══════════════════════════════════════════════════════════
+#  SOURCE 4A: TON WALLET SCANNER — Check TON blockchain
+# ═══════════════════════════════════════════════════════════
+
+def scan_ton_wallet(wallet: str = None) -> List[Dict]:
+    """Scan TON wallet for tokens/jettons (airdrops on TON chain)."""
+    wallet = wallet or OWNER_TON_WALLET
+    airdrops = []
+    if not wallet:
+        return airdrops
+
+    try:
+        # TON Center API to get jettons (TON tokens)
+        r = requests.get(
+            f"https://tonapi.io/v2/accounts/{wallet}/jettons",
+            timeout=10,
+            headers={"User-Agent": "JARVIS-Bot/3.0"}
+        )
+        if r.status_code == 200:
+            balances = r.json().get("balances", [])
+            for bal in balances:
+                jetton = bal.get("jetton", {})
+                amount_raw = int(bal.get("balance", "0") or "0")
+                decimals = int(jetton.get("decimals", 9) or 9)
+                amount = amount_raw / (10 ** decimals) if decimals else amount_raw
+                name = jetton.get("name", "Unknown TON Token")
+                symbol = jetton.get("symbol", "?")
+                mint_addr = jetton.get("address", "")
+                verified = jetton.get("verification", "") == "whitelist"
+
+                if amount > 0:
+                    # Try to get USD price
+                    value_usd = 0
+                    try:
+                        price_r = requests.get(
+                            f"https://tonapi.io/v2/rates?tokens={mint_addr}&currencies=usd",
+                            timeout=5
+                        )
+                        if price_r.status_code == 200:
+                            rate_data = price_r.json().get("rates", {}).get(mint_addr, {})
+                            price = float(rate_data.get("prices", {}).get("USD", 0) or 0)
+                            if price > 0:
+                                value_usd = amount * price
+                    except Exception:
+                        pass
+
+                    desc = f"{amount:,.2f} {symbol} in TON wallet"
+                    if value_usd > 0:
+                        inr = usd_to_inr(value_usd)
+                        desc += f" (${value_usd:,.4f} / ₹{inr:,.2f})"
+                    else:
+                        desc += " (price unknown — could be new airdrop!)"
+
+                    airdrops.append({
+                        "id": f"ton_token_{mint_addr[:12]}",
+                        "name": name,
+                        "symbol": symbol,
+                        "type": "wallet_token",
+                        "chain": "ton",
+                        "source": "ton_wallet_scan",
+                        "status": "in_wallet",
+                        "amount": amount,
+                        "estimated_value_usd": value_usd,
+                        "mint": mint_addr,
+                        "url": f"https://tonviewer.com/{wallet}",
+                        "description": desc,
+                        "found_at": time.time(),
+                        "claimable": False,
+                        "verified": verified,
+                    })
+
+    except Exception as e:
+        logger.debug(f"[AIRDROP] TON wallet scan error: {e}")
+
+    # Also get TON balance
+    try:
+        r = requests.get(
+            f"https://tonapi.io/v2/accounts/{wallet}",
+            timeout=10,
+            headers={"User-Agent": "JARVIS-Bot/3.0"}
+        )
+        if r.status_code == 200:
+            balance_raw = int(r.json().get("balance", "0") or "0")
+            ton_balance = balance_raw / 1e9
+            if ton_balance > 0:
+                # Get TON price
+                value_usd = 0
+                try:
+                    pr = requests.get("https://tonapi.io/v2/rates?tokens=ton&currencies=usd", timeout=5)
+                    if pr.status_code == 200:
+                        ton_price = float(pr.json().get("rates", {}).get("TON", {}).get("prices", {}).get("USD", 0) or 0)
+                        value_usd = ton_balance * ton_price
+                except Exception:
+                    pass
+
+                inr = usd_to_inr(value_usd) if value_usd > 0 else 0
+                desc = f"{ton_balance:,.4f} TON"
+                if value_usd > 0:
+                    desc += f" (${value_usd:,.2f} / ₹{inr:,.2f})"
+
+                airdrops.append({
+                    "id": "ton_native_balance",
+                    "name": "TON (Toncoin)",
+                    "symbol": "TON",
+                    "type": "native_balance",
+                    "chain": "ton",
+                    "source": "ton_wallet_scan",
+                    "status": "in_wallet",
+                    "amount": ton_balance,
+                    "estimated_value_usd": value_usd,
+                    "url": f"https://tonviewer.com/{wallet}",
+                    "description": desc,
+                    "found_at": time.time(),
+                    "claimable": False,
+                })
+    except Exception as e:
+        logger.debug(f"[AIRDROP] TON balance error: {e}")
+
+    return airdrops
+
+
+# ═══════════════════════════════════════════════════════════
+#  SOURCE 4B: DEXSCREENER NEW PAIRS — Realtime new token launches
+# ═══════════════════════════════════════════════════════════
+
+def scan_dexscreener_new_pairs() -> List[Dict]:
+    """Scan DexScreener for brand new token pairs — potential airdrop/early entry."""
+    airdrops = []
+    try:
+        # Get latest Solana pairs
+        r = requests.get(
+            "https://api.dexscreener.com/token-pairs/v1/solana/latest",
+            timeout=10,
+            headers={"User-Agent": "JARVIS-Bot/3.0"}
+        )
+        if r.status_code == 200:
+            pairs = r.json() if isinstance(r.json(), list) else r.json().get("pairs", [])
+            for pair in (pairs or [])[:15]:
+                base = pair.get("baseToken", {})
+                name = base.get("name", "Unknown")
+                symbol = base.get("symbol", "?")
+                mint = base.get("address", "")
+                price_usd = float(pair.get("priceUsd", 0) or 0)
+                volume = float(pair.get("volume", {}).get("h24", 0) or 0)
+                mcap = float(pair.get("marketCap", 0) or pair.get("fdv", 0) or 0)
+                liquidity = float(pair.get("liquidity", {}).get("usd", 0) or 0)
+                created = pair.get("pairCreatedAt", 0)
+
+                # Only show pairs < 1hr old or with high volume
+                pair_age_hours = (time.time() * 1000 - created) / 3600000 if created else 999
+                if pair_age_hours < 1 or volume > 10000:
+                    desc = f"NEW PAIR! {symbol} | MCap: ${mcap:,.0f} | Vol24h: ${volume:,.0f} | Liq: ${liquidity:,.0f}"
+                    airdrops.append({
+                        "id": f"dex_new_{mint[:12]}",
+                        "name": name,
+                        "symbol": symbol,
+                        "type": "new_pair",
+                        "chain": "solana",
+                        "source": "dexscreener_new",
+                        "status": "just_launched",
+                        "amount": 0,
+                        "estimated_value_usd": mcap,
+                        "mint": mint,
+                        "url": f"https://dexscreener.com/solana/{mint}",
+                        "description": desc,
+                        "found_at": time.time(),
+                        "claimable": True,
+                        "pair_age_hours": pair_age_hours,
+                        "volume_24h": volume,
+                        "liquidity": liquidity,
+                    })
+    except Exception as e:
+        logger.debug(f"[AIRDROP] DexScreener new pairs error: {e}")
+    return airdrops
+
+
+# ═══════════════════════════════════════════════════════════
+#  SOURCE 5: PUMP.FUN TRENDING — Realtime trending tokens
+# ═══════════════════════════════════════════════════════════
+
+def scan_pumpfun_realtime() -> List[Dict]:
+    """Scan pump.fun for trending and recently graduated tokens."""
+    airdrops = []
+    try:
+        # pump.fun king-of-the-hill (trending)
+        r = requests.get(
+            "https://frontend-api-v3.pump.fun/coins/king-of-the-hill?includeNsfw=false",
+            timeout=10,
+            headers={"User-Agent": "JARVIS-Bot/3.0"}
+        )
+        if r.status_code == 200:
+            data = r.json()
+            coins = data if isinstance(data, list) else [data] if isinstance(data, dict) else []
+            for coin in coins[:10]:
+                name = coin.get("name", "Unknown")
+                symbol = coin.get("symbol", "?")
+                mint = coin.get("mint", "")
+                mcap = float(coin.get("usd_market_cap", 0) or 0)
+                
+                desc = f"🔥 pump.fun TRENDING! {symbol} | MCap: ${mcap:,.0f}"
+                airdrops.append({
+                    "id": f"pump_trending_{mint[:12]}",
+                    "name": name,
+                    "symbol": symbol,
+                    "type": "trending_token",
+                    "chain": "solana",
+                    "source": "pump.fun",
+                    "status": "trending",
+                    "amount": 0,
+                    "estimated_value_usd": mcap,
+                    "mint": mint,
+                    "url": f"https://pump.fun/{mint}",
+                    "description": desc,
+                    "found_at": time.time(),
+                    "claimable": True,
+                })
+    except Exception as e:
+        logger.debug(f"[AIRDROP] pump.fun trending error: {e}")
+
+    # Recently graduated tokens (hit 69K MCap)
+    try:
+        r = requests.get(
+            "https://frontend-api-v3.pump.fun/coins/latest?includeNsfw=false&limit=10",
+            timeout=10,
+            headers={"User-Agent": "JARVIS-Bot/3.0"}
+        )
+        if r.status_code == 200:
+            coins = r.json() if isinstance(r.json(), list) else []
+            for coin in coins[:10]:
+                name = coin.get("name", "Unknown")
+                symbol = coin.get("symbol", "?")
+                mint = coin.get("mint", "")
+                mcap = float(coin.get("usd_market_cap", 0) or 0)
+
+                aid = f"pump_new_{mint[:12]}"
+                if aid not in {a["id"] for a in airdrops}:
+                    airdrops.append({
+                        "id": aid,
+                        "name": name,
+                        "symbol": symbol,
+                        "type": "new_launch",
+                        "chain": "solana",
+                        "source": "pump.fun",
+                        "status": "just_launched",
+                        "amount": 0,
+                        "estimated_value_usd": mcap,
+                        "mint": mint,
+                        "url": f"https://pump.fun/{mint}",
+                        "description": f"NEW pump.fun launch! {symbol} | MCap: ${mcap:,.0f}",
+                        "found_at": time.time(),
+                        "claimable": True,
+                    })
+    except Exception as e:
+        logger.debug(f"[AIRDROP] pump.fun latest error: {e}")
+
+    return airdrops
+
+
+# ═══════════════════════════════════════════════════════════
 #  🔥 MASTER SCANNER — Scan ALL sources
 # ═══════════════════════════════════════════════════════════
 
@@ -495,7 +852,39 @@ def scan_all_airdrops(wallet: str = None) -> List[Dict]:
     except Exception as e:
         logger.error(f"[AIRDROP] Solana scan error: {e}")
 
-    # Source 3: Web aggregators
+    # Source 2B: TON wallet tokens
+    try:
+        ton_wallet = get_user_wallet(OWNER_CHAT_ID, "ton") or OWNER_TON_WALLET
+        if ton_wallet:
+            ton_airdrops = scan_ton_wallet(ton_wallet)
+            for a in ton_airdrops:
+                if a["id"] not in seen_ids:
+                    seen_ids.add(a["id"])
+                    all_airdrops.append(a)
+    except Exception as e:
+        logger.error(f"[AIRDROP] TON scan error: {e}")
+
+    # Source 3: DexScreener new Solana pairs (REALTIME)
+    try:
+        dx_airdrops = scan_dexscreener_new_pairs()
+        for a in dx_airdrops:
+            if a["id"] not in seen_ids:
+                seen_ids.add(a["id"])
+                all_airdrops.append(a)
+    except Exception as e:
+        logger.error(f"[AIRDROP] DexScreener new pairs error: {e}")
+
+    # Source 4: pump.fun trending (REALTIME)
+    try:
+        pf_airdrops = scan_pumpfun_realtime()
+        for a in pf_airdrops:
+            if a["id"] not in seen_ids:
+                seen_ids.add(a["id"])
+                all_airdrops.append(a)
+    except Exception as e:
+        logger.error(f"[AIRDROP] pump.fun realtime error: {e}")
+
+    # Source 5: Web aggregators
     try:
         web_airdrops = scan_airdrop_aggregators()
         for a in web_airdrops:
@@ -587,12 +976,13 @@ def format_airdrop_scan(airdrops: List[Dict]) -> str:
 
         source_tag = a.get("source", "unknown")
         value = a.get("estimated_value_usd", 0)
-        value_str = f"~${value:,.0f}" if value > 0 else "TBD"
+        value_str = f"~${value:,.2f}" if value > 0 else "TBD"
+        inr_str = f" (~₹{usd_to_inr(value):,.2f})" if value > 0 else ""
 
         msg += f"*{i}. {a['name']}* {status_icon}\n"
         msg += f"   {chain_icon} {a.get('chain', '?').upper()} | {source_tag}\n"
         if value > 0:
-            msg += f"   💰 Est. Value: {value_str}\n"
+            msg += f"   💰 Value: {value_str}{inr_str}\n"
         msg += f"   📝 {a.get('description', '')[:100]}\n"
 
         if a.get("amount"):
@@ -609,12 +999,15 @@ def format_airdrop_scan(airdrops: List[Dict]) -> str:
 
         msg += f"   ✅ Scam check: {a.get('scam_check', 'Passed')}\n\n"
 
-    # Show active wallet
+    # Show active wallets
     msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-    wallet = OWNER_SOLANA_WALLET
-    if wallet:
-        msg += f"📍 *Active Wallet:* `{wallet[:6]}...{wallet[-4:]}`\n"
-        msg += f"⚡ Auto-scan: *Every 90 seconds*\n\n"
+    sol_wallet = OWNER_SOLANA_WALLET
+    ton_wallet = OWNER_TON_WALLET
+    if sol_wallet:
+        msg += f"🟣 *Solana:* `{sol_wallet[:6]}...{sol_wallet[-4:]}`\n"
+    if ton_wallet:
+        msg += f"💎 *TON:* `{ton_wallet[:6]}...{ton_wallet[-6:]}`\n"
+    msg += f"⚡ Auto-scan: *Every 30 seconds (ULTRA FAST)*\n\n"
     msg += "\n🔮 *UPCOMING AIRDROP PROTOCOLS:*\n"
     for p in UPCOMING_AIRDROP_PROTOCOLS[:5]:
         likelihood = {"high": "🟢", "medium": "🟡", "low": "🔴"}.get(p["likelihood"], "⚪")
@@ -663,9 +1056,9 @@ def format_airdrop_voice(airdrops: List[Dict]) -> str:
     return voice
 
 
-def format_single_airdrop_alert(airdrop: Dict) -> str:
-    """Format a single airdrop alert with auto-swap links for Solana wallet."""
-    chain_icon = {"solana": "🟣", "ethereum": "🔵", "arbitrum": "🔷"}.get(
+def format_single_airdrop_alert(airdrop: Dict, chat_id: int = None) -> str:
+    """Format a single airdrop alert with INR value + auto-swap links."""
+    chain_icon = {"solana": "🟣", "ethereum": "🔵", "arbitrum": "🔷", "ton": "💎"}.get(
         airdrop.get("chain", ""), "🌐")
 
     msg = f"🎁🚨 *NEW AIRDROP DETECTED!* 🚨🎁\n"
@@ -675,29 +1068,39 @@ def format_single_airdrop_alert(airdrop: Dict) -> str:
 
     value = airdrop.get("estimated_value_usd", 0)
     if value > 0:
-        msg += f"💰 Est. Value: ~${value:,.0f}\n"
+        inr = usd_to_inr(value)
+        msg += f"💰 Value: ~${value:,.4f} (~₹{inr:,.2f})\n"
 
     if airdrop.get("amount"):
-        msg += f"🎯 Amount: {airdrop['amount']:.4f} tokens\n"
+        msg += f"🎯 Amount: {airdrop['amount']:,.4f} tokens\n"
 
     msg += f"📝 {airdrop.get('description', '')[:200]}\n"
 
     # 🛒 Direct swap/claim links for Solana tokens
     mint = airdrop.get("mint", "")
-    wallet = OWNER_SOLANA_WALLET
-    if mint and airdrop.get("chain") == "solana":
+    chain = airdrop.get("chain", "")
+
+    if mint and chain == "solana":
+        wallet = OWNER_SOLANA_WALLET
         msg += f"\n🛒 *QUICK SWAP (1-Click):*\n"
         msg += f"   🟣 [Jupiter Swap → SOL](https://jup.ag/swap/{mint}-SOL)\n"
         msg += f"   🔵 [Raydium Swap](https://raydium.io/swap/?inputMint={mint}&outputMint=sol)\n"
         msg += f"   👻 [Phantom Swap](https://phantom.app/ul/swap/{mint}-SOL)\n"
         msg += f"   🔍 [Solscan]({airdrop.get('url', f'https://solscan.io/token/{mint}')})\n"
+        if wallet:
+            msg += f"\n📍 *Solana Wallet:* `{wallet[:6]}...{wallet[-4:]}`\n"
+
+    elif chain == "ton":
+        ton_wallet = get_user_wallet(chat_id or OWNER_CHAT_ID, "ton") or OWNER_TON_WALLET
+        msg += f"\n💎 *TON ACTIONS:*\n"
+        msg += f"   🔗 [View on TonViewer](https://tonviewer.com/{ton_wallet})\n"
+        msg += f"   💱 [STON.fi Swap](https://app.ston.fi/swap)\n"
+        msg += f"   🏦 [Telegram @wallet](https://t.me/wallet)\n"
+        if ton_wallet:
+            msg += f"\n📍 *TON Wallet:* `{ton_wallet[:6]}...{ton_wallet[-6:]}`\n"
 
     if airdrop.get("url") and not mint:
         msg += f"\n🔗 [Claim / Details]({airdrop['url']})\n"
-
-    # Show wallet address
-    if wallet:
-        msg += f"\n📍 *Your Wallet:* `{wallet[:6]}...{wallet[-4:]}`\n"
 
     msg += f"\n✅ Scam Check: {airdrop.get('scam_check', 'Passed')}"
     msg += "\n\n⚠️ _DYOR — Verify on official website before claiming!_"
@@ -721,13 +1124,15 @@ def set_alert_callback(callback):
 
 
 def _airdrop_scan_loop():
-    """Background loop: scan for airdrops — FAST mode (every 90 seconds)."""
-    logger.info("[AIRDROP] 🎁 Airdrop Hunter STARTED — FAST SCAN every 90 seconds!")
+    """Background loop: scan for airdrops — ULTRA FAST REALTIME (every 30 seconds)."""
+    logger.info("[AIRDROP] 🎁 Airdrop Hunter STARTED — ULTRA FAST SCAN every 30 seconds!")
     _airdrop_running.set()
 
-    # Auto-register owner wallet on startup
+    # Auto-register owner wallets on startup
     register_wallet(OWNER_CHAT_ID, "solana", OWNER_SOLANA_WALLET)
-    logger.info(f"[AIRDROP] ✅ Owner wallet auto-registered: {OWNER_SOLANA_WALLET[:8]}...")
+    if OWNER_TON_WALLET:
+        register_wallet(OWNER_CHAT_ID, "ton", OWNER_TON_WALLET)
+    logger.info(f"[AIRDROP] ✅ Owner wallets registered: SOL={OWNER_SOLANA_WALLET[:8]}... TON={OWNER_TON_WALLET[:8]}...")
 
     scan_count = 0
     while _airdrop_running.is_set():
@@ -737,39 +1142,72 @@ def _airdrop_scan_loop():
             if not wallet:
                 wallet = OWNER_SOLANA_WALLET
                 register_wallet(OWNER_CHAT_ID, "solana", wallet)
+            ton_wallet = get_user_wallet(OWNER_CHAT_ID, "ton") or OWNER_TON_WALLET
 
-            # Quick scan every 90 sec, deep scan every 7th cycle (~10 min)
-            if scan_count % 7 == 0:  # Deep scan
+            # Deep scan every 10th cycle (~5 min), quick scan every 30sec
+            if scan_count % 10 == 0:  # Deep scan (all sources)
                 new_alerts = get_new_airdrop_alerts(wallet)
                 logger.info(f"[AIRDROP] Deep scan #{scan_count}: {len(new_alerts)} new alerts (wallet: {wallet[:8]}...)")
-            else:  # Quick scan (Solana only — fastest)
+            else:  # Quick scan (Solana wallet + TON wallet + DexScreener + pump.fun)
                 new_alerts = []
+                now = time.time()
                 try:
+                    # Scan Solana wallet tokens
                     sol_drops = scan_solana_airdrops(wallet)
-                    now = time.time()
                     for a in sol_drops:
                         if now - _alerted_airdrops.get(a["id"], 0) > ALERT_COOLDOWN:
                             new_alerts.append(a)
                             _alerted_airdrops[a["id"]] = now
                 except Exception as e:
-                    logger.warning(f"[AIRDROP] Quick scan error: {e}")
+                    logger.warning(f"[AIRDROP] Wallet scan error: {e}")
+
+                try:
+                    # Scan TON wallet tokens
+                    if ton_wallet:
+                        ton_drops = scan_ton_wallet(ton_wallet)
+                        for a in ton_drops:
+                            if now - _alerted_airdrops.get(a["id"], 0) > ALERT_COOLDOWN:
+                                new_alerts.append(a)
+                                _alerted_airdrops[a["id"]] = now
+                except Exception as e:
+                    logger.warning(f"[AIRDROP] TON wallet scan error: {e}")
+                
+                try:
+                    # Realtime DexScreener new pairs
+                    dx_drops = scan_dexscreener_new_pairs()
+                    for a in dx_drops:
+                        if now - _alerted_airdrops.get(a["id"], 0) > ALERT_COOLDOWN:
+                            new_alerts.append(a)
+                            _alerted_airdrops[a["id"]] = now
+                except Exception as e:
+                    logger.warning(f"[AIRDROP] DexScreener realtime error: {e}")
+
+                try:
+                    # Realtime pump.fun trending
+                    pf_drops = scan_pumpfun_realtime()
+                    for a in pf_drops:
+                        if now - _alerted_airdrops.get(a["id"], 0) > ALERT_COOLDOWN:
+                            new_alerts.append(a)
+                            _alerted_airdrops[a["id"]] = now
+                except Exception as e:
+                    logger.warning(f"[AIRDROP] pump.fun realtime error: {e}")
 
             # Send alerts
             if new_alerts and _send_alert_callback:
-                for alert in new_alerts[:5]:  # Max 5 alerts per cycle (was 3)
+                for alert in new_alerts[:5]:  # Max 5 alerts per cycle
                     try:
                         is_safe, _ = check_airdrop_scam(alert)
                         if is_safe:
                             msg = format_single_airdrop_alert(alert)
                             _send_alert_callback(OWNER_CHAT_ID, msg)
-                            logger.info(f"[AIRDROP] 🎁 Alert sent: {alert['name']} to wallet {wallet[:8]}...")
+                            logger.info(f"[AIRDROP] 🎁 Alert sent: {alert['name']} ({alert.get('type','?')}) to wallet {wallet[:8]}...")
                     except Exception as e:
                         logger.error(f"[AIRDROP] Alert send error: {e}")
 
         except Exception as e:
             logger.error(f"[AIRDROP] Scan loop error: {e}")
 
-        # Wait SCAN_INTERVAL seconds (90s)
+        # Wait SCAN_INTERVAL seconds (30s)
         for _ in range(SCAN_INTERVAL):
             if not _airdrop_running.is_set():
                 break
@@ -858,7 +1296,10 @@ def airdrop_upcoming() -> str:
 __all__ = [
     'scan_all_airdrops',
     'scan_solana_airdrops',
+    'scan_ton_wallet',
     'scan_airdrop_aggregators',
+    'scan_dexscreener_new_pairs',
+    'scan_pumpfun_realtime',
     'get_new_airdrop_alerts',
     'format_airdrop_scan',
     'format_airdrop_voice',
@@ -871,6 +1312,9 @@ __all__ = [
     'set_alert_callback',
     'register_wallet',
     'get_user_wallet',
+    'get_all_user_wallets',
+    'usd_to_inr',
     'check_airdrop_scam',
     'get_upcoming_airdrop_protocols',
+    'OWNER_TON_WALLET',
 ]

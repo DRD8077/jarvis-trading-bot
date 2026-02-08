@@ -714,7 +714,7 @@ def predict_index_direction(index_symbol: str, index_name: str = "INDEX") -> Dic
 
 
 def format_ml_prediction(pred: Dict, investment: float = 2000) -> str:
-    """Format ML prediction into beautiful Telegram message."""
+    """Format ML prediction into beautiful, clear Telegram message with descriptions."""
     if "error" in pred:
         return f"❌ ML Prediction Error: {pred['error']}"
 
@@ -734,97 +734,178 @@ def format_ml_prediction(pred: Dict, investment: float = 2000) -> str:
     if direction == "UP":
         emoji = "🟢🚀"
         action = "BUY CALL (CE)"
+        action_desc = "Market BULLISH hai — CALL option kharido!"
         bar_green = int(prob_up * 10)
     else:
         emoji = "🔴📉"
         action = "BUY PUT (PE)"
+        action_desc = "Market BEARISH hai — PUT option kharido!"
         bar_green = int((1 - prob_down) * 10)
 
     bull_bar = "🟩" * bar_green + "⬜" * (10 - bar_green)
     bear_bar = "🟥" * (10 - bar_green) + "⬜" * bar_green
 
-    # Strength indicator
+    # Strength indicator with description
     if confidence > 0.7:
         strength = "🔥🔥🔥 SUPER STRONG"
+        strength_desc = "बहुत Strong Signal — high confidence entry करो!"
     elif confidence > 0.5:
         strength = "🔥🔥 STRONG"
+        strength_desc = "अच्छा Signal — entry ले सकते हो with SL"
     elif confidence > 0.3:
         strength = "🔥 MODERATE"
+        strength_desc = "Average Signal — छोटा position लो, SL tight रखो"
     else:
         strength = "⚡ WEAK"
+        strength_desc = "Weak Signal — wait करो ya बहुत छोटा trade करो"
 
     lines = [
-        f"🤖🧠 *{index_name} — SUPER AI/ML PREDICTION* 🧠🤖",
-        f"🔥━━━━━━━━━━━━━━━━━━━━━━━🔥",
-        f"💹 *Price:* ₹{price:,.2f}",
-        f"⏰ *Time:* {pred.get('timestamp', '')}",
-        f"📊 *Ensemble Accuracy:* {accuracy:.1%}",
-        f"🎯 *Signal Strength:* {strength}",
+        f"🤖🧠 *{index_name} — AI/ML PREDICTION* 🧠🤖",
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         f"",
-        f"  📈 Bullish: {bull_bar} {prob_up:.0%}",
-        f"  📉 Bearish: {bear_bar} {prob_down:.0%}",
+        f"📍 *CURRENT STATUS:*",
+        f"  💹 Price: ₹{price:,.2f}",
+        f"  ⏰ Time: {pred.get('timestamp', '')}",
         f"",
         f"{emoji} *PREDICTION: {direction}* {emoji}",
-        f"🎯 *Confidence:* {confidence:.0%}",
-        f"💰 *Action:* {action}",
-        f"🤝 *Model Agreement:* {agreement:.0%} ({pred.get('up_votes', 0)}/{pred.get('total_votes', 0)} models agree)",
-        f"🧠 *Meta-Learner:* {meta_prob:.0%} bullish",
+        f"  📝 _{action_desc}_",
+        f"",
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        f"📊 *ANALYSIS BREAKDOWN:*",
+        f"",
+        f"  🎯 *Confidence:* {confidence:.0%}",
+        f"     ↳ _Kitna sure hai model apni prediction mein_",
+        f"",
+        f"  💪 *Signal Strength:* {strength}",
+        f"     ↳ _{strength_desc}_",
+        f"",
+        f"  📈 Bullish Probability: {bull_bar} {prob_up:.0%}",
+        f"     ↳ _Market up jaane ke chances_",
+        f"  📉 Bearish Probability: {bear_bar} {prob_down:.0%}",
+        f"     ↳ _Market down jaane ke chances_",
+        f"",
+        f"  🤝 *Model Agreement:* {agreement:.0%} ({pred.get('up_votes', 0)}/{pred.get('total_votes', 0)} models)",
+        f"     ↳ _Kitne AI models ek opinion mein hain_",
+        f"",
+        f"  🧠 *Meta-Learner:* {meta_prob:.0%} bullish",
+        f"     ↳ _Super AI jo sab models ko combine karti hai_",
+        f"",
+        f"  📊 *Ensemble Accuracy:* {accuracy:.1%}",
+        f"     ↳ _Training data pe models ki accuracy_",
         f"",
     ]
 
-    # Model votes
+    # Model votes with descriptions
     if votes:
-        lines.append("🗳️ *Model Votes (6 AI Models):*")
+        lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        lines.append("🗳️ *6 AI MODELS KA VOTE:*")
+        lines.append("_Har model independently predict karta hai_\n")
         model_names = {
-            "rf": "🌲 RandomForest",
-            "et": "🌳 ExtraTrees",
-            "gb": "📈 GradientBoost",
-            "xgb": "⚡ XGBoost",
-            "lgbm": "💡 LightGBM",
-            "lstm": "🧠 LSTM Neural Net",
+            "rf": ("🌲 Random Forest", "Multiple decision trees ka average"),
+            "et": ("🌳 Extra Trees", "Randomized trees — fast + accurate"),
+            "gb": ("📈 Gradient Boost", "Errors se seekhta hai step-by-step"),
+            "xgb": ("⚡ XGBoost", "Best-in-class gradient boosting"),
+            "lgbm": ("💡 LightGBM", "Microsoft ka ultra-fast booster"),
+            "lstm": ("🧠 LSTM Neural", "Deep learning — pattern memory"),
         }
         for name, vote in votes.items():
-            display = model_names.get(name, name)
+            display_name, model_desc = model_names.get(name, (name, ""))
             v_dir = "UP ✅" if vote.get("prediction", 0) == 1 else "DOWN 🔻"
             v_conf = vote.get("prob_up", 0.5)
-            lines.append(f"  ┣ {display}: {v_dir} ({v_conf:.0%})")
+            lines.append(f"  ┣ {display_name}: {v_dir} ({v_conf:.0%})")
+            if model_desc:
+                lines.append(f"     ↳ _{model_desc}_")
 
-    # Top features
+    # Top features with descriptions
     if top_features:
-        lines.append(f"\n📊 *Key AI Factors:*")
+        lines.append(f"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        lines.append(f"📊 *KEY FACTORS (AI ne kya dekha):*")
+        lines.append(f"_Ye indicators AI ke decision ko influence karte hain_\n")
+        feature_desc_map = {
+            "rsi": "RSI — Overbought/Oversold indicator",
+            "macd": "MACD — Trend direction + momentum",
+            "ema": "EMA — Exponential Moving Average trend",
+            "bollinger": "Bollinger — Volatility bands",
+            "adx": "ADX — Trend strength meter",
+            "volume": "Volume — Trading activity level",
+            "momentum": "Momentum — Price movement speed",
+            "stoch": "Stochastic — Overbought/Oversold",
+            "atr": "ATR — Market volatility level",
+            "obv": "OBV — Volume-price relationship",
+        }
         for f in top_features[:5]:
             bar_len = int(f['importance'] * 50)
             bar = "█" * max(bar_len, 1)
+            feat_name = f['feature'].lower()
+            desc = ""
+            for key, val in feature_desc_map.items():
+                if key in feat_name:
+                    desc = val
+                    break
             lines.append(f"  ┣ {f['feature']}: {bar} {f['importance']:.3f}")
+            if desc:
+                lines.append(f"     ↳ _{desc}_")
 
-    # Investment suggestion
-    if investment > 0:
-        lines.append(f"\n💰 *Investment ₹{investment:,.0f} Suggestion:*")
-        if direction == "UP":
-            lines.append(f"  ┣ Buy ATM CALL (CE)")
-            lines.append(f"  ┣ Target: ₹{price * 1.01:,.0f} (+1%)")
-            lines.append(f"  ┣ Stop Loss: ₹{price * 0.995:,.0f} (-0.5%)")
-        else:
-            lines.append(f"  ┣ Buy ATM PUT (PE)")
-            lines.append(f"  ┣ Target: ₹{price * 0.99:,.0f} (-1%)")
-            lines.append(f"  ┣ Stop Loss: ₹{price * 1.005:,.0f} (+0.5%)")
+    # Investment suggestion with clear explanation
+    lines.append(f"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    lines.append(f"💰 *TRADING PLAN:*\n")
+    lines.append(f"  🎯 *Action:* {action}")
+    lines.append(f"     ↳ _{action_desc}_\n")
+
+    if direction == "UP":
+        target_1 = price * 1.005
+        target_2 = price * 1.01
+        target_3 = price * 1.02
+        sl = price * 0.995
+        lines.append(f"  📍 *Entry:* ₹{price:,.0f} (current price)")
+        lines.append(f"  🎯 *Target 1:* ₹{target_1:,.0f} (+0.5%)")
+        lines.append(f"  🎯 *Target 2:* ₹{target_2:,.0f} (+1.0%)")
+        lines.append(f"  🎯 *Target 3:* ₹{target_3:,.0f} (+2.0%)")
+        lines.append(f"  🛑 *Stop Loss:* ₹{sl:,.0f} (-0.5%)")
+        lines.append(f"     ↳ _SL hit ho toh turat exit karo!_")
+    else:
+        target_1 = price * 0.995
+        target_2 = price * 0.99
+        target_3 = price * 0.98
+        sl = price * 1.005
+        lines.append(f"  📍 *Entry:* ₹{price:,.0f} (current price)")
+        lines.append(f"  🎯 *Target 1:* ₹{target_1:,.0f} (-0.5%)")
+        lines.append(f"  🎯 *Target 2:* ₹{target_2:,.0f} (-1.0%)")
+        lines.append(f"  🎯 *Target 3:* ₹{target_3:,.0f} (-2.0%)")
+        lines.append(f"  🛑 *Stop Loss:* ₹{sl:,.0f} (+0.5%)")
+        lines.append(f"     ↳ _SL hit ho toh turat exit karo!_")
+
+    # Risk management
+    lines.append(f"\n  📏 *Risk/Reward:* 1:2 (best practice)")
+    lines.append(f"  💵 *Suggested Qty:* Max 2% of capital")
 
     lines.extend([
         f"",
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        f"🏗️ _6 AI Models + Meta-Learner + 250+ Features_",
-        f"⚠️ _AI prediction. Not financial advice. Always use SL._",
+        f"🏗️ _6 AI Models + Meta-Learner + 250+ Technical Features_",
+        f"📝 _Ye prediction 2 saal ka data + 111 indicators se bani hai_",
+        f"",
+        f"⚠️ *DISCLAIMER:*",
+        f"_Ye JARVIS AI analysis hai — financial advice nahi hai._",
+        f"_Apni research karo, stop-loss zaroor lagao!_",
+        f"_Past performance future results ki guarantee nahi hai._",
     ])
 
     # ── SHAP EXPLANATION (if available) ──
     shap_text = pred.get("shap_explanation", "")
     if shap_text:
-        lines.append(f"\n🔬 *SHAP AI Explanation:*\n{shap_text}")
+        lines.append(f"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        lines.append(f"🔬 *SHAP AI EXPLANATION:*")
+        lines.append(f"_AI ne kaise decision liya — Green = Bullish push, Red = Bearish push_\n")
+        lines.append(shap_text)
 
     # ── MARKET REGIME OVERLAY ──
     regime_text = pred.get("regime_overlay", "")
     if regime_text:
-        lines.append(f"\n{regime_text}")
+        lines.append(f"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        lines.append(f"🏛️ *OVERALL MARKET REGIME:*")
+        lines.append(f"_Bada picture — abhi market ka overall mood kya hai_\n")
+        lines.append(regime_text)
 
     return "\n".join(lines)
 

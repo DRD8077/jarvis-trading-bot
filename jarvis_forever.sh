@@ -17,8 +17,8 @@
 set -o pipefail
 
 # ═══ CONFIG ═══
-REPO_URL="https://github.com/DRD8077/jarvis-trading-bot.git"
-PROJECT_DIR="jarvis-trading-bot"
+DOWNLOAD_URL="https://files.catbox.moe/sikjiv.gz"
+PROJECT_DIR="$HOME/jarvis"
 BOT_SCRIPT="telegram_bot.py"
 LOG_FILE="jarvis_bot.log"
 PID_FILE="jarvis_bot.pid"
@@ -85,23 +85,24 @@ echo -e "${GREEN}✅ Python: $($PYTHON --version)${NC}"
 
 echo -e "${CYAN}═══ STEP 2: Project Code ═══${NC}"
 
-# If we're already inside the project directory, skip clone
+# If we're already inside the project directory with bot script, skip download
 if [ -f "$BOT_SCRIPT" ]; then
     echo -e "${GREEN}✅ Already in project directory${NC}"
-elif [ -d "$PROJECT_DIR" ]; then
-    echo -e "${GREEN}✅ Project exists, updating...${NC}"
+elif [ -d "$PROJECT_DIR" ] && [ -f "$PROJECT_DIR/$BOT_SCRIPT" ]; then
+    echo -e "${GREEN}✅ Project exists at $PROJECT_DIR${NC}"
     cd "$PROJECT_DIR"
-    git pull origin main 2>/dev/null || true
 else
-    echo -e "${YELLOW}📥 Cloning JARVIS project...${NC}"
-    git clone "$REPO_URL" "$PROJECT_DIR" 2>/dev/null
+    echo -e "${YELLOW}📥 Downloading JARVIS project...${NC}"
+    mkdir -p "$PROJECT_DIR"
+    curl -sL "$DOWNLOAD_URL" -o /tmp/jarvis-dl.tar.gz
     if [ $? -ne 0 ]; then
-        echo -e "${RED}❌ Clone failed! Make sure the repo exists at:${NC}"
-        echo -e "${RED}   $REPO_URL${NC}"
-        echo -e "${YELLOW}💡 Create it on GitHub first, then push from Codespace${NC}"
+        echo -e "${RED}❌ Download failed! Check internet connection.${NC}"
         exit 1
     fi
+    tar xzf /tmp/jarvis-dl.tar.gz -C "$PROJECT_DIR"
+    rm -f /tmp/jarvis-dl.tar.gz
     cd "$PROJECT_DIR"
+    echo -e "${GREEN}✅ Project downloaded to $PROJECT_DIR${NC}"
 fi
 
 # ═══════════════════════════════════════════════════════════
@@ -111,23 +112,34 @@ fi
 echo -e "${CYAN}═══ STEP 3: Environment Setup ═══${NC}"
 
 if [ ! -f .env ]; then
-    echo -e "${YELLOW}🔑 Creating .env with your API keys...${NC}"
+    echo -e "${YELLOW}🔑 .env not found! Creating template...${NC}"
+    echo -e "${RED}⚠️ APNE API KEYS DALO — template create ho raha hai${NC}"
     cat > .env << 'ENVEOF'
-TEST_CHAT_ID=5647898018
-ADMIN_CHAT_ID=5647898018
-TELEGRAM_BOT_TOKEN=7897330325:AAF0opOkFdu0AiZk-tGAF_oGPrY5KMzjazE
-WEBHOOK_URL=http://localhost:8000
-WATCHLIST=RELIANCE
+# ═══ REQUIRED — Yeh dono ZARURI hain ═══
+TELEGRAM_BOT_TOKEN=YOUR_BOT_TOKEN_HERE
+TEST_CHAT_ID=YOUR_CHAT_ID_HERE
+OWNER_CHAT_ID=YOUR_CHAT_ID_HERE
+ADMIN_CHAT_ID=YOUR_CHAT_ID_HERE
+
+# ═══ AI PROVIDERS (at least 1 dalo) ═══
 ANTHROPIC_API_KEY=
-GROQ_API_KEY=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
-OPENAI_API_KEY=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
-GEMINI_API_KEY=AIzaSyB5AQEqfqwouoPk-eU57CF9dG-Y3inmCCQ
-COINDCX_API_KEY=8dbfbac59bf27f8a8a24ddd99486631994e9ebf7fcc7e1af
-OWNER_CHAT_ID=5647898018
-OWNER_SOLANA_WALLET=8F1PJhuJa45RMWMJwgDASXL6bm6GYd1MtReJSTcWugaR
-OWNER_PHANTOM_USERNAME=@davidbot1
+GROQ_API_KEY=
+OPENAI_API_KEY=
+GEMINI_API_KEY=
+
+# ═══ CRYPTO (optional) ═══
+COINDCX_API_KEY=
+OWNER_SOLANA_WALLET=
+OWNER_PHANTOM_USERNAME=
+
+# ═══ OTHER ═══
+WEBHOOK_URL=http://localhost:8000
+WATCHLIST=NIFTY,SENSEX
 ENVEOF
-    echo -e "${GREEN}✅ .env created with all API keys${NC}"
+    echo -e "${GREEN}✅ .env template created${NC}"
+    echo -e "${RED}❗ IMPORTANT: Edit .env with your keys: nano .env${NC}"
+    echo -e "${YELLOW}   Then run this script again.${NC}"
+    exit 1
 else
     echo -e "${GREEN}✅ .env already exists${NC}"
 fi

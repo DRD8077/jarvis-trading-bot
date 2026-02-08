@@ -12,16 +12,37 @@ Provider priority:
 """
 
 import os
+import time
 import logging
 import requests
 from typing import Optional, Dict, Any
 
 logger = logging.getLogger("ai_chat")
 
+# ═══════════════════════════════════════════════════════════
+#  SPEED OPTIMIZATION — Cache keys & market context
+# ═══════════════════════════════════════════════════════════
 
 def _get_key(name: str) -> str:
     """Get API key fresh from env (not cached at import time)."""
     return os.environ.get(name, "")
+
+# Market context cache (60 second TTL) — avoids rebuilding on every AI call
+_market_context_cache = {"text": "", "ts": 0}
+_MARKET_CONTEXT_TTL = 60  # seconds
+
+# User context cache (5 min TTL)
+_user_context_cache: Dict[int, Dict] = {}
+
+def _get_user_context(chat_id: int) -> str:
+    """Get user awareness context for JARVIS — knows all users, current user info."""
+    try:
+        from jarvis_admin import get_jarvis_user_context
+        return get_jarvis_user_context(chat_id)
+    except ImportError:
+        return ""
+    except Exception:
+        return ""
 
 # ═══════════════════════════════════════════════════════════
 #  JARVIS SYSTEM PROMPT — Trading Expert + Crypto + Personality
@@ -40,12 +61,22 @@ End with: "⚠️ Not financial advice. Use stop-loss."
 
 def _build_market_context() -> str:
     """Build real-time market context string to inject into LLM prompt.
-    Includes BOTH stock market AND crypto data for JARVIS."""
+    Includes BOTH stock market AND crypto data for JARVIS.
+    CACHED for 60 seconds to avoid slow HTTP calls on every message."""
+    
+    # Return cached if fresh
+    now = time.time()
+    if _market_context_cache["text"] and (now - _market_context_cache["ts"]) < _MARKET_CONTEXT_TTL:
+        return _market_context_cache["text"]
     
     # Try JARVIS context builder first (has crypto + stock + portfolio)
     try:
         from jarvis_ai import build_jarvis_context
-        return build_jarvis_context()
+        ctx = build_jarvis_context()
+        if ctx:
+            _market_context_cache["text"] = ctx
+            _market_context_cache["ts"] = now
+            return ctx
     except ImportError:
         pass
     
@@ -105,7 +136,10 @@ def _build_market_context() -> str:
     if not context_parts:
         return "Live market data currently loading..."
     
-    return "\n".join(context_parts)
+    result = "\n".join(context_parts)
+    _market_context_cache["text"] = result
+    _market_context_cache["ts"] = time.time()
+    return result
 
 
 # ═══════════════════════════════════════════════════════════
@@ -126,16 +160,28 @@ def chat_with_claude(user_message: str, chat_history: list = None) -> Optional[s
 
         market_context = _build_market_context()
 
+        # Build enhanced context with genius memory if available
+        genius_context = ""
+        try:
+            from jarvis_genius import semantic_memory, conversation_state
+            profile = semantic_memory.get_user_profile(0)
+            if profile:
+                genius_context = f"\nUser expertise: {profile.get('expertise_level', 'beginner')}, Language: {profile.get('preferred_language', 'hindi')}"
+        except Exception:
+            pass
+
         system_prompt = (
             f"{SYSTEM_PROMPT}\n\n"
             f"LIVE MARKET DATA (use this for your analysis):\n{market_context}"
+            f"{genius_context}\n\n"
+            f"IMPORTANT: Think step-by-step. Use the market data above to give SPECIFIC answers with real numbers."
         )
 
         messages = []
 
-        # Add chat history (last 6 messages)
+        # Add chat history (last 12 messages for deeper context)
         if chat_history:
-            for msg in chat_history[-6:]:
+            for msg in chat_history[-12:]:
                 role = msg.get("role", "user")
                 content = msg.get("content", "")
                 if role in ("user", "assistant") and content:
@@ -159,11 +205,11 @@ def chat_with_claude(user_message: str, chat_history: list = None) -> Optional[s
             cleaned.insert(0, {"role": "user", "content": "Hello JARVIS"})
 
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=2000,
+            model="claude-opus-4-20250514",
+            max_tokens=6000,
             system=system_prompt,
             messages=cleaned,
-            temperature=0.7,
+            temperature=0.6,
         )
 
         if response.content and len(response.content) > 0:
@@ -183,7 +229,7 @@ def chat_with_claude(user_message: str, chat_history: list = None) -> Optional[s
 #  GROQ CHAT (Primary — fast, free)
 # ═══════════════════════════════════════════════════════════
 
-def chat_with_groq(user_message: str, chat_history: list = None) -> Optional[str]:
+def chat_with_groq(user_message: str, chat_history: list = None, chat_id: int = 0) -> Optional[str]:
     """Send message to Groq LLM with market context."""
     api_key = _get_key("GROQ_API_KEY")
     if not api_key or not api_key.startswith("gsk_"):
@@ -192,16 +238,21 @@ def chat_with_groq(user_message: str, chat_history: list = None) -> Optional[str
     try:
         from groq import Groq
         
-        client = Groq(api_key=api_key)
+        client = Groq(api_key=api_key, timeout=15.0)
         
         market_context = _build_market_context()
+        user_context = _get_user_context(chat_id)
+        
+        sys_content = SYSTEM_PROMPT + "\n\nIMPORTANT: Be CONCISE. Think step-by-step. Give specific actionable answers with real numbers. Keep response under 500 words."
+        if user_context:
+            sys_content += f"\n\n{user_context}"
         
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": sys_content},
             {"role": "system", "content": f"LIVE MARKET DATA (use this for your analysis):\n{market_context}"},
         ]
         
-        # Add chat history (last 6 messages)
+        # Add chat history (last 6 messages for speed)
         if chat_history:
             for msg in chat_history[-6:]:
                 messages.append(msg)
@@ -211,8 +262,8 @@ def chat_with_groq(user_message: str, chat_history: list = None) -> Optional[str
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=messages,
-            temperature=0.7,
-            max_tokens=1500,
+            temperature=0.6,
+            max_tokens=2000,
         )
         
         return response.choices[0].message.content
@@ -240,12 +291,12 @@ def chat_with_openai(user_message: str, chat_history: list = None) -> Optional[s
         market_context = _build_market_context()
         
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": SYSTEM_PROMPT + "\n\nThink step-by-step. Give specific answers."},
             {"role": "system", "content": f"LIVE MARKET DATA:\n{market_context}"},
         ]
         
         if chat_history:
-            for msg in chat_history[-6:]:
+            for msg in chat_history[-12:]:
                 messages.append(msg)
         
         messages.append({"role": "user", "content": user_message})
@@ -253,8 +304,8 @@ def chat_with_openai(user_message: str, chat_history: list = None) -> Optional[s
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
-            temperature=0.7,
-            max_tokens=1500,
+            temperature=0.6,
+            max_tokens=3000,
         )
         
         return response.choices[0].message.content
@@ -270,7 +321,7 @@ def chat_with_openai(user_message: str, chat_history: list = None) -> Optional[s
 
 def chat_with_gemini(user_message: str, chat_history: list = None) -> Optional[str]:
     """Send message to Google Gemini (free tier, no billing needed)."""
-    api_key = _get_key("GEMINI_API_KEY")
+    api_key = _get_key("GEMINI_API_KEY") or _get_key("GOOGLE_API_KEY")
     if not api_key:
         return None
 
@@ -502,28 +553,39 @@ _chat_histories: Dict[int, list] = {}
 def ai_chat(user_message: str, chat_id: int = 0) -> str:
     """Process a user's natural language query through AI.
     
-    Priority: Claude → Groq → OpenAI → Gemini → OpenRouter Free → Smart Local
+    SPEED-OPTIMIZED PRIORITY:
+    - If Groq key exists → Groq FIRST (fastest, 1-3 sec)
+    - If Claude key exists → Claude first (smartest)
+    - Then OpenAI → Gemini → OpenRouter → Local
     Maintains per-user conversation history.
     """
+    _start = time.time()
+    
     # Get/create user history
     history = _chat_histories.get(chat_id, [])
     
-    # Try providers in order
+    # Try providers in order — SPEED-OPTIMIZED
     response = None
     provider = None
 
-    # 1. Claude (most intelligent — Anthropic)
-    response = chat_with_claude(user_message, history)
-    if response:
-        provider = "Claude AI"
-
-    # 2. Groq (fast, free)
-    if response is None:
-        response = chat_with_groq(user_message, history)
+    # Check which keys exist (instant check)
+    _has_claude = bool(_get_key("ANTHROPIC_API_KEY") or _get_key("CLAUDE_API_KEY"))
+    _has_groq = bool(_get_key("GROQ_API_KEY"))
+    
+    # SPEED STRATEGY: Groq is fastest (1-3s), use it first unless Claude is available
+    if _has_claude:
+        # Claude available — use it (smartest)
+        response = chat_with_claude(user_message, history)
+        if response:
+            provider = "Claude AI"
+    
+    if response is None and _has_groq:
+        # Groq — FASTEST provider (1-3 seconds)
+        response = chat_with_groq(user_message, history, chat_id=chat_id)
         if response:
             provider = "Groq"
 
-    # 3. OpenAI
+    # 3. OpenAI (fallback)
     if response is None:
         response = chat_with_openai(user_message, history)
         if response:
@@ -557,7 +619,9 @@ def ai_chat(user_message: str, chat_id: int = 0) -> str:
     _chat_histories[chat_id] = history
     
     # Add provider badge — JARVIS style
-    badge = f"\n\n_🤖 J.A.R.V.I.S. • Powered by {provider}_"
+    _elapsed = time.time() - _start
+    badge = f"\n\n_🤖 J.A.R.V.I.S. • {provider} • {_elapsed:.1f}s_"
+    logger.info(f"[AI-CHAT] Response in {_elapsed:.1f}s via {provider} for chat_id={chat_id}")
     
     return response + badge
 

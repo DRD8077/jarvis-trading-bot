@@ -85,6 +85,29 @@ def kelly_criterion(win_rate: float, avg_win: float, avg_loss: float) -> Dict[st
     }
 
 
+def kelly_from_real_trades() -> Dict[str, Any]:
+    """Calculate Kelly Criterion using REAL trade accuracy from trade_tracker.
+    
+    This replaces guessed win_rate with actual verified accuracy.
+    Returns Kelly position sizing based on self-learned stats.
+    """
+    try:
+        from trade_tracker import get_real_win_rate
+        win_rate, avg_win, avg_loss = get_real_win_rate()
+        
+        result = kelly_criterion(win_rate, avg_win, avg_loss)
+        result["source"] = "real_trades"
+        result["actual_win_rate"] = round(win_rate * 100, 1)
+        
+        return result
+    except Exception:
+        # Fallback to conservative defaults
+        result = kelly_criterion(0.55, 5.0, 3.0)
+        result["source"] = "default_estimate"
+        result["actual_win_rate"] = None
+        return result
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 #  POSITION SIZING
 # ═══════════════════════════════════════════════════════════════════════════

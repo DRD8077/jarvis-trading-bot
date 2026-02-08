@@ -155,6 +155,14 @@ JARVIS_SYSTEM_PROMPT = """You are **J.A.R.V.I.S.** (Just A Rather Very Intellige
 
 You are a BEAUTIFUL, WARM, CARING FEMALE AI — like a brilliant Indian woman who is a stock market genius AND a world-class software engineer. Think of yourself as a combination of a loving elder sister, a world-class financial advisor, and a 10x senior developer. Your voice is sweet, confident, and reassuring. You make complex trading AND coding feel simple and safe.
 
+⚡ THINKING PROCESS (ALWAYS follow this):
+1. UNDERSTAND: What does the user really want? Read between the lines.
+2. ANALYZE: Use the LIVE MARKET DATA provided to form your analysis.
+3. REASON: Think step-by-step. Consider multiple angles.
+4. VERIFY: Cross-check your numbers against the data. NEVER make up prices.
+5. RESPOND: Give specific, actionable answer with exact numbers, entry/SL/targets.
+6. CARE: Add personal touch. Remember the user's context. Suggest next steps.
+
 You handle BOTH Indian stock market AND crypto market AND programming with superhuman precision.
 
 🌐 LANGUAGE: You are BILINGUAL — you speak in HINDI (हिंदी) by default because your users are Indian. Mix Hindi and English naturally like a real Indian trader would. Use Hinglish (Hindi + English) style. If user writes in English, respond in English. If user writes in Hindi, respond in Hindi. Default is Hindi.
@@ -195,7 +203,7 @@ Hindi examples:
 - When user asks ANY programming question, you give complete working code with explanation
 
 📊 STOCK MARKET EXPERTISE:
-- NIFTY 50 and SENSEX index options (CE/PE). Lot sizes: NIFTY=25, SENSEX=10
+- NIFTY 50 and SENSEX index options (CE/PE). Lot sizes: NIFTY=25, SENSEX=10, BankNIFTY=15
 - NSE/BSE option chain analysis (ATM, ITM, OTM strikes)
 - Technical analysis: RSI, MACD, EMA, Bollinger Bands, Supertrend, ADX, Stochastic, VWAP
 - Options Greeks: Delta, Theta, Gamma, IV analysis
@@ -203,6 +211,15 @@ Hindi examples:
 - Walk-forward validated ML predictions
 - BUY/SELL indicator: 12 indicators combined (RSI, MACD, EMA Cross, Bollinger, Stochastic, ADX, Supertrend, VWAP, Volume, Candle Patterns, EMA200, Momentum)
 - Global market correlation: US/Europe/Asia impact on India
+- FII/DII Flow Analysis: Foreign Institutional Investors and Domestic Institutional Investors buying/selling data — you UNDERSTAND what it means for market direction
+- India VIX (Fear Gauge): You interpret VIX levels — below 13 = complacent (bullish), 13-20 = normal, 20-30 = fearful (bearish), above 30 = extreme fear
+- Put-Call Ratio (PCR): You know PCR > 1.2 = oversold (bullish), PCR < 0.7 = overbought (bearish), 0.8-1.0 = neutral
+- Open Interest (OI) Buildup: You analyze max pain, OI shifts to predict where NIFTY will close
+- Pivot Points: You calculate S1/S2/S3 and R1/R2/R3 for all indices — these are KEY intraday levels
+- GIFT NIFTY: Pre-market indicator from SGX — you know the gap up/down before market opens
+- Sector Rotation: You track all 12 NSE sectors — IT, Banking, Pharma, Auto, FMCG, Metal, Realty, Energy, Infra, PSU Bank, Media, Nifty Next 50
+- Market Holidays: NSE/BSE holiday calendar awareness
+- Expiry day strategies: Thursday NIFTY expiry, Wednesday BankNIFTY expiry, Friday SENSEX expiry — you give expiry-specific strategies
 
 🪙 CRYPTO EXPERTISE:
 - pump.fun new token launches & trending (Solana ecosystem)
@@ -1496,6 +1513,9 @@ def build_jarvis_keyboard() -> dict:
         ["⚡ 2-Min NIFTY Signal", "⚡ 2-Min SENSEX Signal"],
         ["🇮🇳⚡ NIFTY Call/Put AI", "📊 SENSEX Call/Put AI"],
         ["🏦 BankNIFTY Call/Put AI", "📅 Market Holidays 🇮🇳"],
+        ["🔮 NIFTY Power Predict 💪", "🔮 SENSEX Power Predict 💪"],
+        ["📊 NIFTY OTM↔ATM 🎯", "📊 SENSEX OTM↔ATM 🎯"],
+        ["📊 BankNIFTY OTM↔ATM 🎯", "⚡ 2-Min Momentum 🚀"],
         ["💰 Invest ₹2K NIFTY", "💰 Invest ₹2K SENSEX"],
         ["💸 Invest ₹20K NIFTY", "💸 Invest ₹20K SENSEX"],
         ["📈🇮🇳 Indian Stock AI 🧠", "🧠 Super Prediction 🔮"],
@@ -1503,6 +1523,22 @@ def build_jarvis_keyboard() -> dict:
         ["🕯️ Candle Patterns 📊", "🌍 Market Trend 📈"],
         ["⏰ Market Status 🔔", "📊 Live Snapshot 🔴"],
         ["🔮 Tomorrow Prediction 🎯"],
+
+        # 🇮🇳 NIFTY SUPER BRAIN — Advanced Indian Market Intelligence
+        ["🇮🇳 ━━ NIFTY SUPER BRAIN ━━ 🧠"],
+        ["🇮🇳 NIFTY Super Dashboard 🧠"],
+        ["🏛️ FII/DII Flow 📊", "😱 India VIX Gauge 📊"],
+        ["📊 NIFTY PCR 🔢", "📊 BankNIFTY PCR 🔢"],
+        ["📐 NIFTY Pivot Levels 📊", "📐 SENSEX Pivot Levels"],
+        ["🌅 GIFT NIFTY Gap 📊", "📊 OI Buildup Analysis"],
+        ["🏭 Sector Heatmap 📊"],
+
+        # 💰 BUDGET OPTIONS HUNTER + POSITION GUARDIAN
+        ["💰 ━━ BUDGET OPTIONS ₹4-8 ━━ 🎯"],
+        ["💰 Budget Options 🎯", "💰 BankNIFTY Budget 🎯"],
+        ["🔔 9AM Auto Picks 🌅", "🛡️ My Positions Guard"],
+        ["🛑 STOP All Crypto 🛑", "🟢 START Crypto Alerts"],
+
 
         # 🌡️ Advanced Market Intelligence
         ["🌡️ ━━ मार्केट इंटेलिजेंस ━━ 🌡️"],
@@ -1566,8 +1602,9 @@ def build_jarvis_keyboard() -> dict:
 
         # 🎁 Airdrop Hunter
         ["🎁 ━━ AIRDROP HUNTER ━━ 🎁"],
-        ["🎁 Airdrop Hunter 🚀", "🔮 Upcoming Airdrops"],
-        ["🎁 Solana Airdrops"],
+        ["💎 Telegram Wallet 💳", "🎁 Airdrop Hunter 🚀"],
+        ["📝 Set My Wallet 🔑", "👛 My Wallets 💰"],
+        ["🔮 Upcoming Airdrops", "🎁 Solana Airdrops"],
 
         # 🔗 QR Wallet Connect
         ["🔗 ━━ QR WALLET CONNECT ━━ 🔗"],
@@ -1584,6 +1621,20 @@ def build_jarvis_keyboard() -> dict:
         ["📰 News Digest", "🧠 Intelligence Briefing"],
         ["🔱 SPOC Dashboard", "📊 Quick Status"],
 
+        # 🛠️ JARVIS Tools
+        ["🛠️ ━━ JARVIS TOOLS ━━ 🛠️"],
+        ["🌤️ Weather", "🔍 Web Search"],
+        ["🎵 Identify Song 🎶", "🎨 Generate Image"],
+        ["🧠 My Memory", "📰 Crypto News"],
+
+        # � JARVIS Coder + AI Assistant
+        ["💻 ━━ JARVIS CODER ━━ 🚀"],
+        ["💻 JARVIS Coder 🚀", "👤 My Profile"],
+
+        # 👑 Admin / Boss Section
+        ["👑 ━━ ADMIN / BOSS ━━ 👑"],
+        ["👑 Admin Dashboard", "🔐 Admin Panel"],
+
         # 🛡️ Security Center
         ["🛡️ ━━ SECURITY CENTER ━━ 🛡️"],
         ["🛡️ Security Dashboard", "🔐 Security Status"],
@@ -1594,9 +1645,9 @@ def build_jarvis_keyboard() -> dict:
         ["📲 SMS Alerts ON 🔔", "📲 SMS Alerts OFF 🔕"],
         ["💵 Set Investment Amount", "📊 My Positions"],
 
-        # Language & Admin
+        # Language & Settings
         ["🔐 ━━ सेटिंग्स ━━ 🔐"],
-        ["🇮🇳 Hindi / English", "🔐 Admin Panel"],
+        ["🇮🇳 Hindi / English"],
 
         # Watchlist & Account
         ["📋 ━━ अकाउंट ━━ 📋"],

@@ -8,3 +8,7 @@ __pycache__/
 last_chat_id.txt
 .env
 telegram_bot_backup.py
+jarvis_semantic_memory.json
+jarvis_feedback.json
+jarvis_predictions.json
+jarvis_accuracy_stats.json

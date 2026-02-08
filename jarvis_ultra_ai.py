@@ -546,6 +546,24 @@ def ultra_predict(token: dict) -> dict:
     # ── 8. Final Verdict with Hindi ──
     result["verdict"] = _generate_verdict(token, result)
     
+    # ── 9. Log prediction for self-learning ──
+    try:
+        from trade_tracker import log_prediction
+        symbol = token.get("symbol", token.get("base", "UNKNOWN"))
+        price = float(token.get("priceUsd") or token.get("price") or 0)
+        verdict = result["verdict"]
+        indicators = {
+            "ai_signal": str(result.get("ai_signal", {}).get("signal", "")),
+            "rug_risk": str(result.get("rug_risk", {}).get("level", "")),
+            "money_flow": str(result.get("money_flow", {}).get("direction", "")),
+            "whale": str(result.get("whale", {}).get("signal", "")),
+            "health": str(result.get("health", {}).get("grade", "")),
+        }
+        log_prediction(symbol, verdict["action"], verdict["score"], price,
+                       source="ultra_ai", indicators=indicators)
+    except Exception as e:
+        logger.debug(f"[ULTRA-AI] Prediction logging failed: {e}")
+    
     return result
 
 
@@ -657,7 +675,17 @@ def _generate_verdict(token: dict, result: dict) -> dict:
         "hindi_detail": hindi_detail,
         "reasons_buy": reasons_buy,
         "reasons_sell": reasons_sell,
+        "calibrated_confidence": _get_calibrated(score),
     }
+
+
+def _get_calibrated(raw_score: float) -> Optional[float]:
+    """Get calibrated confidence from trade tracker (if available)."""
+    try:
+        from trade_tracker import get_calibrated_confidence
+        return round(get_calibrated_confidence(raw_score) * 100, 1)
+    except Exception:
+        return None
 
 
 # ═══════════════════════════════════════════════════════════

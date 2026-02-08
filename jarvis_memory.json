@@ -12,25 +12,25 @@
     "watchlist": [],
     "last_intents": [
       "chat",
-      "quick_profit",
-      "quick_profit",
       "chat",
       "chat",
       "chat",
       "chat",
-      "web3_all",
+      "tomorrow_predict",
+      "chat",
+      "chat",
+      "india_prediction",
       "chat",
       "chat",
       "chat",
       "chat",
+      "market_status",
+      "market_status",
+      "stock_options",
       "chat",
       "chat",
-      "chat",
-      "chat",
-      "chat",
-      "chat",
-      "chat",
-      "chat"
+      "stock_options",
+      "stock_predict"
     ],
     "name": "Deepak Kumar"
   },
@@ -39,5 +39,11 @@
     "watchlist": [],
     "last_intents": [],
     "name": "Kuldeep Sharma"
+  },
+  "7171322090": {
+    "preferences": {},
+    "watchlist": [],
+    "last_intents": [],
+    "name": "Abhinav Sharma"
   }
 }

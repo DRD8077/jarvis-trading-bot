@@ -1,0 +1,26 @@
+{
+  "5647898018": {
+    "chat_id": 5647898018,
+    "first_name": "Deepak Kumar",
+    "username": "Drddesi",
+    "tier": "admin",
+    "registered": "2026-02-08T21:07:38.177184",
+    "last_active": "2026-02-08T21:35:24.190270",
+    "message_count": 17,
+    "approved_features": [
+      "nifty_analysis",
+      "portfolio_view",
+      "search",
+      "news",
+      "voice",
+      "crypto_prices",
+      "weather",
+      "ai_chat",
+      "memory",
+      "song_identify",
+      "image_generate"
+    ],
+    "language": "hindi",
+    "alerts_on": true
+  }
+}
