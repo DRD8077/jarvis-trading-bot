@@ -1,0 +1,337 @@
+{
+  "user_info": {
+    "name": "Deepak Kumar",
+    "chat_id": 5647898018,
+    "first_seen": "2026-02-09T07:04:24.751823+05:30",
+    "language": "hinglish",
+    "risk_appetite": "moderate",
+    "trading_style": "",
+    "budget": ""
+  },
+  "conversations": [
+    {
+      "role": "user",
+      "text": "Hello",
+      "intent": "",
+      "timestamp": "2026-02-09T07:04:24.752064+05:30"
+    },
+    {
+      "role": "user",
+      "text": "Nifty aaj kaha jayega call ya put",
+      "intent": "",
+      "timestamp": "2026-02-09T07:04:43.787318+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🇮🇳⚡ NIFTY Call/Put AI",
+      "intent": "",
+      "timestamp": "2026-02-09T07:04:45.230923+05:30"
+    },
+    {
+      "role": "user",
+      "text": "Nifty main ajj call jayada Acha hai ya put",
+      "intent": "",
+      "timestamp": "2026-02-09T07:06:18.808575+05:30"
+    },
+    {
+      "role": "user",
+      "text": "💎 NIFTY Calls OTM 🚀",
+      "intent": "",
+      "timestamp": "2026-02-09T07:06:19.975142+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🧠🔥 Nuclear Brain 🔥",
+      "intent": "",
+      "timestamp": "2026-02-09T07:06:41.939998+05:30"
+    },
+    {
+      "role": "user",
+      "text": "📊 My Tracked Positions",
+      "intent": "",
+      "timestamp": "2026-02-09T07:07:50.143325+05:30"
+    },
+    {
+      "role": "user",
+      "text": "Jarvis main 25950 ki call li hai",
+      "intent": "",
+      "timestamp": "2026-02-09T07:08:10.379587+05:30"
+    },
+    {
+      "role": "user",
+      "text": "Maine 25950 ki call @24 rs par li bai 3 lots",
+      "intent": "",
+      "timestamp": "2026-02-09T07:08:41.753281+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🧠🔥 Nuclear Brain 🔥",
+      "intent": "",
+      "timestamp": "2026-02-09T07:37:58.595426+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🛡️ Security Dashboard",
+      "intent": "",
+      "timestamp": "2026-02-09T07:38:41.139833+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🟢🔴 Stock Buy/Sell Signal",
+      "intent": "",
+      "timestamp": "2026-02-09T07:39:16.219605+05:30"
+    },
+    {
+      "role": "user",
+      "text": "Details wise bataoo market kaisa rahega ajj",
+      "intent": "",
+      "timestamp": "2026-02-09T07:39:58.036614+05:30"
+    },
+    {
+      "role": "user",
+      "text": "📊 Scan NIFTY Signals",
+      "intent": "",
+      "timestamp": "2026-02-09T11:11:45.346065+05:30"
+    },
+    {
+      "role": "user",
+      "text": "Maine nifty ki 2 call li hai 26000 and 26050 ki call",
+      "intent": "",
+      "timestamp": "2026-02-09T11:12:45.415640+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🧠🔥 Nuclear Brain 🔥",
+      "intent": "",
+      "timestamp": "2026-02-09T11:13:55.963503+05:30"
+    },
+    {
+      "role": "user",
+      "text": "📈🇮🇳 Indian Stock AI 🧠",
+      "intent": "",
+      "timestamp": "2026-02-09T11:14:42.301776+05:30"
+    },
+    {
+      "role": "user",
+      "text": "Tu 26000 ka current price galat bata rahe ho",
+      "intent": "",
+      "timestamp": "2026-02-09T11:15:58.417382+05:30"
+    },
+    {
+      "role": "user",
+      "text": "Current price ye nahi hai 26000 nifty call ka Current price hai 29 rs inr",
+      "intent": "",
+      "timestamp": "2026-02-09T11:16:35.791237+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🔱 NIFTY Signals 📊",
+      "intent": "",
+      "timestamp": "2026-02-09T11:18:11.868989+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🇮🇳 ━━ NIFTY SUPER BRAIN ━━ 🧠",
+      "intent": "",
+      "timestamp": "2026-02-09T11:19:05.383304+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🇮🇳 NIFTY Super Dashboard 🧠",
+      "intent": "",
+      "timestamp": "2026-02-09T11:19:15.730240+05:30"
+    },
+    {
+      "role": "user",
+      "text": "💰 Invest ₹2K NIFTY",
+      "intent": "",
+      "timestamp": "2026-02-09T11:20:19.539306+05:30"
+    },
+    {
+      "role": "user",
+      "text": "📊 NIFTY OTM↔ATM 🎯",
+      "intent": "",
+      "timestamp": "2026-02-09T11:20:32.471522+05:30"
+    },
+    {
+      "role": "user",
+      "text": "⚡ 2-Min Momentum 🚀",
+      "intent": "",
+      "timestamp": "2026-02-09T11:26:12.797527+05:30"
+    },
+    {
+      "role": "user",
+      "text": "⚠️ Risk Calculator 🛡️",
+      "intent": "",
+      "timestamp": "2026-02-09T11:26:19.107759+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🤖 NIFTY ML Predict 🧠",
+      "intent": "",
+      "timestamp": "2026-02-09T11:26:36.428158+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🤖 NIFTY ML Predict 🧠",
+      "intent": "",
+      "timestamp": "2026-02-10T21:11:14.109802+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🔱 NIFTY Signals 📊",
+      "intent": "",
+      "timestamp": "2026-02-10T21:45:18.373701+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🌍 Market Trend 📈",
+      "intent": "",
+      "timestamp": "2026-02-10T21:56:58.188888+05:30"
+    },
+    {
+      "role": "user",
+      "text": "📊 Live Snapshot 🔴",
+      "intent": "",
+      "timestamp": "2026-02-10T21:57:13.441920+05:30"
+    },
+    {
+      "role": "user",
+      "text": "💰 Invest ₹2K NIFTY",
+      "intent": "",
+      "timestamp": "2026-02-10T22:05:16.617518+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🇮🇳⚡ NIFTY Call/Put AI",
+      "intent": "",
+      "timestamp": "2026-02-10T22:05:37.510709+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🧠 Super Prediction 🔮",
+      "intent": "",
+      "timestamp": "2026-02-10T22:09:08.881545+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🔮 Tomorrow Prediction 🎯",
+      "intent": "",
+      "timestamp": "2026-02-10T22:16:16.167763+05:30"
+    },
+    {
+      "role": "user",
+      "text": "📊 Futures Brain 📊",
+      "intent": "",
+      "timestamp": "2026-02-10T22:20:32.229910+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🔬 Backtester Pro 🔬",
+      "intent": "",
+      "timestamp": "2026-02-10T22:20:52.881965+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🧠 Memory Status",
+      "intent": "",
+      "timestamp": "2026-02-10T22:21:22.831228+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🔔 9AM Auto Picks 🌅",
+      "intent": "",
+      "timestamp": "2026-02-10T22:21:38.847734+05:30"
+    },
+    {
+      "role": "user",
+      "text": "💎 SENSEX Calls OTM 🚀",
+      "intent": "",
+      "timestamp": "2026-02-10T22:47:17.763870+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🚀 Top Movers 🚀",
+      "intent": "",
+      "timestamp": "2026-02-10T22:47:21.499994+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🟣 Pump.fun Trending 🔥",
+      "intent": "",
+      "timestamp": "2026-02-10T22:47:39.318793+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🤖 AI Chat 💬",
+      "intent": "",
+      "timestamp": "2026-02-10T23:52:17.283910+05:30"
+    },
+    {
+      "role": "user",
+      "text": "☀️ Morning Brief 📊",
+      "intent": "",
+      "timestamp": "2026-02-10T23:52:28.291146+05:30"
+    }
+  ],
+  "positions": [
+    {
+      "id": 1,
+      "symbol": "NIFTY",
+      "strike": 25950,
+      "option_type": "CE",
+      "entry_price": 38.04,
+      "quantity": 1,
+      "entry_time": "2026-02-09T07:08:10.583405+05:30",
+      "status": "OPEN",
+      "current_price": 38.04,
+      "pnl": 0.0,
+      "pnl_pct": 0.0,
+      "last_checked": "2026-02-09T07:08:10.583421+05:30",
+      "notes": "",
+      "analysis_history": [],
+      "alerts_sent": []
+    },
+    {
+      "id": 2,
+      "symbol": "NIFTY",
+      "strike": 25950,
+      "option_type": "CE",
+      "entry_price": 24.0,
+      "quantity": 1,
+      "entry_time": "2026-02-09T07:08:41.753378+05:30",
+      "status": "OPEN",
+      "current_price": 24.0,
+      "pnl": 0.0,
+      "pnl_pct": 0.0,
+      "last_checked": "2026-02-09T07:08:41.753391+05:30",
+      "notes": "",
+      "analysis_history": [],
+      "alerts_sent": []
+    },
+    {
+      "id": 3,
+      "symbol": "NIFTY",
+      "strike": 26000,
+      "option_type": "CE",
+      "entry_price": 66.91,
+      "quantity": 1,
+      "entry_time": "2026-02-09T11:12:46.543083+05:30",
+      "status": "OPEN",
+      "current_price": 66.91,
+      "pnl": 0.0,
+      "pnl_pct": 0.0,
+      "last_checked": "2026-02-09T11:12:46.543101+05:30",
+      "notes": "",
+      "analysis_history": [],
+      "alerts_sent": []
+    }
+  ],
+  "facts": {
+    "name": "Deepak Kumar"
+  },
+  "predictions": [],
+  "learnings": [],
+  "summary": "",
+  "last_active": "2026-02-10T23:52:28.291185+05:30"
+}

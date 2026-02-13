@@ -2,13 +2,11 @@
 J.A.R.V.I.S. AI Chat Engine — Multi-provider AI for live conversational trading assistant.
 Just A Rather Very Intelligent System — inspired by Iron Man's JARVIS.
 
-Provider priority:
-1. Claude (Anthropic — most intelligent, best reasoning)
-2. Groq (fast, free with gsk_ key)
-3. OpenAI (needs billing credits)
-4. Google Gemini (free tier: 15 req/min, no billing needed)
-5. OpenRouter free models (DeepSeek R1 free)
-6. Smart local response (always works — uses live market data + ML)
+100% FREE AI PROVIDERS — No paid API needed:
+1. Groq (FAST, free — Llama 3.3 70B, 1-3 sec response)
+2. Google Gemini (FREE tier — Gemini 2.5 Flash, 15 req/min)
+3. OpenRouter (FREE — DeepSeek R1 70B)
+4. Smart local response (always works — uses live market data + ML)
 """
 
 import os
@@ -35,14 +33,28 @@ _MARKET_CONTEXT_TTL = 60  # seconds
 _user_context_cache: Dict[int, Dict] = {}
 
 def _get_user_context(chat_id: int) -> str:
-    """Get user awareness context for JARVIS — knows all users, current user info."""
+    """Get user awareness context for JARVIS — knows all users, current user info, FULL MEMORY."""
+    parts = []
+    
+    # Admin context
     try:
         from jarvis_admin import get_jarvis_user_context
-        return get_jarvis_user_context(chat_id)
-    except ImportError:
-        return ""
-    except Exception:
-        return ""
+        admin_ctx = get_jarvis_user_context(chat_id)
+        if admin_ctx:
+            parts.append(admin_ctx)
+    except (ImportError, Exception):
+        pass
+    
+    # Super Memory context (conversations, positions, facts)
+    try:
+        from jarvis_memory_pro import get_full_context_for_ai
+        mem_ctx = get_full_context_for_ai(chat_id)
+        if mem_ctx:
+            parts.append(mem_ctx)
+    except (ImportError, Exception):
+        pass
+    
+    return "\n".join(parts)
 
 # ═══════════════════════════════════════════════════════════
 #  JARVIS SYSTEM PROMPT — Trading Expert + Crypto + Personality
@@ -553,60 +565,42 @@ _chat_histories: Dict[int, list] = {}
 def ai_chat(user_message: str, chat_id: int = 0) -> str:
     """Process a user's natural language query through AI.
     
-    SPEED-OPTIMIZED PRIORITY:
-    - If Groq key exists → Groq FIRST (fastest, 1-3 sec)
-    - If Claude key exists → Claude first (smartest)
-    - Then OpenAI → Gemini → OpenRouter → Local
-    Maintains per-user conversation history.
+    100% FREE PRIORITY (no paid API needed):
+    1. Groq — Llama 3.3 70B (FREE, fastest 1-3 sec)
+    2. Google Gemini 2.5 Flash (FREE tier, 15 req/min)
+    3. OpenRouter — DeepSeek R1 (FREE)
+    4. Smart Local (always works)
     """
     _start = time.time()
     
     # Get/create user history
     history = _chat_histories.get(chat_id, [])
     
-    # Try providers in order — SPEED-OPTIMIZED
+    # 100% FREE providers — no paid API
     response = None
     provider = None
 
-    # Check which keys exist (instant check)
-    _has_claude = bool(_get_key("ANTHROPIC_API_KEY") or _get_key("CLAUDE_API_KEY"))
-    _has_groq = bool(_get_key("GROQ_API_KEY"))
-    
-    # SPEED STRATEGY: Groq is fastest (1-3s), use it first unless Claude is available
-    if _has_claude:
-        # Claude available — use it (smartest)
-        response = chat_with_claude(user_message, history)
-        if response:
-            provider = "Claude AI"
-    
-    if response is None and _has_groq:
-        # Groq — FASTEST provider (1-3 seconds)
-        response = chat_with_groq(user_message, history, chat_id=chat_id)
-        if response:
-            provider = "Groq"
+    # 1. Groq — FREE, FASTEST (1-3 seconds)
+    response = chat_with_groq(user_message, history, chat_id=chat_id)
+    if response:
+        provider = "Groq AI"
 
-    # 3. OpenAI (fallback)
-    if response is None:
-        response = chat_with_openai(user_message, history)
-        if response:
-            provider = "OpenAI"
-
-    # 4. Google Gemini (free tier)
+    # 2. Google Gemini (FREE tier — 15 req/min)
     if response is None:
         response = chat_with_gemini(user_message, history)
         if response:
-            provider = "Gemini"
+            provider = "Gemini AI"
 
-    # 5. OpenRouter free models
+    # 3. OpenRouter FREE models (DeepSeek R1 — no billing needed)
     if response is None:
         response = chat_with_openrouter_free(user_message, history)
         if response:
-            provider = "OpenRouter"
+            provider = "DeepSeek AI"
 
-    # 6. Smart local fallback (always works)
+    # 4. Smart local fallback (always works — uses live market data)
     if response is None:
         response = _smart_local_response(user_message)
-        provider = "Local AI"
+        provider = "JARVIS Local"
     
     # Save to history
     history.append({"role": "user", "content": user_message})

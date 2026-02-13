@@ -1115,54 +1115,19 @@ def get_complete_dashboard() -> str:
 
 
 # ═══════════════════════════════════════════════════════════
-#  🧠⚡ CLAUDE-POWERED SUPER INTELLIGENCE
-#  Human-Brain-Level analysis using Claude Opus 4
+#  🧠⚡ AI-POWERED SUPER INTELLIGENCE (100% FREE)
+#  Human-Brain-Level analysis using Groq/Gemini
 # ═══════════════════════════════════════════════════════════
 
 def get_ai_market_verdict(dashboard_text: str = None) -> str:
     """
-    Uses Claude Opus 4 to generate human-brain-level market analysis.
+    Uses 100% FREE AI (Groq/Gemini) for human-brain-level market analysis.
     Takes ALL the data from dashboard and generates intelligent commentary.
     """
     if dashboard_text is None:
         dashboard_text = get_complete_dashboard()
     
-    # Try Claude Opus 4
-    try:
-        import anthropic
-        _api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-        if _api_key:
-            client = anthropic.Anthropic(api_key=_api_key)
-            response = client.messages.create(
-                model="claude-opus-4-20250514",
-                max_tokens=3000,
-                temperature=0.4,
-                system=(
-                    "You are JARVIS — an AI trading assistant specializing in Indian markets "
-                    "(NIFTY, SENSEX, Bank NIFTY). You speak Hindi-English mix. "
-                    "Analyze the market data provided and give:\n"
-                    "1. A clear BUY/SELL/HOLD verdict with confidence %\n"
-                    "2. Best option strategy for today (CE/PE, strike, expiry)\n"
-                    "3. Key risk factors to watch\n"
-                    "4. Entry/Exit levels with stop loss\n"
-                    "5. One-liner prediction for tomorrow\n"
-                    "Be specific with numbers. Use emojis. Be confident but mention risks."
-                ),
-                messages=[{"role": "user", "content": f"Analyze this Indian market data and give me your verdict:\n\n{dashboard_text}"}],
-            )
-            ai_text = response.content[0].text if response.content else ""
-            if ai_text:
-                return (
-                    f"🧠⚡ *JARVIS AI BRAIN — Claude Opus 4 Analysis* ⚡🧠\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                    f"{ai_text}\n\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"_🧠 Powered by Claude Opus 4 + JARVIS Data Engine_"
-                )
-    except Exception as e:
-        logger.error(f"[AI_VERDICT] Claude error: {e}")
-    
-    # Fallback: Try Groq
+    # PRIMARY: Groq (FREE, fast, smart)
     try:
         from groq import Groq
         _groq_key = os.environ.get("GROQ_API_KEY", "")

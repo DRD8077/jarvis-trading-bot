@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0088cc">
+    <title>🤖 JARVIS AI Assistant</title>
+
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- Socket.IO for real-time communication -->
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+
+    <!-- TensorFlow.js for gesture recognition -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@2.2.2/dist/posenet.min.js"></script>
+
+    <!-- MediaPipe for advanced pose detection -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.0/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.0/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.0/pose.js"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🤖%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading" class="screen loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2>🤖 JARVIS लोड हो रहा है...</h2>
+            <p>कृपया प्रतीक्षा करें</p>
+        </div>
+    </div>
+
+    <!-- Auth Screen -->
+    <div id="auth" class="screen auth-screen hidden">
+        <div class="auth-content">
+            <div class="auth-header">
+                <h1>🔐 प्रमाणीकरण</h1>
+                <p>Telegram से लॉगिन करें</p>
+            </div>
+            <button id="authButton" class="btn btn-primary">
+                ✅ Telegram से कनेक्ट करें
+            </button>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="app hidden">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1 class="app-title">📈 JARVIS Trader</h1>
+                <div class="user-info">
+                    <span id="userName">लोड हो रहा...</span>
+                    <span id="premiumBadge" class="premium-badge hidden">⭐</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="notificationButton" class="btn btn-icon" title="नोटिफिकेशन">
+                    🔔
+                </button>
+                <button id="menuButton" class="btn btn-icon" title="मेनू">
+                    ☰
+                </button>
+            </div>
+        </header>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button id="navHome" class="nav-item active" data-screen="homeScreen" onclick="window.jarvisApp.switchScreen('homeScreen')">
+                <span class="nav-icon">🏠</span>
+                <span class="nav-label">होम</span>
+            </button>
+            <button id="navMarkets" class="nav-item" data-screen="marketsScreen" onclick="window.jarvisApp.switchScreen('marketsScreen')">
+                <span class="nav-icon">📈</span>
+                <span class="nav-label">मार्केट</span>
+            </button>
+            <button id="navPortfolio" class="nav-item" data-screen="portfolioScreen" onclick="window.jarvisApp.switchScreen('portfolioScreen')">
+                <span class="nav-icon">📊</span>
+                <span class="nav-label">पोर्टफोलियो</span>
+            </button>
+            <button id="navAI" class="nav-item" data-screen="aiScreen" onclick="window.jarvisApp.switchScreen('aiScreen')">
+                <span class="nav-icon">🤖</span>
+                <span class="nav-label">AI असिस्टेंट</span>
+            </button>
+            <button id="navProfile" class="nav-item" data-screen="profileScreen" onclick="window.jarvisApp.switchScreen('profileScreen')">
+                <span class="nav-icon">👤</span>
+                <span class="nav-label">प्रोफाइल</span>
+            </button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="app-main">
+            <!-- Home Screen -->
+            <div id="homeScreen" class="screen home-screen">
+                <div class="home-content">
+                    <!-- Market Overview -->
+                    <div class="market-overview">
+                        <h2>📊 बाजार अवलोकन</h2>
+                        <div class="market-indices">
+                            <div class="index-card">
+                                <div class="index-name">NIFTY 50</div>
+                                <div class="index-value" id="niftyValue">22,500.00</div>
+                                <div class="index-change positive" id="niftyChange">+125.50 (+0.56%)</div>
+                            </div>
+                            <div class="index-card">
+                                <div class="index-name">SENSEX</div>
+                                <div class="index-value" id="sensexValue">73,500.00</div>
+                                <div class="index-change positive" id="sensexChange">+350.25 (+0.48%)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="quick-actions">
+                        <h3>⚡ त्वरित कार्य</h3>
+                        <div class="action-buttons">
+                            <button class="action-btn" id="buyBtn" onclick="window.jarvisApp.showBuyDialog()">
+                                <span class="action-icon">📈</span>
+                                <span class="action-text">खरीदें</span>
+                            </button>
+                            <button class="action-btn" id="sellBtn" onclick="window.jarvisApp.showSellDialog()">
+                                <span class="action-icon">📉</span>
+                                <span class="action-text">बेचें</span>
+                            </button>
+                            <button class="action-btn" id="watchlistBtn" onclick="window.jarvisApp.showAlert('⭐ वॉचलिस्ट फीचर जल्द ही आ रहा है!', 'info')">
+                                <span class="action-icon">⭐</span>
+                                <span class="action-text">वॉचलिस्ट</span>
+                            </button>
+                            <button class="action-btn" id="newsBtn" onclick="window.jarvisApp.showNews()">
+                                <span class="action-icon">📰</span>
+                                <span class="action-text">समाचार</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Top Gainers/Losers -->
+                    <div class="top-movers">
+                        <div class="movers-section">
+                            <h3>🚀 टॉप गेनर्स</h3>
+                            <div id="topGainers" class="movers-list">
+                                <!-- Dynamic content -->
+                            </div>
+                        </div>
+                        <div class="movers-section">
+                            <h3>📉 टॉप लूजर्स</h3>
+                            <div id="topLosers" class="movers-list">
+                                <!-- Dynamic content -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Markets Screen -->
+            <div id="marketsScreen" class="screen markets-screen hidden">
+                <div class="markets-content">
+                    <div class="search-bar">
+                        <input type="text" id="stockSearch" placeholder="शेयर खोजें (उदा: RELIANCE, TCS)" class="search-input">
+                        <button id="searchBtn" class="btn btn-search">🔍</button>
+                    </div>
+
+                    <div class="market-tabs">
+                        <button class="tab-btn active" data-tab="nse">NSE</button>
+                        <button class="tab-btn" data-tab="bse">BSE</button>
+                        <button class="tab-btn" data-tab="crypto">क्रिप्टो</button>
+                    </div>
+
+                    <div id="marketsList" class="stocks-list">
+                        <!-- Dynamic stock list -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Portfolio Screen -->
+            <div id="portfolioScreen" class="screen portfolio-screen hidden">
+                <div class="portfolio-content">
+                    <div class="portfolio-header">
+                        <h2>📊 आपका पोर्टफोलियो</h2>
+                        <div class="portfolio-summary">
+                            <div class="summary-item">
+                                <span class="summary-label">कुल मूल्य</span>
+                                <span class="summary-value" id="portfolioValue">₹0.00</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">P&L</span>
+                                <span class="summary-value pnl-value positive" id="portfolioPnl">₹0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="holdingsList" class="holdings-list">
+                        <!-- Dynamic holdings -->
+                    </div>
+
+                    <div class="portfolio-actions">
+                        <button id="addHoldingBtn" class="btn btn-primary">➕ होल्डिंग जोड़ें</button>
+                        <button id="viewReportsBtn" class="btn btn-secondary">📊 रिपोर्ट देखें</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Assistant Screen -->
+            <div id="aiScreen" class="screen ai-screen hidden">
+                <div class="ai-content">
+                    <div class="ai-header">
+                        <h2>🤖 JARVIS AI असिस्टेंट</h2>
+                        <p>शेयर बाजार में आपकी मदद के लिए</p>
+                    </div>
+
+                    <div class="ai-chat-container">
+                        <div id="chatMessages" class="ai-chat-messages">
+                            <div class="ai-welcome-message">
+                                <div class="ai-avatar">🤖</div>
+                                <div class="ai-message-content">
+                                    <p>नमस्ते! मैं जार्विस हूं, आपका AI ट्रेडिंग असिस्टेंट। शेयर बाजार, तकनीकी विश्लेषण, या निवेश सलाह के बारे में पूछें!</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="ai-input-container">
+                            <div class="ai-input-group">
+                                <input
+                                    type="text"
+                                    id="aiInput"
+                                    placeholder="शेयर बाजार के बारे में पूछें..."
+                                    class="ai-message-input"
+                                    maxlength="500"
+                                    onkeypress="window.jarvisApp.handleAIInputKeyPress(event)"
+                                >
+                                <button id="aiVoiceButton" class="btn btn-ai-voice" title="वॉइस इनपुट" onclick="window.jarvisApp.showAlert('🎙️ वॉइस फीचर जल्द ही आ रहा है!', 'info')">
+                                    🎙️
+                                </button>
+                                <button id="aiSendButton" class="btn btn-ai-send" onclick="window.jarvisApp.sendAIMessage()">
+                                    📤
+                                </button>
+                            </div>
+                            <div class="ai-quick-questions">
+                                <button class="quick-q-btn" onclick="window.jarvisApp.sendAIMessageFromQuick('📈 आज के टॉप गेनर्स?')">📈 आज के टॉप गेनर्स?</button>
+                                <button class="quick-q-btn" onclick="window.jarvisApp.sendAIMessageFromQuick('📊 RELIANCE का विश्लेषण')">📊 RELIANCE का विश्लेषण</button>
+                                <button class="quick-q-btn" onclick="window.jarvisApp.sendAIMessageFromQuick('💡 निवेश सुझाव')">💡 निवेश सुझाव</button>
+                                <button class="quick-q-btn" onclick="window.jarvisApp.sendAIMessageFromQuick('📰 बाजार समाचार')">📰 बाजार समाचार</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Screen -->
+            <div id="profileScreen" class="screen profile-screen hidden">
+                <div class="profile-content">
+                    <div class="profile-header">
+                        <div class="profile-avatar">
+                            <span id="profileInitials">U</span>
+                        </div>
+                        <div class="profile-info">
+                            <h2 id="userName">उपयोगकर्ता</h2>
+                            <p id="profileStatus">फ्री प्लान</p>
+                        </div>
+                    </div>
+
+                    <div class="profile-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">कुल ट्रेड</span>
+                            <span class="stat-value" id="totalTrades">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">विन रेट</span>
+                            <span class="stat-value" id="winRate">0%</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">कुल P&L</span>
+                            <span class="stat-value positive" id="totalPnl">₹0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="profile-details">
+                        <div class="detail-item">
+                            <span class="detail-label">ईमेल</span>
+                            <span class="detail-value" id="userEmail">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">जॉइन डेट</span>
+                            <span class="detail-value" id="joinDate">-</span>
+                        </div>
+                    </div>
+
+                    <div class="profile-menu">
+                        <div class="menu-item" id="settingsMenu">
+                            <span class="menu-icon">⚙️</span>
+                            <span class="menu-text">सेटिंग्स</span>
+                            <span class="menu-arrow">›</span>
+                        </div>
+                        <div class="menu-item" id="subscriptionMenu">
+                            <span class="menu-icon">⭐</span>
+                            <span class="menu-text">सब्सक्रिप्शन</span>
+                            <span class="menu-arrow">›</span>
+                        </div>
+                        <div class="menu-item" id="helpMenu">
+                            <span class="menu-icon">❓</span>
+                            <span class="menu-text">मदद और सपोर्ट</span>
+                            <span class="menu-arrow">›</span>
+                        </div>
+                        <div class="menu-item" id="logoutMenu">
+                            <span class="menu-icon">🚪</span>
+                            <span class="menu-text">लॉग आउट</span>
+                            <span class="menu-arrow">›</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Screen -->
+            <div id="settingsScreen" class="screen settings-screen hidden">
+                <div class="settings-container">
+                    <h2>⚙️ सेटिंग्स</h2>
+
+                    <div class="settings-group">
+                        <h3>🌐 भाषा</h3>
+                        <select id="languageSelect" class="setting-select">
+                            <option value="hi">हिंदी</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3>🎙️ वॉइस इनपुट</h3>
+                        <label class="toggle">
+                            <input type="checkbox" id="voiceEnabled" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3>🔔 नोटिफिकेशन</h3>
+                        <label class="toggle">
+                            <input type="checkbox" id="notificationsEnabled" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3>🎨 थीम</h3>
+                        <select id="themeSelect" class="setting-select">
+                            <option value="auto">ऑटो</option>
+                            <option value="light">लाइट</option>
+                            <option value="dark">डार्क</option>
+                        </select>
+                    </div>
+
+                    <div class="settings-actions">
+                        <button id="saveSettingsButton" class="btn btn-primary">
+                            💾 सेव करें
+                        </button>
+                        <button id="resetSettingsButton" class="btn btn-secondary">
+                            🔄 रीसेट
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Premium Screen -->
+            <div id="premiumScreen" class="screen premium-screen hidden">
+                <div class="premium-container">
+                    <div class="premium-header">
+                        <h2>⭐ JARVIS प्रीमियम</h2>
+                        <p>असीमित AI पावर का अनुभव करें</p>
+                    </div>
+
+                    <div class="premium-features">
+                        <div class="feature-item">
+                            <span class="feature-icon">🚀</span>
+                            <span>असीमित AI चैट</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🎙️</span>
+                            <span>वॉइस इनपुट सपोर्ट</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">⚡</span>
+                            <span>फास्ट रिस्पांस</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">📊</span>
+                            <span>एडवांस्ड एनालिटिक्स</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🎯</span>
+                            <span>प्राथमिकता सपोर्ट</span>
+                        </div>
+                    </div>
+
+                    <div class="premium-plans">
+                        <div class="plan-card">
+                            <h3>मासिक प्लान</h3>
+                            <div class="plan-price">₹199<span>/माह</span></div>
+                            <button class="btn btn-premium" data-plan="monthly">
+                                🛒 खरीदें
+                            </button>
+                        </div>
+
+                        <div class="plan-card featured">
+                            <div class="featured-badge">सर्वोत्तम</div>
+                            <h3>सालाना प्लान</h3>
+                            <div class="plan-price">₹1,999<span>/साल</span></div>
+                            <div class="plan-savings">17% बचत</div>
+                            <button class="btn btn-premium featured" data-plan="yearly">
+                                🛒 खरीदें
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="telegram.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

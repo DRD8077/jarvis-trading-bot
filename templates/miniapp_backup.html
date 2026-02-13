@@ -1,0 +1,1594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JARVIS AI Trading</title>
+    <script src="https://telegram.org/js/telegram-web-app.js" async onerror="console.log('Telegram WebApp script not available - running in standalone mode')"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #111827;
+            --bg-card: #1a2332;
+            --bg-card-hover: #1f2b3d;
+            --accent: #00d4aa;
+            --accent-glow: rgba(0, 212, 170, 0.15);
+            --accent-2: #6c5ce7;
+            --red: #ff4757;
+            --red-bg: rgba(255, 71, 87, 0.12);
+            --green: #00d4aa;
+            --green-bg: rgba(0, 212, 170, 0.12);
+            --yellow: #ffa502;
+            --yellow-bg: rgba(255, 165, 2, 0.12);
+            --blue: #3b82f6;
+            --blue-bg: rgba(59, 130, 246, 0.12);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: rgba(255,255,255,0.06);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --shadow: 0 4px 24px rgba(0,0,0,0.3);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* ═══ TOP HEADER ═══ */
+        .app-header {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            background: rgba(10, 14, 23, 0.92);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 16px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        .header-logo {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 900; font-size: 16px; color: #fff;
+        }
+        .header-title { font-size: 18px; font-weight: 800; }
+        .header-subtitle { font-size: 11px; color: var(--accent); font-weight: 600; }
+        .header-right { display: flex; gap: 10px; }
+        .header-btn {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            color: var(--text-secondary); display: flex; align-items: center;
+            justify-content: center; cursor: pointer; font-size: 15px;
+        }
+        .header-btn.active, .header-btn:active { color: var(--accent); background: var(--accent-glow); }
+        .notif-badge {
+            position: absolute; top: -3px; right: -3px; width: 16px; height: 16px;
+            background: var(--red); border-radius: 50%; font-size: 9px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; border: 2px solid var(--bg-primary);
+        }
+
+        /* ═══ MAIN CONTENT ═══ */
+        .main-content { padding: 72px 16px 90px; }
+
+        /* ═══ PORTFOLIO CARD ═══ */
+        .portfolio-hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            border-radius: var(--radius);
+            padding: 24px 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            position: relative; overflow: hidden;
+        }
+        .portfolio-hero::before {
+            content: ''; position: absolute; top: -50%; right: -20%;
+            width: 200px; height: 200px; border-radius: 50%;
+            background: radial-gradient(circle, var(--accent-glow), transparent 70%);
+        }
+        .portfolio-label { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+        .portfolio-value { font-size: 36px; font-weight: 900; margin: 4px 0; letter-spacing: -1px; }
+        .portfolio-change { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 13px; font-weight: 700; }
+        .portfolio-change.up { background: var(--green-bg); color: var(--green); }
+        .portfolio-change.down { background: var(--red-bg); color: var(--red); }
+        .portfolio-actions { display: flex; gap: 10px; margin-top: 16px; }
+        .portfolio-actions .pa-btn {
+            flex: 1; padding: 10px; border-radius: var(--radius-sm);
+            border: none; font-weight: 700; font-size: 13px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .pa-btn.deposit { background: var(--accent); color: #000; }
+        .pa-btn.withdraw { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); }
+        .pa-btn.trade { background: linear-gradient(135deg, var(--accent-2), #8b5cf6); color: #fff; }
+
+        /* ═══ QUICK ACTIONS GRID ═══ */
+        .quick-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 10px; margin-bottom: 20px;
+        }
+        .quick-item {
+            background: var(--bg-card); border-radius: var(--radius-sm);
+            padding: 14px 8px; text-align: center; cursor: pointer;
+            border: 1px solid var(--border); transition: all 0.2s;
+        }
+        .quick-item:active { transform: scale(0.95); background: var(--bg-card-hover); }
+        .quick-icon {
+            width: 40px; height: 40px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 8px; font-size: 18px;
+        }
+        .qi-green { background: var(--green-bg); color: var(--green); }
+        .qi-blue { background: var(--blue-bg); color: var(--blue); }
+        .qi-yellow { background: var(--yellow-bg); color: var(--yellow); }
+        .qi-red { background: var(--red-bg); color: var(--red); }
+        .qi-purple { background: rgba(108,92,231,0.12); color: var(--accent-2); }
+        .quick-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+
+        /* ═══ SECTION HEADERS ═══ */
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .section-title { font-size: 16px; font-weight: 800; }
+        .section-more { font-size: 12px; color: var(--accent); font-weight: 600; cursor: pointer; }
+
+        /* ═══ AI SIGNALS CARDS ═══ */
+        .signal-card {
+            background: var(--bg-card); border-radius: var(--radius);
+            padding: 16px; margin-bottom: 10px;
+            border: 1px solid var(--border);
+            display: flex; align-items: center; gap: 12px;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .signal-card:active { background: var(--bg-card-hover); }
+        .signal-icon {
+            width: 44px; height: 44px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 14px; flex-shrink: 0;
+        }
+        .signal-icon.buy { background: var(--green-bg); color: var(--green); }
+        .signal-icon.sell { background: var(--red-bg); color: var(--red); }
+        .signal-icon.hold { background: var(--yellow-bg); color: var(--yellow); }
+        .signal-info { flex: 1; }
+        .signal-name { font-weight: 700; font-size: 14px; }
+        .signal-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .signal-right { text-align: right; }
+        .signal-price { font-weight: 700; font-size: 14px; }
+        .signal-pct { font-size: 12px; font-weight: 600; margin-top: 2px; }
+        .signal-pct.up { color: var(--green); }
+        .signal-pct.down { color: var(--red); }
+
+        /* ═══ MARKET OVERVIEW HORIZONTAL SCROLL ═══ */
+        .market-scroll {
+            display: flex; gap: 10px; overflow-x: auto;
+            padding-bottom: 8px; margin-bottom: 20px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .market-scroll::-webkit-scrollbar { display: none; }
+        .market-chip {
+            flex-shrink: 0; background: var(--bg-card);
+            border-radius: var(--radius-sm); padding: 12px 16px;
+            border: 1px solid var(--border); min-width: 140px;
+        }
+        .market-chip-name { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+        .market-chip-val { font-size: 16px; font-weight: 800; margin: 2px 0; }
+        .market-chip-change { font-size: 12px; font-weight: 600; }
+
+        /* ═══ WATCHLIST ═══ */
+        .watchlist-item {
+            background: var(--bg-card); border-radius: var(--radius-sm);
+            padding: 14px 16px; margin-bottom: 8px;
+            border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            cursor: pointer;
+        }
+        .wl-left { display: flex; align-items: center; gap: 10px; }
+        .wl-symbol { font-weight: 700; font-size: 14px; }
+        .wl-name { font-size: 11px; color: var(--text-muted); }
+        .wl-price { font-weight: 700; text-align: right; }
+        .wl-change { font-size: 12px; font-weight: 600; }
+
+        /* ═══ AI CHAT FLOATING ═══ */
+        .ai-fab {
+            position: fixed; bottom: 80px; right: 16px; z-index: 99;
+            width: 52px; height: 52px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 20px rgba(0, 212, 170, 0.3);
+            cursor: pointer; font-size: 22px; color: #fff;
+            border: none;
+        }
+        .ai-fab:active { transform: scale(0.9); }
+        .ai-fab .pulse {
+            position: absolute; width: 100%; height: 100%; border-radius: 50%;
+            background: var(--accent); animation: pulse 2s infinite; opacity: 0;
+        }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 0.4; } 100% { transform: scale(1.6); opacity: 0; } }
+
+        /* ═══ BOTTOM NAVIGATION ═══ */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+            background: rgba(10, 14, 23, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border);
+            display: flex; padding: 6px 0 env(safe-area-inset-bottom, 8px);
+        }
+        .nav-item {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; gap: 3px; padding: 8px 4px;
+            cursor: pointer; transition: all 0.2s;
+            background: none; border: none; color: var(--text-muted);
+            font-family: inherit;
+        }
+        .nav-item.active { color: var(--accent); }
+        .nav-item i { font-size: 20px; }
+        .nav-item span { font-size: 10px; font-weight: 600; }
+
+        /* ═══ PAGE SECTIONS ═══ */
+        .page-section { display: none; }
+        .page-section.active { display: block; }
+
+        /* ═══ TRADING PAGE ═══ */
+        .token-list-header {
+            display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .token-list-header::-webkit-scrollbar { display: none; }
+        .tab-chip {
+            flex-shrink: 0; padding: 8px 16px; border-radius: 20px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            font-size: 12px; font-weight: 600; color: var(--text-secondary);
+            cursor: pointer; white-space: nowrap;
+        }
+        .tab-chip.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+        .token-row {
+            display: flex; align-items: center; padding: 14px 0;
+            border-bottom: 1px solid var(--border); cursor: pointer;
+        }
+        .token-row:last-child { border: none; }
+        .token-logo {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: var(--bg-card); display: flex; align-items: center;
+            justify-content: center; font-weight: 800; font-size: 14px;
+            margin-right: 12px; flex-shrink: 0;
+        }
+        .token-info { flex: 1; }
+        .token-symbol { font-weight: 700; font-size: 14px; }
+        .token-fullname { font-size: 11px; color: var(--text-muted); }
+        .token-price-col { text-align: right; }
+        .token-price { font-weight: 700; font-size: 14px; }
+        .token-change-badge {
+            display: inline-block; padding: 3px 8px; border-radius: 6px;
+            font-size: 11px; font-weight: 700; margin-top: 2px;
+        }
+        .token-change-badge.up { background: var(--green-bg); color: var(--green); }
+        .token-change-badge.down { background: var(--red-bg); color: var(--red); }
+
+        /* ═══ WALLET PAGE ═══ */
+        .wallet-balance-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: var(--radius); padding: 24px; margin-bottom: 16px;
+            position: relative; overflow: hidden;
+        }
+        .wallet-balance-card::after {
+            content: ''; position: absolute; top: -30px; right: -30px;
+            width: 120px; height: 120px; border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+        }
+        .wb-label { font-size: 13px; opacity: 0.8; font-weight: 600; }
+        .wb-amount { font-size: 32px; font-weight: 900; margin: 4px 0 12px; }
+        .wb-actions { display: flex; gap: 10px; }
+        .wb-btn {
+            flex: 1; padding: 10px; border-radius: var(--radius-sm);
+            border: none; font-weight: 700; font-size: 13px;
+            cursor: pointer; display: flex; align-items: center;
+            justify-content: center; gap: 6px;
+        }
+        .wb-btn.dep { background: rgba(255,255,255,0.2); color: #fff; }
+        .wb-btn.wth { background: rgba(255,255,255,0.1); color: #fff; }
+
+        .tx-item {
+            display: flex; align-items: center; padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .tx-icon {
+            width: 38px; height: 38px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            margin-right: 12px; font-size: 16px; flex-shrink: 0;
+        }
+        .tx-icon.credit { background: var(--green-bg); color: var(--green); }
+        .tx-icon.debit { background: var(--red-bg); color: var(--red); }
+        .tx-info { flex: 1; }
+        .tx-type { font-weight: 600; font-size: 13px; }
+        .tx-date { font-size: 11px; color: var(--text-muted); }
+        .tx-amount { font-weight: 700; font-size: 14px; }
+
+        /* ═══ SIGNALS PAGE ═══ */
+        .signal-big-card {
+            background: var(--bg-card); border-radius: var(--radius);
+            padding: 20px; margin-bottom: 12px;
+            border: 1px solid var(--border);
+        }
+        .signal-big-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .signal-big-symbol { font-size: 20px; font-weight: 800; }
+        .signal-big-type {
+            padding: 4px 12px; border-radius: 20px;
+            font-size: 12px; font-weight: 700;
+        }
+        .signal-big-type.buy { background: var(--green-bg); color: var(--green); }
+        .signal-big-type.sell { background: var(--red-bg); color: var(--red); }
+        .signal-levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+        .signal-level { text-align: center; }
+        .signal-level-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+        .signal-level-val { font-size: 16px; font-weight: 800; margin-top: 2px; }
+        .signal-level-val.entry { color: var(--blue); }
+        .signal-level-val.target { color: var(--green); }
+        .signal-level-val.sl { color: var(--red); }
+        .signal-confidence {
+            margin-top: 12px; padding-top: 12px;
+            border-top: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .confidence-bar { flex: 1; height: 6px; background: var(--bg-primary); border-radius: 3px; margin: 0 12px; }
+        .confidence-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--red), var(--yellow), var(--green)); }
+        .confidence-pct { font-weight: 700; font-size: 14px; color: var(--green); }
+
+        /* ═══ AI CHAT PANEL ═══ */
+        .chat-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 200;
+            background: var(--bg-primary);
+            display: none; flex-direction: column;
+        }
+        .chat-overlay.open { display: flex; }
+        .chat-header {
+            padding: 14px 16px; display: flex; align-items: center;
+            gap: 12px; border-bottom: 1px solid var(--border);
+            background: rgba(10,14,23,0.95); backdrop-filter: blur(20px);
+        }
+        .chat-close {
+            width: 32px; height: 32px; border-radius: 8px;
+            background: var(--bg-card); border: none; color: var(--text-primary);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 16px;
+        }
+        .chat-title { font-weight: 700; }
+        .chat-status { font-size: 11px; color: var(--accent); }
+        .chat-messages {
+            flex: 1; overflow-y: auto; padding: 16px;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        .chat-msg {
+            max-width: 85%; padding: 12px 16px;
+            border-radius: 16px; font-size: 14px; line-height: 1.5;
+        }
+        .chat-msg.bot {
+            background: var(--bg-card); align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        .chat-msg.user {
+            background: linear-gradient(135deg, var(--accent), #00b894);
+            color: #000; align-self: flex-end;
+            border-bottom-right-radius: 4px; font-weight: 500;
+        }
+        .chat-msg.typing { opacity: 0.7; }
+        .chat-input-area {
+            padding: 12px 16px; border-top: 1px solid var(--border);
+            display: flex; gap: 8px; background: var(--bg-secondary);
+        }
+        .chat-input {
+            flex: 1; padding: 12px 16px; border-radius: 24px;
+            border: 1px solid var(--border); background: var(--bg-card);
+            color: var(--text-primary); font-size: 14px;
+            font-family: inherit; outline: none;
+        }
+        .chat-input:focus { border-color: var(--accent); }
+        .chat-send {
+            width: 44px; height: 44px; border-radius: 50%;
+            background: var(--accent); border: none; color: #000;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 18px;
+        }
+
+        /* ═══ DETAIL MODAL ═══ */
+        .detail-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 150;
+            background: var(--bg-primary); display: none; flex-direction: column;
+        }
+        .detail-overlay.open { display: flex; }
+        .detail-header {
+            padding: 14px 16px; display: flex; align-items: center;
+            gap: 12px; border-bottom: 1px solid var(--border);
+        }
+        .detail-back {
+            width: 32px; height: 32px; border-radius: 8px;
+            background: var(--bg-card); border: none; color: var(--text-primary);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        }
+        .detail-content { flex: 1; overflow-y: auto; padding: 16px; }
+
+        /* ═══ LOADING ═══ */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: var(--radius-sm);
+        }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .loading-spinner {
+            display: inline-block; width: 20px; height: 20px;
+            border: 2px solid var(--border); border-top-color: var(--accent);
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ═══ SEARCH BAR ═══ */
+        .search-bar {
+            display: flex; align-items: center; gap: 8px;
+            background: var(--bg-card); border-radius: var(--radius-sm);
+            padding: 10px 14px; margin-bottom: 14px;
+            border: 1px solid var(--border);
+        }
+        .search-bar i { color: var(--text-muted); }
+        .search-bar input {
+            flex: 1; background: none; border: none;
+            color: var(--text-primary); font-size: 14px;
+            font-family: inherit; outline: none;
+        }
+
+        /* ═══ PROFILE PAGE ═══ */
+        .profile-card {
+            background: var(--bg-card); border-radius: var(--radius);
+            padding: 24px; text-align: center; margin-bottom: 16px;
+            border: 1px solid var(--border);
+        }
+        .profile-avatar {
+            width: 72px; height: 72px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 12px; font-size: 28px; font-weight: 800;
+        }
+        .profile-name { font-size: 20px; font-weight: 800; }
+        .profile-tier {
+            display: inline-block; padding: 4px 12px; border-radius: 20px;
+            font-size: 11px; font-weight: 700; margin-top: 6px;
+            background: var(--accent-glow); color: var(--accent);
+        }
+        .settings-group { margin-bottom: 16px; }
+        .settings-group-title { font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px; }
+        .settings-item {
+            display: flex; align-items: center; padding: 14px 16px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            margin-bottom: 2px; cursor: pointer; gap: 12px;
+        }
+        .settings-item:first-child { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+        .settings-item:last-child { border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+        .settings-item:only-child { border-radius: var(--radius-sm); }
+        .settings-item i { width: 20px; text-align: center; color: var(--text-muted); }
+        .settings-item span { flex: 1; font-weight: 500; font-size: 14px; }
+        .settings-item .arrow { color: var(--text-muted); }
+
+        /* ═══ EMPTY/ERROR STATES ═══ */
+        .empty-state {
+            text-align: center; padding: 40px 20px;
+        }
+        .empty-state i { font-size: 48px; color: var(--text-muted); margin-bottom: 12px; }
+        .empty-state h3 { font-size: 16px; margin-bottom: 4px; }
+        .empty-state p { font-size: 13px; color: var(--text-muted); }
+
+        /* ═══ AIRDROP CARD ═══ */
+        .airdrop-card {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: var(--radius); padding: 16px;
+            margin-bottom: 10px; border: 1px solid rgba(108, 92, 231, 0.2);
+            cursor: pointer;
+        }
+        .airdrop-header { display: flex; justify-content: space-between; align-items: center; }
+        .airdrop-name { font-weight: 700; font-size: 15px; }
+        .airdrop-est { font-size: 12px; color: var(--accent); font-weight: 600; }
+        .airdrop-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        .airdrop-status {
+            display: inline-block; padding: 3px 10px; border-radius: 12px;
+            font-size: 11px; font-weight: 700; margin-top: 8px;
+        }
+        .airdrop-status.live { background: var(--green-bg); color: var(--green); }
+        .airdrop-status.upcoming { background: var(--yellow-bg); color: var(--yellow); }
+
+        /* ═══ RISK METER ═══ */
+        .risk-meter {
+            background: var(--bg-card); border-radius: var(--radius);
+            padding: 20px; margin-bottom: 16px; border: 1px solid var(--border);
+        }
+        .risk-gauge {
+            height: 8px; background: var(--bg-primary); border-radius: 4px;
+            margin: 12px 0; overflow: hidden;
+        }
+        .risk-gauge-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+        .risk-labels { display: flex; justify-content: space-between; }
+        .risk-labels span { font-size: 10px; color: var(--text-muted); font-weight: 600; }
+
+        /* ═══ RESPONSIVE ═══ */
+        @media (max-width: 360px) {
+            .quick-grid { grid-template-columns: repeat(3, 1fr); }
+            .portfolio-value { font-size: 28px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ═══ HEADER ═══ -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="header-logo">J</div>
+            <div>
+                <div class="header-title">JARVIS</div>
+                <div class="header-subtitle">AI Trading Pro</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="header-btn" onclick="openSearch()" style="position:relative">
+                <i class="fas fa-search"></i>
+            </button>
+            <button class="header-btn" onclick="showNotifications()" style="position:relative">
+                <i class="fas fa-bell"></i>
+                <div class="notif-badge" id="notifBadge" style="display:none">0</div>
+            </button>
+        </div>
+    </header>
+
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <main class="main-content">
+
+        <!-- ═══ HOME PAGE ═══ -->
+        <div id="page-home" class="page-section active">
+            <!-- Portfolio Hero -->
+            <div class="portfolio-hero">
+                <div class="portfolio-label">Total Portfolio</div>
+                <div class="portfolio-value" id="portfolioValue">₹0.00</div>
+                <div class="portfolio-change up" id="portfolioChange">
+                    <i class="fas fa-arrow-up"></i> <span>+0.00%</span>
+                </div>
+                <div class="portfolio-actions">
+                    <button class="pa-btn deposit" onclick="navigateTo('wallet'); showDeposit()">
+                        <i class="fas fa-plus"></i> Deposit
+                    </button>
+                    <button class="pa-btn withdraw" onclick="navigateTo('wallet'); showWithdraw()">
+                        <i class="fas fa-arrow-up-from-bracket"></i> Withdraw
+                    </button>
+                    <button class="pa-btn trade" onclick="navigateTo('trading')">
+                        <i class="fas fa-bolt"></i> Trade
+                    </button>
+                </div>
+            </div>
+
+            <!-- Market Ticker -->
+            <div class="market-scroll" id="marketTicker">
+                <div class="market-chip skeleton" style="height:70px;width:140px"></div>
+                <div class="market-chip skeleton" style="height:70px;width:140px"></div>
+                <div class="market-chip skeleton" style="height:70px;width:140px"></div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-grid">
+                <div class="quick-item" onclick="navigateTo('signals')">
+                    <div class="quick-icon qi-green"><i class="fas fa-bolt"></i></div>
+                    <div class="quick-label">AI Signals</div>
+                </div>
+                <div class="quick-item" onclick="navigateTo('trading')">
+                    <div class="quick-icon qi-blue"><i class="fas fa-chart-line"></i></div>
+                    <div class="quick-label">Markets</div>
+                </div>
+                <div class="quick-item" onclick="showScreener()">
+                    <div class="quick-icon qi-yellow"><i class="fas fa-filter"></i></div>
+                    <div class="quick-label">Screener</div>
+                </div>
+                <div class="quick-item" onclick="showAirdrops()">
+                    <div class="quick-icon qi-purple"><i class="fas fa-gift"></i></div>
+                    <div class="quick-label">Airdrops</div>
+                </div>
+                <div class="quick-item" onclick="showOptions()">
+                    <div class="quick-icon qi-red"><i class="fas fa-layer-group"></i></div>
+                    <div class="quick-label">Options</div>
+                </div>
+                <div class="quick-item" onclick="showRisk()">
+                    <div class="quick-icon qi-yellow"><i class="fas fa-shield-halved"></i></div>
+                    <div class="quick-label">Risk</div>
+                </div>
+                <div class="quick-item" onclick="showSentiment()">
+                    <div class="quick-icon qi-blue"><i class="fas fa-brain"></i></div>
+                    <div class="quick-label">Sentiment</div>
+                </div>
+                <div class="quick-item" onclick="navigateTo('profile')">
+                    <div class="quick-icon qi-green"><i class="fas fa-gear"></i></div>
+                    <div class="quick-label">Settings</div>
+                </div>
+            </div>
+
+            <!-- AI Signals -->
+            <div class="section-header">
+                <div class="section-title">🤖 Live AI Signals</div>
+                <div class="section-more" onclick="navigateTo('signals')">View All →</div>
+            </div>
+            <div id="homeSignals">
+                <div class="signal-card skeleton" style="height:70px"></div>
+                <div class="signal-card skeleton" style="height:70px"></div>
+            </div>
+
+            <!-- Top Movers -->
+            <div class="section-header" style="margin-top:20px">
+                <div class="section-title">🔥 Top Movers</div>
+                <div class="section-more" onclick="navigateTo('trading')">Markets →</div>
+            </div>
+            <div id="topMovers">
+                <div class="signal-card skeleton" style="height:70px"></div>
+                <div class="signal-card skeleton" style="height:70px"></div>
+            </div>
+        </div>
+
+        <!-- ═══ TRADING PAGE ═══ -->
+        <div id="page-trading" class="page-section">
+            <div class="search-bar">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Search coins, stocks..." id="tradingSearch" oninput="filterTokens(this.value)">
+            </div>
+            <div class="token-list-header">
+                <div class="tab-chip active" onclick="switchCategory(this, 'all')">All</div>
+                <div class="tab-chip" onclick="switchCategory(this, 'crypto')">Crypto</div>
+                <div class="tab-chip" onclick="switchCategory(this, 'stocks')">Stocks</div>
+                <div class="tab-chip" onclick="switchCategory(this, 'gainers')">🔥 Gainers</div>
+                <div class="tab-chip" onclick="switchCategory(this, 'losers')">📉 Losers</div>
+                <div class="tab-chip" onclick="switchCategory(this, 'gems')">💎 Gems</div>
+            </div>
+            <div id="tokenList">
+                <div class="skeleton" style="height:60px;margin-bottom:4px"></div>
+                <div class="skeleton" style="height:60px;margin-bottom:4px"></div>
+                <div class="skeleton" style="height:60px;margin-bottom:4px"></div>
+            </div>
+        </div>
+
+        <!-- ═══ SIGNALS PAGE ═══ -->
+        <div id="page-signals" class="page-section">
+            <div class="section-header">
+                <div class="section-title">⚡ Real-Time AI Signals</div>
+            </div>
+            <div class="token-list-header" style="margin-bottom:16px">
+                <div class="tab-chip active" onclick="switchSignalFilter(this, 'all')">All</div>
+                <div class="tab-chip" onclick="switchSignalFilter(this, 'buy')">🟢 Buy</div>
+                <div class="tab-chip" onclick="switchSignalFilter(this, 'sell')">🔴 Sell</div>
+                <div class="tab-chip" onclick="switchSignalFilter(this, 'crypto')">Crypto</div>
+                <div class="tab-chip" onclick="switchSignalFilter(this, 'stocks')">Stocks</div>
+            </div>
+            <!-- Risk Meter -->
+            <div class="risk-meter">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font-weight:700;font-size:14px">Market Regime</span>
+                    <span id="regimeLabel" style="font-size:13px;font-weight:700;color:var(--green)">Loading...</span>
+                </div>
+                <div class="risk-gauge">
+                    <div class="risk-gauge-fill" id="regimeGauge" style="width:50%;background:var(--yellow)"></div>
+                </div>
+                <div class="risk-labels">
+                    <span>Extreme Fear</span><span>Neutral</span><span>Extreme Greed</span>
+                </div>
+            </div>
+            <div id="signalsList">
+                <div class="skeleton" style="height:160px;margin-bottom:12px"></div>
+                <div class="skeleton" style="height:160px;margin-bottom:12px"></div>
+            </div>
+        </div>
+
+        <!-- ═══ WALLET PAGE ═══ -->
+        <div id="page-wallet" class="page-section">
+            <div class="wallet-balance-card">
+                <div class="wb-label">💰 Available Balance</div>
+                <div class="wb-amount" id="walletBalance">₹0.00</div>
+                <div class="wb-actions">
+                    <button class="wb-btn dep" onclick="showDeposit()">
+                        <i class="fas fa-qrcode"></i> Deposit
+                    </button>
+                    <button class="wb-btn wth" onclick="showWithdraw()">
+                        <i class="fas fa-building-columns"></i> Withdraw
+                    </button>
+                </div>
+            </div>
+
+            <!-- Holdings -->
+            <div class="section-header">
+                <div class="section-title">📊 Holdings</div>
+            </div>
+            <div id="holdingsList" style="margin-bottom:20px">
+                <div class="skeleton" style="height:60px;margin-bottom:4px"></div>
+            </div>
+
+            <!-- Transactions -->
+            <div class="section-header">
+                <div class="section-title">📋 Recent Transactions</div>
+            </div>
+            <div id="txList">
+                <div class="empty-state">
+                    <i class="fas fa-receipt"></i>
+                    <h3>No transactions yet</h3>
+                    <p>Make your first deposit to get started</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ PROFILE PAGE ═══ -->
+        <div id="page-profile" class="page-section">
+            <div class="profile-card">
+                <div class="profile-avatar" id="profileAvatar">U</div>
+                <div class="profile-name" id="profileName">User</div>
+                <div class="profile-tier" id="profileTier">FREE</div>
+            </div>
+            <div class="settings-group">
+                <div class="settings-group-title">Trading</div>
+                <div class="settings-item" onclick="showOptions()">
+                    <i class="fas fa-layer-group"></i>
+                    <span>Options Trading</span>
+                    <i class="fas fa-chevron-right arrow"></i>
+                </div>
+                <div class="settings-item" onclick="showScreener()">
+                    <i class="fas fa-filter"></i>
+                    <span>Stock Screener</span>
+                    <i class="fas fa-chevron-right arrow"></i>
+                </div>
+                <div class="settings-item" onclick="showAirdrops()">
+                    <i class="fas fa-gift"></i>
+                    <span>Airdrop Hunter</span>
+                    <i class="fas fa-chevron-right arrow"></i>
+                </div>
+            </div>
+            <div class="settings-group">
+                <div class="settings-group-title">Account</div>
+                <div class="settings-item" onclick="showPnLJournal()">
+                    <i class="fas fa-book"></i>
+                    <span>P&L Journal</span>
+                    <i class="fas fa-chevron-right arrow"></i>
+                </div>
+                <div class="settings-item" onclick="showTaxCalc()">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <span>Tax Calculator</span>
+                    <i class="fas fa-chevron-right arrow"></i>
+                </div>
+                <div class="settings-item">
+                    <i class="fas fa-bell"></i>
+                    <span>Notifications</span>
+                    <i class="fas fa-chevron-right arrow"></i>
+                </div>
+            </div>
+            <div class="settings-group">
+                <div class="settings-group-title">About</div>
+                <div class="settings-item">
+                    <i class="fas fa-shield-halved"></i>
+                    <span>Security</span>
+                    <i class="fas fa-chevron-right arrow"></i>
+                </div>
+                <div class="settings-item">
+                    <i class="fas fa-headset"></i>
+                    <span>Support</span>
+                    <i class="fas fa-chevron-right arrow"></i>
+                </div>
+                <div class="settings-item">
+                    <i class="fas fa-code"></i>
+                    <span>Version 2.0 — JARVIS AI</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ═══ AI CHAT FAB ═══ -->
+    <button class="ai-fab" onclick="openChat()">
+        <div class="pulse"></div>
+        <i class="fas fa-robot"></i>
+    </button>
+
+    <!-- ═══ BOTTOM NAVIGATION ═══ -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="navigateTo('home')">
+            <i class="fas fa-home"></i><span>Home</span>
+        </button>
+        <button class="nav-item" onclick="navigateTo('trading')">
+            <i class="fas fa-chart-line"></i><span>Markets</span>
+        </button>
+        <button class="nav-item" onclick="navigateTo('signals')">
+            <i class="fas fa-bolt"></i><span>Signals</span>
+        </button>
+        <button class="nav-item" onclick="navigateTo('wallet')">
+            <i class="fas fa-wallet"></i><span>Wallet</span>
+        </button>
+        <button class="nav-item" onclick="navigateTo('profile')">
+            <i class="fas fa-user"></i><span>Profile</span>
+        </button>
+    </nav>
+
+    <!-- ═══ AI CHAT OVERLAY ═══ -->
+    <div class="chat-overlay" id="chatOverlay">
+        <div class="chat-header">
+            <button class="chat-close" onclick="closeChat()"><i class="fas fa-arrow-left"></i></button>
+            <div>
+                <div class="chat-title">JARVIS AI</div>
+                <div class="chat-status">● Online — Ready to assist</div>
+            </div>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-msg bot">
+                👋 Hello! I'm <b>JARVIS</b>, your AI trading assistant.<br><br>
+                Ask me anything:<br>
+                • "Analyze NIFTY for tomorrow"<br>
+                • "Best crypto to buy now"<br>
+                • "Check RELIANCE signal"<br>
+                • "My portfolio P&L"<br>
+                • "Find budget options under ₹5"
+            </div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" class="chat-input" id="chatInput" placeholder="Ask JARVIS anything..." 
+                   onkeypress="if(event.key==='Enter')sendChat()">
+            <button class="chat-send" onclick="sendChat()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <!-- ═══ DETAIL OVERLAY ═══ -->
+    <div class="detail-overlay" id="detailOverlay">
+        <div class="detail-header">
+            <button class="detail-back" onclick="closeDetail()"><i class="fas fa-arrow-left"></i></button>
+            <div class="section-title" id="detailTitle">Details</div>
+        </div>
+        <div class="detail-content" id="detailContent"></div>
+    </div>
+
+    <script>
+    // ═══ TELEGRAM WEB APP INIT ═══
+    let tg = null, userId = null, userName = 'User', userTier = 'free';
+
+    function initTelegram() {
+        try {
+            tg = window.Telegram?.WebApp;
+            if (tg) {
+                tg.ready();
+                tg.expand();
+                tg.enableClosingConfirmation();
+                if (tg.themeParams?.bg_color) {
+                    document.documentElement.style.setProperty('--bg-primary', tg.themeParams.bg_color);
+                }
+                const user = tg.initDataUnsafe?.user;
+                if (user) {
+                    userId = user.id;
+                    userName = user.first_name || 'User';
+                }
+                console.log('✅ Telegram WebApp initialized', { userId, userName });
+            } else {
+                console.log('ℹ️ Running in standalone mode (not inside Telegram)');
+            }
+        } catch(e) {
+            console.warn('Telegram init error:', e);
+        }
+    }
+
+    // Try init immediately and also after a short delay (for async script)
+    initTelegram();
+    setTimeout(initTelegram, 500);
+
+    // ═══ CONFIG ═══
+    const API_BASE = window.location.origin;
+    let allTokens = [];
+    let allSignals = [];
+    let refreshInterval;
+
+    // ═══ INIT ═══
+    document.addEventListener('DOMContentLoaded', () => {
+        initTelegram();
+        updateProfile();
+        loadDashboard();
+        refreshInterval = setInterval(loadDashboard, 30000); // refresh every 30s
+    });
+
+    // ═══ NAVIGATION ═══
+    function navigateTo(page) {
+        document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+        document.getElementById('page-' + page).classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.nav-item')[['home','trading','signals','wallet','profile'].indexOf(page)]?.classList.add('active');
+        
+        if (page === 'trading') loadMarkets();
+        if (page === 'signals') loadSignals();
+        if (page === 'wallet') loadWallet();
+        window.scrollTo(0, 0);
+    }
+
+    // ═══ DASHBOARD ═══
+    async function loadDashboard() {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 10000);
+            
+            const resp = await fetch(`${API_BASE}/api/miniapp/dashboard?user_id=${userId || ''}`, {
+                signal: controller.signal
+            });
+            clearTimeout(timeout);
+            
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+
+            // Portfolio
+            document.getElementById('portfolioValue').textContent = '₹' + formatNum(data.portfolio?.total || 0);
+            const change = data.portfolio?.change_pct || 0;
+            const changeEl = document.getElementById('portfolioChange');
+            changeEl.className = 'portfolio-change ' + (change >= 0 ? 'up' : 'down');
+            changeEl.innerHTML = `<i class="fas fa-arrow-${change >= 0 ? 'up' : 'down'}"></i> <span>${change >= 0 ? '+' : ''}${change.toFixed(2)}%</span>`;
+
+            // Market ticker
+            renderMarketTicker(data.markets || []);
+
+            // AI Signals
+            renderHomeSignals(data.signals || []);
+
+            // Top movers
+            renderTopMovers(data.top_movers || []);
+
+            // Notifications
+            const notifs = data.notifications || 0;
+            const badge = document.getElementById('notifBadge');
+            if (notifs > 0) { badge.style.display = 'flex'; badge.textContent = notifs; }
+            else { badge.style.display = 'none'; }
+
+        } catch(e) {
+            console.error('Dashboard error:', e);
+            renderFallbackDashboard();
+        }
+    }
+
+    function renderFallbackDashboard() {
+        // Show offline-friendly data
+        document.getElementById('marketTicker').innerHTML = `
+            <div class="market-chip"><div class="market-chip-name">NIFTY 50</div><div class="market-chip-val">--</div><div class="market-chip-change" style="color:var(--text-muted)">Loading...</div></div>
+            <div class="market-chip"><div class="market-chip-name">SENSEX</div><div class="market-chip-val">--</div><div class="market-chip-change" style="color:var(--text-muted)">Loading...</div></div>
+            <div class="market-chip"><div class="market-chip-name">BTC/INR</div><div class="market-chip-val">--</div><div class="market-chip-change" style="color:var(--text-muted)">Loading...</div></div>
+        `;
+        document.getElementById('homeSignals').innerHTML = `<div class="empty-state"><i class="fas fa-plug"></i><h3>Connecting to JARVIS AI...</h3><p>Pull down to refresh</p></div>`;
+        document.getElementById('topMovers').innerHTML = '';
+    }
+
+    function renderMarketTicker(markets) {
+        document.getElementById('marketTicker').innerHTML = markets.map(m => `
+            <div class="market-chip">
+                <div class="market-chip-name">${m.name}</div>
+                <div class="market-chip-val">${m.symbol === 'BTC' ? '₿' : '₹'}${formatNum(m.price)}</div>
+                <div class="market-chip-change" style="color:${m.change >= 0 ? 'var(--green)' : 'var(--red)'}">
+                    ${m.change >= 0 ? '▲' : '▼'} ${Math.abs(m.change).toFixed(2)}%
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderHomeSignals(signals) {
+        if (!signals.length) {
+            document.getElementById('homeSignals').innerHTML = `<div class="empty-state"><i class="fas fa-satellite-dish"></i><h3>Scanning markets...</h3><p>AI signals will appear here</p></div>`;
+            return;
+        }
+        document.getElementById('homeSignals').innerHTML = signals.slice(0, 3).map(s => `
+            <div class="signal-card" onclick="showSignalDetail('${s.symbol}')">
+                <div class="signal-icon ${s.action?.toLowerCase() || 'hold'}">${s.action === 'BUY' ? '🟢' : s.action === 'SELL' ? '🔴' : '🟡'}</div>
+                <div class="signal-info">
+                    <div class="signal-name">${s.symbol}</div>
+                    <div class="signal-meta">${s.action} • Confidence: ${s.confidence || 0}%</div>
+                </div>
+                <div class="signal-right">
+                    <div class="signal-price">₹${formatNum(s.price || 0)}</div>
+                    <div class="signal-pct ${(s.change || 0) >= 0 ? 'up' : 'down'}">${(s.change || 0) >= 0 ? '+' : ''}${(s.change || 0).toFixed(2)}%</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderTopMovers(movers) {
+        if (!movers.length) { document.getElementById('topMovers').innerHTML = ''; return; }
+        document.getElementById('topMovers').innerHTML = movers.slice(0, 3).map(m => `
+            <div class="signal-card" onclick="showTokenDetail('${m.symbol}')">
+                <div class="token-logo">${(m.symbol || '?')[0]}</div>
+                <div class="signal-info">
+                    <div class="signal-name">${m.symbol}</div>
+                    <div class="signal-meta">${m.name || m.symbol}</div>
+                </div>
+                <div class="signal-right">
+                    <div class="signal-price">₹${formatNum(m.price || 0)}</div>
+                    <div class="signal-pct ${(m.change || 0) >= 0 ? 'up' : 'down'}">${(m.change || 0) >= 0 ? '+' : ''}${(m.change || 0).toFixed(2)}%</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // ═══ MARKETS ═══
+    async function loadMarkets() {
+        try {
+            const resp = await fetch(`${API_BASE}/api/miniapp/markets`);
+            const data = await resp.json();
+            allTokens = data.tokens || [];
+            renderTokenList(allTokens);
+        } catch(e) {
+            console.error('Markets error:', e);
+            document.getElementById('tokenList').innerHTML = `<div class="empty-state"><i class="fas fa-chart-line"></i><h3>Loading markets...</h3><p>Connecting to price feeds</p></div>`;
+        }
+    }
+
+    function renderTokenList(tokens) {
+        if (!tokens.length) {
+            document.getElementById('tokenList').innerHTML = `<div class="empty-state"><i class="fas fa-search"></i><h3>No results</h3></div>`;
+            return;
+        }
+        document.getElementById('tokenList').innerHTML = tokens.map(t => `
+            <div class="token-row" onclick="showTokenDetail('${t.symbol}')">
+                <div class="token-logo" style="background:${t.color || 'var(--bg-card)'}">${(t.symbol || '?')[0]}</div>
+                <div class="token-info">
+                    <div class="token-symbol">${t.symbol}</div>
+                    <div class="token-fullname">${t.name || ''}</div>
+                </div>
+                <div class="token-price-col">
+                    <div class="token-price">₹${formatNum(t.price || 0)}</div>
+                    <span class="token-change-badge ${(t.change || 0) >= 0 ? 'up' : 'down'}">${(t.change || 0) >= 0 ? '+' : ''}${(t.change || 0).toFixed(2)}%</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function filterTokens(q) {
+        const filtered = allTokens.filter(t => 
+            t.symbol?.toLowerCase().includes(q.toLowerCase()) || 
+            t.name?.toLowerCase().includes(q.toLowerCase())
+        );
+        renderTokenList(filtered);
+    }
+
+    function switchCategory(el, cat) {
+        el.parentElement.querySelectorAll('.tab-chip').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        let filtered = allTokens;
+        if (cat === 'crypto') filtered = allTokens.filter(t => t.type === 'crypto');
+        else if (cat === 'stocks') filtered = allTokens.filter(t => t.type === 'stock');
+        else if (cat === 'gainers') filtered = [...allTokens].sort((a,b) => (b.change||0) - (a.change||0)).slice(0, 20);
+        else if (cat === 'losers') filtered = [...allTokens].sort((a,b) => (a.change||0) - (b.change||0)).slice(0, 20);
+        else if (cat === 'gems') filtered = allTokens.filter(t => t.is_gem);
+        renderTokenList(filtered);
+    }
+
+    // ═══ SIGNALS ═══
+    async function loadSignals() {
+        try {
+            const resp = await fetch(`${API_BASE}/api/miniapp/signals`);
+            const data = await resp.json();
+            allSignals = data.signals || [];
+            
+            // Market regime
+            const regime = data.regime || {};
+            document.getElementById('regimeLabel').textContent = regime.name || 'Neutral';
+            document.getElementById('regimeLabel').style.color = regime.color || 'var(--yellow)';
+            const gauge = document.getElementById('regimeGauge');
+            gauge.style.width = (regime.score || 50) + '%';
+            gauge.style.background = regime.color || 'var(--yellow)';
+
+            renderSignalsList(allSignals);
+        } catch(e) {
+            console.error('Signals error:', e);
+            document.getElementById('signalsList').innerHTML = `<div class="empty-state"><i class="fas fa-satellite-dish"></i><h3>Loading signals...</h3></div>`;
+        }
+    }
+
+    function renderSignalsList(signals) {
+        if (!signals.length) {
+            document.getElementById('signalsList').innerHTML = `<div class="empty-state"><i class="fas fa-radar"></i><h3>No signals right now</h3><p>JARVIS AI is scanning the markets</p></div>`;
+            return;
+        }
+        document.getElementById('signalsList').innerHTML = signals.map(s => `
+            <div class="signal-big-card" onclick="showSignalDetail('${s.symbol}')">
+                <div class="signal-big-header">
+                    <div>
+                        <div class="signal-big-symbol">${s.symbol}</div>
+                        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${s.timeframe || '1D'} • ${s.source || 'AI Multi-Model'}</div>
+                    </div>
+                    <div class="signal-big-type ${s.action?.toLowerCase() || 'hold'}">${s.action || 'HOLD'}</div>
+                </div>
+                <div class="signal-levels">
+                    <div class="signal-level">
+                        <div class="signal-level-label">Entry</div>
+                        <div class="signal-level-val entry">₹${formatNum(s.entry || 0)}</div>
+                    </div>
+                    <div class="signal-level">
+                        <div class="signal-level-label">Target</div>
+                        <div class="signal-level-val target">₹${formatNum(s.target || 0)}</div>
+                    </div>
+                    <div class="signal-level">
+                        <div class="signal-level-label">Stop Loss</div>
+                        <div class="signal-level-val sl">₹${formatNum(s.sl || 0)}</div>
+                    </div>
+                </div>
+                <div class="signal-confidence">
+                    <span style="font-size:12px;color:var(--text-muted)">AI Confidence</span>
+                    <div class="confidence-bar"><div class="confidence-fill" style="width:${s.confidence || 50}%"></div></div>
+                    <span class="confidence-pct">${s.confidence || 50}%</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function switchSignalFilter(el, filter) {
+        el.parentElement.querySelectorAll('.tab-chip').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        let filtered = allSignals;
+        if (filter === 'buy') filtered = allSignals.filter(s => s.action === 'BUY');
+        else if (filter === 'sell') filtered = allSignals.filter(s => s.action === 'SELL');
+        else if (filter === 'crypto') filtered = allSignals.filter(s => s.type === 'crypto');
+        else if (filter === 'stocks') filtered = allSignals.filter(s => s.type === 'stock');
+        renderSignalsList(filtered);
+    }
+
+    // ═══ WALLET ═══
+    async function loadWallet() {
+        try {
+            const resp = await fetch(`${API_BASE}/api/miniapp/wallet?user_id=${userId || ''}`);
+            const data = await resp.json();
+            
+            document.getElementById('walletBalance').textContent = '₹' + formatNum(data.balance || 0);
+            
+            // Holdings
+            renderHoldings(data.holdings || []);
+            
+            // Transactions
+            renderTransactions(data.transactions || []);
+        } catch(e) {
+            console.error('Wallet error:', e);
+        }
+    }
+
+    function renderHoldings(holdings) {
+        if (!holdings.length) {
+            document.getElementById('holdingsList').innerHTML = `<div class="empty-state" style="padding:20px"><i class="fas fa-coins"></i><h3>No holdings yet</h3><p>Start trading to build your portfolio</p></div>`;
+            return;
+        }
+        document.getElementById('holdingsList').innerHTML = holdings.map(h => `
+            <div class="watchlist-item">
+                <div class="wl-left">
+                    <div class="token-logo" style="width:36px;height:36px;font-size:12px">${(h.symbol||'?')[0]}</div>
+                    <div>
+                        <div class="wl-symbol">${h.symbol}</div>
+                        <div class="wl-name">${h.qty} units</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="wl-price">₹${formatNum(h.value || 0)}</div>
+                    <div class="wl-change" style="color:${(h.pnl||0) >= 0 ? 'var(--green)' : 'var(--red)'}">${(h.pnl||0) >= 0 ? '+' : ''}₹${formatNum(h.pnl || 0)}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderTransactions(txs) {
+        if (!txs.length) {
+            document.getElementById('txList').innerHTML = `<div class="empty-state"><i class="fas fa-receipt"></i><h3>No transactions</h3><p>Make your first deposit</p></div>`;
+            return;
+        }
+        document.getElementById('txList').innerHTML = txs.map(tx => `
+            <div class="tx-item">
+                <div class="tx-icon ${tx.type === 'deposit' || tx.type === 'admin_credit' ? 'credit' : 'debit'}">
+                    <i class="fas fa-${tx.type === 'deposit' || tx.type === 'admin_credit' ? 'arrow-down' : 'arrow-up'}"></i>
+                </div>
+                <div class="tx-info">
+                    <div class="tx-type">${tx.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+                    <div class="tx-date">${tx.date || 'Recent'}</div>
+                </div>
+                <div class="tx-amount" style="color:${tx.type === 'deposit' || tx.type === 'admin_credit' ? 'var(--green)' : 'var(--red)'}">
+                    ${tx.type === 'deposit' || tx.type === 'admin_credit' ? '+' : '-'}₹${formatNum(tx.amount || 0)}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function showDeposit() {
+        openDetail('💰 Deposit Funds', `
+            <div style="text-align:center;padding:20px 0">
+                <div style="font-size:48px;margin-bottom:16px">📱</div>
+                <h3 style="margin-bottom:8px">UPI Deposit</h3>
+                <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Scan QR or enter amount to generate payment link</p>
+                <input type="number" id="depositAmount" placeholder="Enter amount (₹100 - ₹5,00,000)" 
+                    style="width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:16px;font-family:inherit;text-align:center;margin-bottom:12px">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:20px">
+                    <button onclick="document.getElementById('depositAmount').value=500" style="padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);cursor:pointer;font-family:inherit">₹500</button>
+                    <button onclick="document.getElementById('depositAmount').value=1000" style="padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);cursor:pointer;font-family:inherit">₹1,000</button>
+                    <button onclick="document.getElementById('depositAmount').value=5000" style="padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);cursor:pointer;font-family:inherit">₹5,000</button>
+                    <button onclick="document.getElementById('depositAmount').value=10000" style="padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);cursor:pointer;font-family:inherit">₹10,000</button>
+                </div>
+                <button onclick="processDeposit()" style="width:100%;padding:14px;border-radius:12px;border:none;background:var(--accent);color:#000;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit">
+                    Generate UPI QR Code
+                </button>
+            </div>
+        `);
+    }
+
+    function showWithdraw() {
+        openDetail('🏦 Withdraw Funds', `
+            <div style="padding:20px 0">
+                <div style="text-align:center;margin-bottom:20px">
+                    <div style="font-size:48px;margin-bottom:8px">🏦</div>
+                    <p style="color:var(--text-muted);font-size:13px">Withdraw to your bank account (1-24 hrs)</p>
+                </div>
+                <input type="number" id="withdrawAmount" placeholder="Enter amount" 
+                    style="width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:16px;font-family:inherit;text-align:center;margin-bottom:12px">
+                <input type="text" id="withdrawBank" placeholder="Bank Account / UPI ID" 
+                    style="width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:14px;font-family:inherit;margin-bottom:16px">
+                <button onclick="processWithdraw()" style="width:100%;padding:14px;border-radius:12px;border:none;background:var(--red);color:#fff;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit">
+                    Request Withdrawal
+                </button>
+            </div>
+        `);
+    }
+
+    async function processDeposit() {
+        const amount = document.getElementById('depositAmount')?.value;
+        if (!amount || amount < 100) { alert('Minimum deposit is ₹100'); return; }
+        try {
+            const resp = await fetch(`${API_BASE}/api/miniapp/deposit`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ user_id: userId, amount: parseFloat(amount) })
+            });
+            const data = await resp.json();
+            if (data.qr_url) {
+                document.getElementById('detailContent').innerHTML = `
+                    <div style="text-align:center;padding:20px">
+                        <img src="${data.qr_url}" style="width:200px;height:200px;border-radius:12px;margin-bottom:16px">
+                        <h3>Scan to Pay ₹${formatNum(amount)}</h3>
+                        <p style="color:var(--text-muted);margin-top:8px">After payment, enter UTR number below</p>
+                        <input type="text" id="utrInput" placeholder="Enter UTR/Reference number" 
+                            style="width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:14px;font-family:inherit;margin-top:12px">
+                        <button onclick="verifyDeposit('${amount}')" style="width:100%;padding:14px;border-radius:12px;border:none;background:var(--accent);color:#000;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit;margin-top:12px">
+                            Verify Payment
+                        </button>
+                    </div>`;
+            } else {
+                alert(data.message || 'Deposit request submitted. Admin will verify.');
+            }
+        } catch(e) {
+            alert('Deposit request submitted. Please share UTR with admin.');
+            if (tg) tg.sendData(JSON.stringify({action: 'deposit_request', amount: parseFloat(amount), user_id: userId}));
+        }
+    }
+
+    async function processWithdraw() {
+        const amount = document.getElementById('withdrawAmount')?.value;
+        const bank = document.getElementById('withdrawBank')?.value;
+        if (!amount) { alert('Enter withdrawal amount'); return; }
+        try {
+            const resp = await fetch(`${API_BASE}/api/miniapp/withdraw`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ user_id: userId, amount: parseFloat(amount), bank: bank })
+            });
+            const data = await resp.json();
+            alert(data.message || 'Withdrawal request submitted!');
+            closeDetail();
+            loadWallet();
+        } catch(e) {
+            alert('Withdrawal request submitted!');
+            if (tg) tg.sendData(JSON.stringify({action: 'withdraw_request', amount: parseFloat(amount), user_id: userId}));
+            closeDetail();
+        }
+    }
+
+    // ═══ DETAIL PAGES ═══
+    async function showSignalDetail(symbol) {
+        openDetail(`📊 ${symbol} Analysis`, `<div style="text-align:center;padding:40px"><div class="loading-spinner"></div><p style="margin-top:12px;color:var(--text-muted)">AI analyzing ${symbol}...</p></div>`);
+        try {
+            const resp = await fetch(`${API_BASE}/api/miniapp/analyze?symbol=${symbol}`);
+            const data = await resp.json();
+            document.getElementById('detailContent').innerHTML = `
+                <div style="margin-bottom:16px">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <h2 style="font-size:24px">${symbol}</h2>
+                        <span class="signal-big-type ${(data.action||'hold').toLowerCase()}">${data.action || 'ANALYZING'}</span>
+                    </div>
+                    <div style="font-size:28px;font-weight:900;margin:8px 0">₹${formatNum(data.price || 0)}</div>
+                    <div style="color:${(data.change||0) >= 0 ? 'var(--green)' : 'var(--red)'};font-weight:700">
+                        ${(data.change||0) >= 0 ? '▲' : '▼'} ${Math.abs(data.change||0).toFixed(2)}%
+                    </div>
+                </div>
+                ${data.entry ? `
+                <div class="signal-big-card" style="margin-bottom:12px">
+                    <div class="signal-levels">
+                        <div class="signal-level"><div class="signal-level-label">Entry</div><div class="signal-level-val entry">₹${formatNum(data.entry)}</div></div>
+                        <div class="signal-level"><div class="signal-level-label">Target</div><div class="signal-level-val target">₹${formatNum(data.target)}</div></div>
+                        <div class="signal-level"><div class="signal-level-label">Stop Loss</div><div class="signal-level-val sl">₹${formatNum(data.sl)}</div></div>
+                    </div>
+                </div>` : ''}
+                ${data.indicators ? `
+                <div class="signal-big-card" style="margin-bottom:12px">
+                    <div style="font-weight:700;margin-bottom:10px">📈 Technical Indicators</div>
+                    ${Object.entries(data.indicators).map(([k,v]) => `
+                        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+                            <span style="color:var(--text-muted)">${k}</span>
+                            <span style="font-weight:600">${v}</span>
+                        </div>
+                    `).join('')}
+                </div>` : ''}
+                ${data.ai_summary ? `
+                <div class="signal-big-card">
+                    <div style="font-weight:700;margin-bottom:8px">🤖 AI Analysis</div>
+                    <div style="font-size:13px;line-height:1.6;color:var(--text-secondary)">${data.ai_summary}</div>
+                </div>` : ''}
+            `;
+        } catch(e) {
+            document.getElementById('detailContent').innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Analysis unavailable</h3><p>Try again in a moment</p></div>`;
+        }
+    }
+
+    function showTokenDetail(symbol) { showSignalDetail(symbol); }
+
+    // ═══ SPECIAL PAGES ═══
+    async function showOptions() {
+        openDetail('📊 Options Trading', `<div style="text-align:center;padding:40px"><div class="loading-spinner"></div></div>`);
+        try {
+            const resp = await fetch(`${API_BASE}/api/miniapp/options`);
+            const data = await resp.json();
+            document.getElementById('detailContent').innerHTML = `
+                <div class="signal-big-card" style="margin-bottom:12px">
+                    <div style="font-weight:700;font-size:16px;margin-bottom:12px">NIFTY Options Intelligence</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                        <div style="text-align:center;padding:12px;background:var(--bg-primary);border-radius:10px">
+                            <div style="font-size:11px;color:var(--text-muted)">PCR</div>
+                            <div style="font-size:20px;font-weight:800">${data.pcr || '--'}</div>
+                        </div>
+                        <div style="text-align:center;padding:12px;background:var(--bg-primary);border-radius:10px">
+                            <div style="font-size:11px;color:var(--text-muted)">Max Pain</div>
+                            <div style="font-size:20px;font-weight:800">${data.max_pain || '--'}</div>
+                        </div>
+                        <div style="text-align:center;padding:12px;background:var(--bg-primary);border-radius:10px">
+                            <div style="font-size:11px;color:var(--text-muted)">India VIX</div>
+                            <div style="font-size:20px;font-weight:800">${data.vix || '--'}</div>
+                        </div>
+                        <div style="text-align:center;padding:12px;background:var(--bg-primary);border-radius:10px">
+                            <div style="font-size:11px;color:var(--text-muted)">Trend</div>
+                            <div style="font-size:20px;font-weight:800">${data.trend || '--'}</div>
+                        </div>
+                    </div>
+                </div>
+                ${(data.suggestions || []).map(s => `
+                    <div class="signal-big-card" style="margin-bottom:8px">
+                        <div style="display:flex;justify-content:space-between">
+                            <div>
+                                <div style="font-weight:700">${s.strike} ${s.type}</div>
+                                <div style="font-size:12px;color:var(--text-muted)">${s.expiry}</div>
+                            </div>
+                            <div style="text-align:right">
+                                <div style="font-weight:700">₹${s.ltp}</div>
+                                <div style="font-size:12px;color:var(--accent)">${s.recommendation}</div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+        } catch(e) {
+            document.getElementById('detailContent').innerHTML = `<div class="empty-state"><i class="fas fa-layer-group"></i><h3>Options data loading...</h3><p>Market hours: 9:15 AM - 3:30 PM IST</p></div>`;
+        }
+    }
+
+    async function showScreener() {
+        openDetail('🔍 Stock Screener', `
+            <div class="search-bar" style="margin-bottom:16px">
+                <i class="fas fa-search"></i>
+                <input type="text" id="screenerQuery" placeholder='Try "RSI below 30" or "volume breakout"' onkeypress="if(event.key==='Enter')runScreener()">
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+                <button onclick="runScreenerPreset('oversold')" class="tab-chip">Oversold (RSI<30)</button>
+                <button onclick="runScreenerPreset('overbought')" class="tab-chip">Overbought (RSI>70)</button>
+                <button onclick="runScreenerPreset('volume_breakout')" class="tab-chip">Volume Breakout</button>
+                <button onclick="runScreenerPreset('52w_high')" class="tab-chip">Near 52W High</button>
+                <button onclick="runScreenerPreset('bullish_crossover')" class="tab-chip">Bullish Crossover</button>
+            </div>
+            <div id="screenerResults"></div>
+        `);
+    }
+
+    async function runScreener() {
+        const query = document.getElementById('screenerQuery')?.value;
+        if (!query) return;
+        document.getElementById('screenerResults').innerHTML = `<div style="text-align:center;padding:20px"><div class="loading-spinner"></div></div>`;
+        try {
+            const resp = await fetch(`${API_BASE}/api/miniapp/screener?q=${encodeURIComponent(query)}`);
+            const data = await resp.json();
+            renderScreenerResults(data.results || []);
+        } catch(e) { document.getElementById('screenerResults').innerHTML = `<p style="color:var(--text-muted);text-align:center">Try again</p>`; }
+    }
+
+    async function runScreenerPreset(preset) {
+        document.getElementById('screenerResults').innerHTML = `<div style="text-align:center;padding:20px"><div class="loading-spinner"></div></div>`;
+        try {
+            const resp = await fetch(`${API_BASE}/api/miniapp/screener?preset=${preset}`);
+            const data = await resp.json();
+            renderScreenerResults(data.results || []);
+        } catch(e) { document.getElementById('screenerResults').innerHTML = `<p style="color:var(--text-muted);text-align:center">Loading...</p>`; }
+    }
+
+    function renderScreenerResults(results) {
+        if (!results.length) { document.getElementById('screenerResults').innerHTML = `<div class="empty-state"><h3>No matches</h3></div>`; return; }
+        document.getElementById('screenerResults').innerHTML = results.map(r => `
+            <div class="watchlist-item" onclick="showSignalDetail('${r.symbol}')">
+                <div class="wl-left">
+                    <div><div class="wl-symbol">${r.symbol}</div><div class="wl-name">${r.reason || ''}</div></div>
+                </div>
+                <div class="wl-price">₹${formatNum(r.price || 0)}</div>
+            </div>
+        `).join('');
+    }
+
+    async function showAirdrops() {
+        openDetail('🎁 Airdrop Hunter', `<div style="text-align:center;padding:40px"><div class="loading-spinner"></div></div>`);
+        try {
+            const resp = await fetch(`${API_BASE}/api/miniapp/airdrops`);
+            const data = await resp.json();
+            document.getElementById('detailContent').innerHTML = (data.airdrops || []).map(a => `
+                <div class="airdrop-card">
+                    <div class="airdrop-header">
+                        <div class="airdrop-name">${a.name}</div>
+                        <div class="airdrop-est">${a.est_value || 'TBD'}</div>
+                    </div>
+                    <div class="airdrop-meta">${a.chain || 'Multi-chain'} • ${a.category || 'DeFi'}</div>
+                    <div class="airdrop-status ${a.status || 'upcoming'}">${(a.status || 'upcoming').toUpperCase()}</div>
+                </div>
+            `).join('') || `<div class="empty-state"><i class="fas fa-gift"></i><h3>Scanning for airdrops...</h3></div>`;
+        } catch(e) { document.getElementById('detailContent').innerHTML = `<div class="empty-state"><i class="fas fa-gift"></i><h3>Airdrop scanner loading...</h3></div>`; }
+    }
+
+    async function showSentiment() {
+        openDetail('🧠 Market Sentiment', `<div style="text-align:center;padding:40px"><div class="loading-spinner"></div></div>`);
+        try {
+            const resp = await fetch(`${API_BASE}/api/miniapp/sentiment`);
+            const data = await resp.json();
+            document.getElementById('detailContent').innerHTML = `
+                <div class="risk-meter" style="margin-bottom:16px">
+                    <div style="text-align:center">
+                        <div style="font-size:48px;font-weight:900;color:${data.color || 'var(--yellow)'}">${data.score || 50}</div>
+                        <div style="font-weight:700;font-size:16px;margin-top:4px">${data.label || 'Neutral'}</div>
+                    </div>
+                    <div class="risk-gauge" style="margin-top:16px">
+                        <div class="risk-gauge-fill" style="width:${data.score || 50}%;background:${data.color || 'var(--yellow)'}"></div>
+                    </div>
+                    <div class="risk-labels"><span>Extreme Fear</span><span>Neutral</span><span>Extreme Greed</span></div>
+                </div>
+                ${(data.news || []).map(n => `
+                    <div style="padding:12px 0;border-bottom:1px solid var(--border)">
+                        <div style="font-weight:600;font-size:13px">${n.title}</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${n.source} • ${n.sentiment || 'neutral'}</div>
+                    </div>
+                `).join('')}
+            `;
+        } catch(e) { document.getElementById('detailContent').innerHTML = `<div class="empty-state"><i class="fas fa-brain"></i><h3>Loading sentiment...</h3></div>`; }
+    }
+
+    async function showRisk() {
+        openDetail('🛡️ Risk Manager', `<div style="text-align:center;padding:40px"><div class="loading-spinner"></div></div>`);
+        try {
+            const resp = await fetch(`${API_BASE}/api/miniapp/risk?user_id=${userId || ''}`);
+            const data = await resp.json();
+            document.getElementById('detailContent').innerHTML = `
+                <div class="signal-big-card" style="margin-bottom:12px">
+                    <div style="font-weight:700;margin-bottom:12px">Portfolio Risk Score</div>
+                    <div style="text-align:center">
+                        <div style="font-size:48px;font-weight:900;color:${data.risk_color || 'var(--yellow)'}">${data.risk_score || '--'}</div>
+                        <div style="color:var(--text-muted);font-size:13px">${data.risk_label || 'Moderate Risk'}</div>
+                    </div>
+                </div>
+                <div class="signal-big-card" style="margin-bottom:12px">
+                    <div style="font-weight:700;margin-bottom:10px">Position Sizing (Kelly)</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                        <div style="text-align:center;padding:12px;background:var(--bg-primary);border-radius:10px">
+                            <div style="font-size:11px;color:var(--text-muted)">Suggested Size</div>
+                            <div style="font-size:18px;font-weight:800">${data.position_size || '--'}%</div>
+                        </div>
+                        <div style="text-align:center;padding:12px;background:var(--bg-primary);border-radius:10px">
+                            <div style="font-size:11px;color:var(--text-muted)">Max Drawdown</div>
+                            <div style="font-size:18px;font-weight:800">${data.max_drawdown || '--'}%</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="signal-big-card">
+                    <div style="font-weight:700;margin-bottom:10px">Market Regime</div>
+                    <div style="font-size:14px;color:var(--text-secondary)">${data.regime_description || 'Analyzing market conditions...'}</div>
+                </div>
+            `;
+        } catch(e) { document.getElementById('detailContent').innerHTML = `<div class="empty-state"><i class="fas fa-shield-halved"></i><h3>Risk analysis loading...</h3></div>`; }
+    }
+
+    function showPnLJournal() {
+        openDetail('📖 P&L Journal', `<div class="empty-state"><i class="fas fa-book"></i><h3>P&L Journal</h3><p>Your trading journal will appear here as you trade</p></div>`);
+    }
+
+    function showTaxCalc() {
+        openDetail('🧾 Tax Calculator', `
+            <div style="padding:20px 0">
+                <div class="signal-big-card" style="margin-bottom:12px">
+                    <div style="font-weight:700;margin-bottom:4px">Indian Crypto Tax (Section 115BBH)</div>
+                    <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Flat 30% on crypto gains + 1% TDS</div>
+                    <input type="number" id="taxProfit" placeholder="Enter total crypto profit (₹)" 
+                        style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:14px;font-family:inherit;margin-bottom:10px">
+                    <button onclick="calcTax()" style="width:100%;padding:12px;border-radius:10px;border:none;background:var(--accent);color:#000;font-weight:700;cursor:pointer;font-family:inherit">Calculate Tax</button>
+                </div>
+                <div id="taxResult"></div>
+            </div>
+        `);
+    }
+
+    function calcTax() {
+        const profit = parseFloat(document.getElementById('taxProfit')?.value || 0);
+        const tax = profit * 0.30;
+        const cess = tax * 0.04;
+        const tds = profit * 0.01;
+        document.getElementById('taxResult').innerHTML = `
+            <div class="signal-big-card">
+                <div style="font-weight:700;margin-bottom:10px">Tax Breakdown</div>
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-muted)">Profit</span><span style="font-weight:600">₹${formatNum(profit)}</span></div>
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-muted)">Tax (30%)</span><span style="font-weight:600;color:var(--red)">₹${formatNum(tax)}</span></div>
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-muted)">Health Cess (4%)</span><span style="font-weight:600;color:var(--red)">₹${formatNum(cess)}</span></div>
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-muted)">TDS (1%)</span><span style="font-weight:600;color:var(--red)">₹${formatNum(tds)}</span></div>
+                <div style="display:flex;justify-content:space-between;padding:12px 0;font-weight:800;font-size:16px"><span>Net Profit</span><span style="color:var(--green)">₹${formatNum(profit - tax - cess)}</span></div>
+            </div>
+        `;
+    }
+
+    // ═══ AI CHAT ═══
+    function openChat() { document.getElementById('chatOverlay').classList.add('open'); document.getElementById('chatInput').focus(); }
+    function closeChat() { document.getElementById('chatOverlay').classList.remove('open'); }
+
+    async function sendChat() {
+        const input = document.getElementById('chatInput');
+        const msg = input.value.trim();
+        if (!msg) return;
+        input.value = '';
+
+        const msgs = document.getElementById('chatMessages');
+        msgs.innerHTML += `<div class="chat-msg user">${escHtml(msg)}</div>`;
+        msgs.innerHTML += `<div class="chat-msg bot typing"><div class="loading-spinner"></div> Thinking...</div>`;
+        msgs.scrollTop = msgs.scrollHeight;
+
+        try {
+            const resp = await fetch(`${API_BASE}/api/miniapp/chat`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ user_id: userId, message: msg })
+            });
+            const data = await resp.json();
+            msgs.removeChild(msgs.lastChild); // remove typing
+            msgs.innerHTML += `<div class="chat-msg bot">${data.response || 'Processing...'}</div>`;
+        } catch(e) {
+            msgs.removeChild(msgs.lastChild);
+            msgs.innerHTML += `<div class="chat-msg bot">⚠️ Connection issue. Please try again.</div>`;
+        }
+        msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    // ═══ HELPERS ═══
+    function openDetail(title, html) {
+        document.getElementById('detailTitle').textContent = title;
+        document.getElementById('detailContent').innerHTML = html;
+        document.getElementById('detailOverlay').classList.add('open');
+    }
+    function closeDetail() { document.getElementById('detailOverlay').classList.remove('open'); }
+    function openSearch() { navigateTo('trading'); document.getElementById('tradingSearch')?.focus(); }
+    function showNotifications() { openDetail('🔔 Notifications', `<div class="empty-state"><i class="fas fa-bell"></i><h3>No new notifications</h3></div>`); }
+
+    function updateProfile() {
+        document.getElementById('profileAvatar').textContent = (userName || 'U')[0].toUpperCase();
+        document.getElementById('profileName').textContent = userName;
+        document.getElementById('profileTier').textContent = (userTier || 'FREE').toUpperCase();
+    }
+
+    function formatNum(n) {
+        if (n === undefined || n === null) return '0';
+        n = parseFloat(n);
+        if (n >= 10000000) return (n/10000000).toFixed(2) + ' Cr';
+        if (n >= 100000) return (n/100000).toFixed(2) + ' L';
+        if (n >= 1000) return n.toLocaleString('en-IN', {maximumFractionDigits: 2});
+        return n.toFixed(2);
+    }
+
+    function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    </script>
+</body>
+</html>

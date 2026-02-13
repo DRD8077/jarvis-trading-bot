@@ -1,0 +1,25 @@
+[
+ {
+  "id": "NIFTY_1770738110_0",
+  "symbol": "NIFTY",
+  "direction": "DOWN",
+  "confidence": 0.3483,
+  "predicted_price": 0,
+  "current_price": 0,
+  "target_price": 0,
+  "stop_loss": 0,
+  "model": "ml_ensemble",
+  "timeframe": "1d",
+  "source": "ml_predictor",
+  "chat_id": 5647898018,
+  "timestamp": "2026-02-10T21:11:50.293088+05:30",
+  "ts_epoch": 1770738110.2931118,
+  "verified": false,
+  "actual_outcome": null,
+  "actual_price": 0,
+  "hit_target": null,
+  "hit_stop_loss": null,
+  "profit_pct": 0,
+  "extra": {}
+ }
+]

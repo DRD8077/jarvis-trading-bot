@@ -1,20 +1,37 @@
 version: '3.8'
 services:
-  bot:
+  jarvis:
     build: .
     restart: always
     env_file: .env
+    ports:
+      - "${PORT:-8000}:8000"
     environment:
       - TELEGRAM_BOT_TOKEN
       - TEST_CHAT_ID
+      - ADMIN_CHAT_ID
+      - OWNER_CHAT_ID
+      - GROQ_API_KEY
+      - OPENAI_API_KEY
+      - ANTHROPIC_API_KEY
+      - GEMINI_API_KEY
+      - DEXTOOLS_API_KEY
+      - BIRDEYE_API_KEY
+      - PORT=8000
+      - HOST=0.0.0.0
       - WATCHLIST=NIFTY,SENSEX
     volumes:
-      - bot-data:/app/data
+      - jarvis-data:/app/data
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
-  bot-data:
+  jarvis-data:

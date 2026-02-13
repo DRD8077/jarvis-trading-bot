@@ -1,4 +1,5 @@
 requests
+httpx
 pandas
 numpy
 qrcode
@@ -11,6 +12,7 @@ joblib
 shap
 fastapi
 uvicorn[standard]
+jinja2
 ta
 pandas-ta
 yfinance
@@ -26,3 +28,7 @@ scipy
 edge-tts
 nltk
 google-generativeai
+# Real Solana Trading
+solana>=0.36
+solders>=0.27
+base58>=2.1

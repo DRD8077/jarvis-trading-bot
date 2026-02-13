@@ -17,6 +17,20 @@ import threading
 from typing import Optional, Dict, List
 from datetime import datetime
 
+# Load .env file FIRST before any other imports
+from dotenv import load_dotenv
+load_dotenv()
+
+# Web server imports
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+import uvicorn
+import asyncio
+
 logger = logging.getLogger("jarvis_admin")
 
 # ═══════════════════════════════════════════════════════════
@@ -82,6 +96,8 @@ def register_user(chat_id: int, first_name: str = "", username: str = "") -> Dic
     users = _load_users()
     cid = str(chat_id)
     
+    is_new = cid not in users
+    
     if cid not in users:
         users[cid] = {
             "chat_id": chat_id,
@@ -105,6 +121,12 @@ def register_user(chat_id: int, first_name: str = "", username: str = "") -> Dic
             users[cid]["username"] = username
     
     _save_users(users)
+    
+    # Notify web clients of new user
+    if is_new:
+        import asyncio
+        asyncio.create_task(notify_new_user(users[cid]))
+    
     return users[cid]
 
 
@@ -212,6 +234,10 @@ def request_approval(chat_id: int, feature: str, reason: str = "") -> Dict:
     }
     _save_approvals(approvals)
     
+    # Notify web clients of new approval request
+    import asyncio
+    asyncio.create_task(notify_new_approval(approvals[req_id]))
+    
     return {
         "status": "pending",
         "req_id": req_id,
@@ -242,6 +268,10 @@ def approve_request(req_id: str) -> Dict:
         users[cid]["approved_features"] = features
         _save_users(users)
     
+    # Notify web clients
+    import asyncio
+    asyncio.create_task(notify_stats_update())
+    
     return {
         "status": "approved",
         "chat_id": req["chat_id"],
@@ -262,6 +292,10 @@ def reject_request(req_id: str, reason: str = "") -> Dict:
     req["reject_reason"] = reason
     approvals[req_id] = req
     _save_approvals(approvals)
+    
+    # Notify web clients
+    import asyncio
+    asyncio.create_task(notify_stats_update())
     
     return {
         "status": "rejected",
@@ -464,6 +498,10 @@ def upgrade_user(chat_id: int) -> str:
     users[cid]["approved_features"] = all_features
     _save_users(users)
     
+    # Notify web clients
+    import asyncio
+    asyncio.create_task(notify_stats_update())
+    
     return f"⭐ Upgraded {users[cid].get('first_name', chat_id)} to Premium!"
 
 
@@ -570,3 +608,487 @@ def get_jarvis_user_context(chat_id: int) -> str:
 ADMIN_SYSTEM_AVAILABLE = True
 
 logger.info(f"[ADMIN] 🔐 JARVIS Admin System loaded — Boss: {ADMIN_NAME} (ID: {ADMIN_CHAT_ID})")
+
+
+# ═══════════════════════════════════════════════════════════
+#  WEB ADMIN PANEL
+# ═══════════════════════════════════════════════════════════
+
+# WebSocket connections for real-time updates
+active_connections: List[WebSocket] = []
+
+async def broadcast_message(message: dict):
+    """Broadcast message to all connected WebSocket clients."""
+    for connection in active_connections:
+        try:
+            await connection.send_json(message)
+        except:
+            active_connections.remove(connection)
+
+def get_dashboard_stats():
+    """Get current dashboard statistics."""
+    users = _load_users()
+    pending = get_pending_approvals()
+    
+    total = len(users)
+    active_24h = sum(1 for u in users.values() 
+        if u.get("last_active", "") > (datetime.now().isoformat()[:10]))
+    premiums = sum(1 for u in users.values() if u.get("tier") == TIER_PREMIUM)
+    
+    return {
+        "total_users": total,
+        "active_today": active_24h,
+        "premium_users": premiums,
+        "pending_approvals": len(pending),
+        "last_update": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+# Background task for periodic stats updates
+async def periodic_stats_update():
+    """Periodically broadcast stats updates to all connected clients."""
+    while True:
+        await asyncio.sleep(30)  # Update every 30 seconds
+        if active_connections:  # Only if there are active connections
+            stats = get_dashboard_stats()
+            await broadcast_message({"type": "stats_update", "stats": stats})
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    task = asyncio.create_task(periodic_stats_update())
+    yield
+    # Shutdown
+    task.cancel()
+
+app = FastAPI(title="JARVIS Admin Panel", description="Real-time admin dashboard for JARVIS", lifespan=lifespan)
+
+# CORS middleware — required for Telegram Mini App WebView
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+# ═══ MINI APP API ROUTES (v6 — MEGA INTEGRATED) ═══
+try:
+    from miniapp_api import router as miniapp_router
+    app.include_router(miniapp_router)
+    logger.info("✅ Mini App API v6 MEGA loaded — ALL 25+ engines connected")
+except Exception as e:
+    logger.warning(f"⚠️ Mini App API not loaded: {e}")
+
+# ═══ SERVE REACT MINI APP (built from telegram-mini-app/dist) ═══
+import os as _os
+_REACT_DIST = _os.path.join(_os.path.dirname(__file__) or '.', 'telegram-mini-app', 'dist')
+_REACT_ASSETS = _os.path.join(_REACT_DIST, 'assets')
+
+if _os.path.isdir(_REACT_ASSETS):
+    app.mount("/miniapp/assets", StaticFiles(directory=_REACT_ASSETS), name="miniapp_assets")
+    logger.info(f"✅ React assets mounted from {_REACT_ASSETS}")
+
+# Serve vite.svg and other root static files
+_REACT_VITE_SVG = _os.path.join(_REACT_DIST, 'vite.svg')
+if _os.path.isfile(_REACT_VITE_SVG):
+    from fastapi.responses import FileResponse as _FileResponse
+    @app.get("/vite.svg")
+    async def serve_vite_svg():
+        return _FileResponse(_REACT_VITE_SVG)
+
+@app.get("/miniapp", response_class=HTMLResponse)
+async def serve_miniapp(request: Request):
+    """Serve React SPA index.html."""
+    react_index = _os.path.join(_REACT_DIST, 'index.html')
+    if _os.path.isfile(react_index):
+        with open(react_index, 'r') as f:
+            return HTMLResponse(content=f.read())
+    return templates.TemplateResponse("miniapp.html", {"request": request})
+
+@app.get("/miniapp/{full_path:path}", response_class=HTMLResponse)
+async def serve_miniapp_spa(request: Request, full_path: str = ""):
+    """SPA fallback — all sub-routes serve React index.html."""
+    # Check if it's a static file first
+    static_file = _os.path.join(_REACT_DIST, full_path)
+    if _os.path.isfile(static_file):
+        from fastapi.responses import FileResponse as _FR
+        return _FR(static_file)
+    # Otherwise serve index.html for client-side routing
+    react_index = _os.path.join(_REACT_DIST, 'index.html')
+    if _os.path.isfile(react_index):
+        with open(react_index, 'r') as f:
+            return HTMLResponse(content=f.read())
+    return templates.TemplateResponse("miniapp.html", {"request": request})
+
+logger.info("✅ React Mini App serving at /miniapp (SPA with client-side routing)")
+
+@app.get("/", response_class=HTMLResponse)
+async def admin_panel(request: Request):
+    """Serve the main admin panel."""
+    stats = get_dashboard_stats()
+    users = list(_load_users().values())
+    pending_approvals = get_pending_approvals()
+    
+    # Payment data
+    payment_stats = get_payment_stats()
+    wallets_data = get_wallets_data()
+    recent_transactions = get_recent_transactions()
+    pending_withdrawals = get_pending_withdrawals()
+    
+    return templates.TemplateResponse("admin.html", {
+        "request": request,
+        "stats": stats,
+        "users": users,
+        "pending_approvals": pending_approvals,
+        "admin_name": ADMIN_NAME,
+        "admin_chat_id": ADMIN_CHAT_ID,
+        "payment_stats": payment_stats,
+        "wallets_data": wallets_data,
+        "recent_transactions": recent_transactions,
+        "pending_withdrawals": pending_withdrawals
+    })
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time updates."""
+    await websocket.accept()
+    active_connections.append(websocket)
+    
+    try:
+        # Send initial stats
+        stats = get_dashboard_stats()
+        await websocket.send_json({"type": "stats_update", "stats": stats})
+        
+        while True:
+            # Keep connection alive - wait for any message or just ping
+            await websocket.receive_text()
+            
+    except WebSocketDisconnect:
+        active_connections.remove(websocket)
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        if websocket in active_connections:
+            active_connections.remove(websocket)
+
+# Background task for periodic stats updates
+async def periodic_stats_update():
+    """Periodically broadcast stats updates to all connected clients."""
+    while True:
+        await asyncio.sleep(30)  # Update every 30 seconds
+        if active_connections:  # Only if there are active connections
+            stats = get_dashboard_stats()
+            await broadcast_message({"type": "stats_update", "stats": stats})
+
+@app.post("/approve/{req_id}")
+async def api_approve_request(req_id: str):
+    """API endpoint to approve a request."""
+    result = approve_request(req_id)
+    # Broadcast update
+    stats = get_dashboard_stats()
+    await broadcast_message({"type": "stats_update", "stats": stats})
+    await broadcast_message({"type": "log", "message": f"Approved request {req_id}"})
+    return {"status": "success", "message": result.get("message", "Approved")}
+
+@app.post("/reject/{req_id}")
+async def api_reject_request(req_id: str, request: Request):
+    """API endpoint to reject a request."""
+    data = await request.json()
+    reason = data.get("reason", "")
+    result = reject_request(req_id, reason)
+    # Broadcast update
+    stats = get_dashboard_stats()
+    await broadcast_message({"type": "stats_update", "stats": stats})
+    await broadcast_message({"type": "log", "message": f"Rejected request {req_id}"})
+    return {"status": "success", "message": result.get("message", "Rejected")}
+
+@app.post("/upgrade/{chat_id}")
+async def api_upgrade_user(chat_id: int):
+    """API endpoint to upgrade a user."""
+    result = upgrade_user(chat_id)
+    # Broadcast update
+    stats = get_dashboard_stats()
+    await broadcast_message({"type": "stats_update", "stats": stats})
+    await broadcast_message({"type": "log", "message": f"Upgraded user {chat_id}"})
+    return {"status": "success", "message": result}
+
+@app.post("/credit_wallet/{chat_id}")
+async def api_credit_wallet(chat_id: int, request: Request):
+    """API endpoint to credit wallet."""
+    data = await request.json()
+    amount = data.get("amount", 0)
+    
+    # Import payment functions
+    from jarvis_payment import _credit_wallet, _record_tx
+    from datetime import datetime
+    
+    new_balance = _credit_wallet(chat_id, amount, "admin_credit")
+    
+    _record_tx(chat_id, {
+        "type": "admin_credit", 
+        "amount_inr": amount, 
+        "tx_ref": f"ADMIN{int(datetime.now().timestamp())}",
+        "status": "completed", 
+        "created": datetime.now().isoformat(),
+    })
+    
+    # Broadcast update
+    await broadcast_message({"type": "log", "message": f"Credited ₹{amount} to user {chat_id}"})
+    return {"status": "success", "message": f"Credited ₹{amount}. New balance: ₹{new_balance:.2f}"}
+
+@app.post("/debit_wallet/{chat_id}")
+async def api_debit_wallet(chat_id: int, request: Request):
+    """API endpoint to debit wallet."""
+    data = await request.json()
+    amount = data.get("amount", 0)
+    
+    # Import payment functions
+    from jarvis_payment import _debit_wallet, _record_tx
+    from datetime import datetime
+    
+    new_balance = _debit_wallet(chat_id, amount)
+    
+    if new_balance < 0:
+        return {"status": "error", "message": "Insufficient balance"}
+    
+    _record_tx(chat_id, {
+        "type": "admin_debit", 
+        "amount_inr": amount, 
+        "tx_ref": f"ADMIN{int(datetime.now().timestamp())}",
+        "status": "completed", 
+        "created": datetime.now().isoformat(),
+    })
+    
+    # Broadcast update
+    await broadcast_message({"type": "log", "message": f"Debited ₹{amount} from user {chat_id}"})
+    return {"status": "success", "message": f"Debited ₹{amount}. New balance: ₹{new_balance:.2f}"}
+
+@app.post("/approve_withdrawal/{tx_ref}")
+async def api_approve_withdrawal(tx_ref: str):
+    """API endpoint to approve withdrawal."""
+    # Import payment functions
+    from jarvis_payment import _load_transactions, _save_transactions
+    from datetime import datetime
+    
+    transactions = _load_transactions()
+    tx = None
+    
+    # Find transaction
+    for user_txs in transactions.values():
+        for t in user_txs:
+            if t.get("tx_ref") == tx_ref and t.get("type") == "withdrawal":
+                tx = t
+                break
+        if tx:
+            break
+    
+    if not tx:
+        return {"status": "error", "message": "Transaction not found"}
+    
+    tx["status"] = "completed"
+    tx["approved_at"] = datetime.now().isoformat()
+    _save_transactions(transactions)
+    
+    # Broadcast update
+    await broadcast_message({"type": "log", "message": f"Approved withdrawal {tx_ref}"})
+    return {"status": "success", "message": f"Approved withdrawal of ₹{tx['amount_inr']}"}
+
+@app.post("/reject_withdrawal/{tx_ref}")
+async def api_reject_withdrawal(tx_ref: str, request: Request):
+    """API endpoint to reject withdrawal."""
+    data = await request.json()
+    reason = data.get("reason", "Rejected by admin")
+    
+    # Import payment functions
+    from jarvis_payment import _load_transactions, _save_transactions, _credit_wallet
+    from datetime import datetime
+    
+    transactions = _load_transactions()
+    tx = None
+    
+    # Find transaction
+    for user_txs in transactions.values():
+        for t in user_txs:
+            if t.get("tx_ref") == tx_ref and t.get("type") == "withdrawal":
+                tx = t
+                break
+        if tx:
+            break
+    
+    if not tx:
+        return {"status": "error", "message": "Transaction not found"}
+    
+    # Refund amount to wallet
+    _credit_wallet(tx["chat_id"], tx["amount_inr"], "refund")
+    
+    tx["status"] = "rejected"
+    tx["rejected_at"] = datetime.now().isoformat()
+    tx["reject_reason"] = reason
+    _save_transactions(transactions)
+    
+    # Broadcast update
+    await broadcast_message({"type": "log", "message": f"Rejected withdrawal {tx_ref}: {reason}"})
+    return {"status": "success", "message": f"Rejected withdrawal and refunded ₹{tx['amount_inr']}"}
+
+def get_payment_stats():
+    """Get payment statistics."""
+    try:
+        from jarvis_payment import _load_wallets, _load_transactions
+        
+        wallets = _load_wallets()
+        transactions = _load_transactions()
+        
+        total_deposits = sum(w.get("total_deposited", 0) for w in wallets.values())
+        total_withdrawals = sum(w.get("total_withdrawn", 0) for w in wallets.values())
+        active_wallets = sum(1 for w in wallets.values() if w.get("balance_inr", 0) > 0)
+        
+        pending_withdrawals = 0
+        for user_txs in transactions.values():
+            pending_withdrawals += sum(1 for t in user_txs if t.get("type") == "withdrawal" and t.get("status") == "processing")
+        
+        return {
+            "total_deposits": f"{total_deposits:,.0f}",
+            "total_withdrawals": f"{total_withdrawals:,.0f}",
+            "active_wallets": active_wallets,
+            "pending_withdrawals": pending_withdrawals
+        }
+    except Exception as e:
+        logger.error(f"Payment stats error: {e}")
+        return {
+            "total_deposits": "0",
+            "total_withdrawals": "0", 
+            "active_wallets": 0,
+            "pending_withdrawals": 0
+        }
+
+def get_wallets_data():
+    """Get wallets data for admin panel."""
+    try:
+        from jarvis_payment import _load_wallets
+        from jarvis_admin import get_user
+        
+        wallets = _load_wallets()
+        result = []
+        
+        for chat_id_str, wallet in wallets.items():
+            chat_id = int(chat_id_str)
+            user = get_user(chat_id)
+            result.append({
+                "chat_id": chat_id,
+                "user_name": user.get("first_name", "Unknown") if user else "Unknown",
+                "wallet_id": wallet.get("wallet_id", "N/A"),
+                "balance_inr": wallet.get("balance_inr", 0),
+                "total_deposited": wallet.get("total_deposited", 0),
+                "total_withdrawn": wallet.get("total_withdrawn", 0),
+                "status": wallet.get("status", "inactive")
+            })
+        
+        return result
+    except Exception as e:
+        logger.error(f"Wallets data error: {e}")
+        return []
+
+def get_recent_transactions():
+    """Get recent transactions for admin panel."""
+    try:
+        from jarvis_payment import _load_transactions
+        from jarvis_admin import get_user
+        
+        transactions = _load_transactions()
+        result = []
+        
+        for chat_id_str, user_txs in transactions.items():
+            chat_id = int(chat_id_str)
+            user = get_user(chat_id)
+            user_name = user.get("first_name", "Unknown") if user else "Unknown"
+            
+            for tx in user_txs[-10:]:  # Last 10 transactions per user
+                result.append({
+                    "user_name": user_name,
+                    "type": tx.get("type", "unknown"),
+                    "amount_inr": tx.get("amount_inr", 0),
+                    "tx_ref": tx.get("tx_ref", "N/A"),
+                    "status": tx.get("status", "unknown"),
+                    "created": tx.get("created", "")
+                })
+        
+        # Sort by created date, most recent first
+        result.sort(key=lambda x: x.get("created", ""), reverse=True)
+        return result[:50]  # Return top 50
+    except Exception as e:
+        logger.error(f"Recent transactions error: {e}")
+        return []
+
+def get_pending_withdrawals():
+    """Get pending withdrawals for admin panel."""
+    try:
+        from jarvis_payment import _load_transactions
+        from jarvis_admin import get_user
+        
+        transactions = _load_transactions()
+        result = []
+        
+        for chat_id_str, user_txs in transactions.items():
+            chat_id = int(chat_id_str)
+            user = get_user(chat_id)
+            user_name = user.get("first_name", "Unknown") if user else "Unknown"
+            
+            for tx in user_txs:
+                if tx.get("type") == "withdrawal" and tx.get("status") == "processing":
+                    result.append({
+                        "user_name": user_name,
+                        "chat_id": chat_id,
+                        "amount_inr": tx.get("amount_inr", 0),
+                        "tx_ref": tx.get("tx_ref", "N/A"),
+                        "bank": tx.get("bank", "Unknown"),
+                        "created": tx.get("created", "")
+                    })
+        
+        return result
+    except Exception as e:
+        logger.error(f"Pending withdrawals error: {e}")
+        return []
+
+# Function to notify web clients of new events (call from other parts of the system)
+async def notify_new_user(user_data: dict):
+    """Notify web clients of new user registration."""
+    await broadcast_message({
+        "type": "new_user",
+        "user": user_data
+    })
+
+async def notify_new_approval(approval_data: dict):
+    """Notify web clients of new approval request."""
+    await broadcast_message({
+        "type": "new_approval", 
+        "approval": approval_data
+    })
+
+async def notify_stats_update():
+    """Notify web clients of stats update."""
+    stats = get_dashboard_stats()
+    await broadcast_message({
+        "type": "stats_update",
+        "stats": stats
+    })
+
+def start_web_server(port: int = 8000, host: str = "0.0.0.0"):
+    """Start the JARVIS web server in a background thread with its own event loop."""
+    def _run():
+        import asyncio as _aio
+        # Create a brand-new event loop for this thread to avoid conflicts
+        loop = _aio.new_event_loop()
+        _aio.set_event_loop(loop)
+        config = uvicorn.Config(app, host=host, port=port, log_level="info", loop="asyncio")
+        server = uvicorn.Server(config)
+        loop.run_until_complete(server.serve())
+    t = threading.Thread(target=_run, daemon=True, name="JarvisWebServer")
+    t.start()
+    logger.info(f"🌐 JARVIS Web Server started on {host}:{port}")
+    return t
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run("jarvis_admin:app", host="0.0.0.0", port=port, reload=True)

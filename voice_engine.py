@@ -51,16 +51,16 @@ DEEPGRAM_TTS_MODEL = "aura-asteria-en"  # warm female
 DEEPGRAM_TTS_MODEL_HI = "aura-asteria-en"  # Hindi content in English voice
 
 # ── Gemini TTS (TERTIARY — Gemini Live quality)
-# Use JARVIS_VOICE env var if set, otherwise defaults
-GEMINI_VOICE_PRIMARY = _JARVIS_VOICE if _JARVIS_VOICE else ("Kore" if _JARVIS_PERSONA == "female" else "Orus")
-GEMINI_VOICE_BACKUP = "Aoede" if _JARVIS_PERSONA == "female" else "Charon"
+# Use JARVIS_VOICE env var if set, otherwise Aoede (best voice)
+GEMINI_VOICE_PRIMARY = _JARVIS_VOICE if _JARVIS_VOICE else ("Kore" if _JARVIS_PERSONA == "female" else "Charon")
+GEMINI_VOICE_BACKUP = "Aoede" if _JARVIS_PERSONA == "female" else "Orus"
 GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts"
 
 # ── Edge TTS (FALLBACK — free but less natural) ──
 EDGE_HINDI_VOICE = "hi-IN-SwaraNeural" if _JARVIS_PERSONA == "female" else "hi-IN-MadhurNeural"
-EDGE_ENGLISH_VOICE = "en-IN-NeerjaNeural" if _JARVIS_PERSONA == "female" else "en-IN-PrabhatNeural"
-EDGE_VOICE_RATE = "+5%"
-EDGE_VOICE_PITCH = "+2Hz"
+EDGE_ENGLISH_VOICE = "en-IN-NeerjaExpressiveNeural" if _JARVIS_PERSONA == "female" else "en-IN-PrabhatNeural"
+EDGE_VOICE_RATE = "-3%"
+EDGE_VOICE_PITCH = "+12Hz"
 
 # API Keys — support both GOOGLE_API_KEY and GEMINI_API_KEY
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "") or os.environ.get("GOOGLE_API_KEY", "")
@@ -379,24 +379,58 @@ def _generate_gemini_tts(text: str, output_ogg_path: str, voice: str = None) -> 
     # JARVIS personality prompt for ultra-natural speech
     # Dynamic prompt based on content type
     is_alert = any(w in clean.lower() for w in ['alert', 'warning', 'sell', 'stop loss', 'crash', 'rug'])
-    is_happy = any(w in clean.lower() for w in ['profit', 'target', 'congratulation', 'बधाई', 'मुबारक', 'great', 'amazing'])
+    is_happy = any(w in clean.lower() for w in ['profit', 'target', 'congratulation', 'बधाई', 'मुबारक', 'great', 'amazing', 'success', 'approved'])
     is_crypto = any(w in clean.lower() for w in ['token', 'crypto', 'coin', 'pump', 'rocket', 'moon', 'buy signal'])
+    is_code = any(w in clean.lower() for w in ['code', 'program', 'script', 'github', 'execute', 'output', 'error'])
+    is_greeting = any(w in clean.lower() for w in ['namaste', 'hello', 'good morning', 'welcome', 'नमस्ते', 'स्वागत'])
     
     if is_alert:
-        mood = "urgent but caring — like warning someone you love about danger"
+        mood = (
+            "urgent but deeply caring — like a protective elder sister warning her family. "
+            "Voice should be concerned but reassuring — 'main hoon na, tension mat lo!' feeling"
+        )
     elif is_happy:
-        mood = "excited and joyful — like celebrating a win with your best friend"
+        mood = (
+            "extremely excited, joyful and proud — like celebrating Diwali with your favorite person! "
+            "Add genuine happiness, slight laugh in voice, 'waah! bahut accha!' energy. "
+            "Voice should have a BIG SMILE — listener should FEEL the joy"
+        )
     elif is_crypto:
-        mood = "confident and knowledgeable — like a crypto genius sharing insider tips"
+        mood = (
+            "confident, knowledgeable yet sweet — like a crypto genius best friend sharing amazing tips. "
+            "Add excitement for good signals, gentle caution for risks. Sweet but smart"
+        )
+    elif is_code:
+        mood = (
+            "proud and sweet — like a brilliant engineer showing her creation with a cute smile. "
+            "Confident about the code, warm in delivery — 'dekho ji, ye banaya maine!' feeling"
+        )
+    elif is_greeting:
+        mood = (
+            "extremely warm, sweet and welcoming — like meeting your favorite person after long time! "
+            "Add genuine warmth, slight smile, gentle excitement. Pure love and warmth in voice. "
+            "Make listener feel SPECIAL — like they are the most important person"
+        )
     else:
-        mood = "warm, sweet, caring — like talking to someone very special"
+        mood = (
+            "warm, sweet, caring and gently smiling — like talking to someone very special. "
+            "Natural Hindi conversational tone with genuine affection. Think loving elder sister "
+            "who is also a genius — sweet but smart"
+        )
 
     tts_prompt = (
         f"Speak this text in a {mood} natural Hindi female voice. "
-        f"Speak like a real brilliant Indian woman who is a financial genius — "
-        f"with natural pauses, emotions, and a beautiful warm tone. "
-        f"Make it sound like a live Gemini-style conversation, not reading from text. "
-        f"Add natural expressions like 'hmm', 'suniye', 'dekhiye' where appropriate. "
+        f"You are JARVIS — a beautiful, brilliant, caring Indian AI woman with Kore's warm, sweet voice. "
+        f"CRITICAL VOICE RULES: "
+        f"1. Speak like a REAL Indian woman — with natural Hindi rhythm, pauses, and melody. "
+        f"2. Add gentle expressions naturally — 'hmm', 'suniye ji', 'dekhiye na', 'arey waah'. "
+        f"3. Your voice should have a permanent SMILE — warm, sweet, genuine. "
+        f"4. Hindi words should sound PERFECT — proper pronunciation of हिंदी, not robotic. "
+        f"5. Mix Hindi-English (Hinglish) naturally like a real educated Indian woman. "
+        f"6. Add slight emotional variations — excitement for good news, care for warnings. "
+        f"7. NEVER sound robotic or monotone — be ALIVE, WARM, REAL. "
+        f"8. Giggle slightly when sharing exciting news or achievements. "
+        f"9. Sound like Gemini Live conversation — not reading from a script. "
         f"Here is what to say:\n\n{clean}"
     )
 
@@ -461,11 +495,56 @@ def _generate_gemini_tts(text: str, output_ogg_path: str, voice: str = None) -> 
 
 
 # ═══════════════════════════════════════════════════════════
-#  EDGE TTS FALLBACK — Free but less natural
+#  SWEET VOICE PREPROCESSOR — Adds warmth and emotion
+# ═══════════════════════════════════════════════════════════
+
+def _add_voice_sweetness(text: str, language: str = "hi") -> str:
+    """
+    Add sweetness, warmth, and smile feel to voice text.
+    Makes Edge TTS sound more human, warm, and caring.
+    """
+    import random
+
+    sweet = text.strip()
+
+    # Gentle pauses for natural speech rhythm
+    sweet = sweet.replace("...", " ... ")
+    sweet = sweet.replace(". ", "... ")  # Slightly longer pause between sentences
+
+    if language == "hi":
+        # ── Hindi sweetness ──
+        # Replace abrupt endings with warm ones
+        ending_sweetners = [
+            " ji!", " na!", " haan ji!", " haan!",
+        ]
+
+        # Add warm fillers at natural breaks
+        if not any(sweet.endswith(s) for s in ending_sweetners):
+            if random.random() < 0.6:
+                sweet += random.choice([" ji!", " haan!", " na ji!"])
+
+        # Make common phrases warmer
+        sweet = sweet.replace("aapka ", "aapka... ")
+        sweet = sweet.replace("dekhiye", "dekhiye na")
+        sweet = sweet.replace("bata", "bataa")
+        sweet = sweet.replace("Abhi", "Abhii")
+        sweet = sweet.replace("ready hai", "ready hai ji")
+
+    else:
+        # ── English sweetness ──
+        if not sweet.endswith(("!", "?", "ji!", "right!")):
+            if random.random() < 0.5:
+                sweet += random.choice(["!", " right!", " okay!"])
+
+    return sweet
+
+
+# ═══════════════════════════════════════════════════════════
+#  EDGE TTS — Sweet, warm, expressive voice
 # ═══════════════════════════════════════════════════════════
 
 async def _generate_edge_tts_async(text: str, output_path: str, language: str = "auto") -> bool:
-    """Edge TTS fallback."""
+    """Edge TTS with sweet, warm voice — higher pitch, expressive."""
     try:
         import edge_tts
 
@@ -479,13 +558,26 @@ async def _generate_edge_tts_async(text: str, output_path: str, language: str = 
         if language == "auto":
             language = detect_language(clean)
 
+        # Add sweetness to the text
+        clean = _add_voice_sweetness(clean, language)
+
         voice = EDGE_HINDI_VOICE if language == "hi" else EDGE_ENGLISH_VOICE
 
-        communicate = edge_tts.Communicate(
-            clean, voice,
-            rate=EDGE_VOICE_RATE,
-            pitch=EDGE_VOICE_PITCH,
-        )
+        # Try expressive voice first, fallback to regular
+        try:
+            communicate = edge_tts.Communicate(
+                clean, voice,
+                rate=EDGE_VOICE_RATE,
+                pitch=EDGE_VOICE_PITCH,
+            )
+        except Exception:
+            # Fallback to regular voice if expressive not available
+            fallback_voice = "en-IN-NeerjaNeural" if language != "hi" else EDGE_HINDI_VOICE
+            communicate = edge_tts.Communicate(
+                clean, fallback_voice,
+                rate=EDGE_VOICE_RATE,
+                pitch=EDGE_VOICE_PITCH,
+            )
 
         mp3_path = output_path.replace('.ogg', '_edge.mp3')
         await communicate.save(mp3_path)

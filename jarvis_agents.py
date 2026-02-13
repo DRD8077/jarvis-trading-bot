@@ -364,24 +364,25 @@ def _call_llm(system_prompt: str, user_prompt: str, max_tokens: int = 2000) -> s
     except Exception as e:
         logger.debug(f"Gemini agent call failed: {e}")
     
-    # 3. OpenAI
+    # 3. OpenRouter (FREE DeepSeek R1)
     try:
-        openai_key = os.getenv("OPENAI_API_KEY")
-        if openai_key:
-            import openai
-            client = openai.OpenAI(api_key=openai_key)
-            resp = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
+        import requests as _req
+        _or_key = os.getenv("OPENROUTER_API_KEY", "")
+        if _or_key:
+            _resp = _req.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={"Authorization": f"Bearer {_or_key}", "Content-Type": "application/json"},
+                json={"model": "deepseek/deepseek-r1:free", "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
-                ],
-                max_tokens=max_tokens,
-                temperature=0.6,
+                ], "max_tokens": max_tokens, "temperature": 0.6},
+                timeout=30,
             )
-            return resp.choices[0].message.content.strip()
+            _data = _resp.json()
+            if "choices" in _data and _data["choices"]:
+                return _data["choices"][0]["message"]["content"].strip()
     except Exception as e:
-        logger.debug(f"OpenAI agent call failed: {e}")
+        logger.debug(f"OpenRouter agent call failed: {e}")
     
     return ""
 

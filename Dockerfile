@@ -1,16 +1,39 @@
 FROM python:3.12-slim
 WORKDIR /app
 
-# Install dependencies first (cached layer)
+# Install system dependencies including Node.js for bot + frontend
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl nodejs npm && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies first (cached layer)
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app code
+# Install Node.js bot dependencies
+COPY telegram-ai-app/package*.json /app/telegram-ai-app/
+RUN cd /app/telegram-ai-app && npm install --production 2>/dev/null || true
+
+# Install frontend dependencies and build
+COPY telegram-mini-app/package*.json /app/telegram-mini-app/
+RUN cd /app/telegram-mini-app && npm install 2>/dev/null || true
+COPY telegram-mini-app/ /app/telegram-mini-app/
+RUN cd /app/telegram-mini-app && npm run build 2>/dev/null || true
+
+# Copy all app code
 COPY . /app
 
-# Health check via a simple python script
-HEALTHCHECK --interval=60s --timeout=10s --retries=3 \
-  CMD python -c "import requests; r=requests.get('https://api.telegram.org/bot'+'$TELEGRAM_BOT_TOKEN'+'/getMe'); exit(0 if r.status_code==200 else 1)" || exit 1
+# Create data directory
+RUN mkdir -p /app/data
 
-# Run the polling bot (NOT webhook server)
-CMD ["python", "telegram_bot.py"]
+# Expose web server port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+  CMD curl -f http://localhost:8000/api/miniapp/health || exit 1
+
+# Start script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+CMD ["/app/start.sh"]

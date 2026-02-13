@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>JARVIS — Real-Time AI Trading</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#050a14;--bg2:#0a1020;--card:#0f1729;--card2:#141e33;--card3:#1a2540;
+  --accent:#00d4ff;--accent2:#0099ff;--green:#00ff88;--green2:#00cc6a;
+  --red:#ff3355;--red2:#ff6680;--gold:#ffaa00;--purple:#a855f7;--purple2:#7c3aed;
+  --text:#e8ecf4;--muted:#6b7fa0;--dim:#3a4a6b;--border:#1a2540;
+  --glass:rgba(10,16,32,0.92);--glow:0 0 20px rgba(0,212,255,0.15);
+  --radius:14px;--radius-sm:10px;--radius-xs:6px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+/* ═══ SCROLLBAR ═══ */
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:var(--dim);border-radius:4px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ═══ CONTAINER ═══ */
+.app{max-width:480px;margin:0 auto;padding:0 12px 90px;min-height:100vh}
+
+/* ═══ HEADER ═══ */
+.header{position:sticky;top:0;z-index:90;background:linear-gradient(180deg,var(--bg) 70%,transparent);padding:14px 0 8px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.header-row{display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:8px}
+.logo-icon{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#fff;box-shadow:0 2px 12px rgba(0,212,255,0.3)}
+.logo-text h1{font-size:18px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-0.5px;line-height:1}
+.logo-text .ver{font-size:9px;color:var(--muted);font-weight:500;letter-spacing:0.5px}
+.header-actions{display:flex;gap:6px;align-items:center}
+.hdr-btn{width:34px;height:34px;border-radius:10px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;transition:all .2s}
+.hdr-btn:active{transform:scale(0.92)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;margin-right:4px;display:inline-block}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 4px var(--green)}50%{opacity:0.5;box-shadow:0 0 8px var(--green)}}
+
+/* ═══ LIVE TICKER ═══ */
+.ticker{display:flex;gap:10px;overflow-x:auto;padding:8px 0;scrollbar-width:none;-ms-overflow-style:none}
+.ticker::-webkit-scrollbar{display:none}
+.tick{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--card);border-radius:var(--radius-sm);border:1px solid var(--border);font-size:12px;cursor:pointer;transition:border-color .2s}
+.tick:hover{border-color:var(--accent)}
+.tick-sym{font-weight:700;color:#fff}
+.tick-price{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px}
+.tick-chg{font-weight:700;font-size:10px;padding:2px 5px;border-radius:var(--radius-xs);font-family:'JetBrains Mono',monospace}
+.tick-chg.up{color:var(--green);background:rgba(0,255,136,0.1)}
+.tick-chg.dn{color:var(--red);background:rgba(255,51,85,0.1)}
+
+/* ═══ CARDS ═══ */
+.card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:10px;border:1px solid var(--border);position:relative;overflow:hidden;transition:border-color .2s}
+.card:hover{border-color:rgba(0,212,255,0.2)}
+.card-glow{position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.5}
+.card-title{font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.card-title .ico{font-size:15px}
+
+/* ═══ STATS GRID ═══ */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.stat{background:var(--card2);border-radius:var(--radius-sm);padding:12px 10px;text-align:center;border:1px solid var(--border)}
+.stat-val{font-size:18px;font-weight:800;color:#fff;font-family:'JetBrains Mono',monospace;line-height:1.2}
+.stat-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;font-weight:600}
+.stat-val.green{color:var(--green)}.stat-val.red{color:var(--red)}.stat-val.gold{color:var(--gold)}.stat-val.purple{color:var(--purple)}
+
+/* ═══ GAUGE (Fear&Greed) ═══ */
+.gauge{text-align:center;padding:10px 0}
+.gauge-num{font-size:48px;font-weight:900;font-family:'JetBrains Mono',monospace;line-height:1}
+.gauge-label{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.gauge-bar{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--red),var(--gold),var(--green));margin:12px 0 4px;position:relative}
+.gauge-ptr{width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid var(--bg);box-shadow:0 0 8px rgba(255,255,255,0.5);position:absolute;top:-3px;transition:left .8s ease}
+
+/* ═══ SIGNAL ROWS ═══ */
+.sig-row{display:flex;align-items:center;gap:8px;padding:10px;background:var(--card2);border-radius:var(--radius-sm);margin-bottom:5px;border:1px solid transparent;transition:all .2s;cursor:pointer}
+.sig-row:hover{border-color:var(--accent);background:var(--card3)}
+.sig-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;background:var(--card3);color:#fff;flex-shrink:0}
+.sig-info{flex:1;min-width:0}
+.sig-sym{font-weight:700;font-size:13px;color:#fff}
+.sig-name{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sig-badge{padding:3px 7px;border-radius:var(--radius-xs);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.3px}
+.sig-badge.buy{background:rgba(0,255,136,0.12);color:var(--green)}
+.sig-badge.sell{background:rgba(255,51,85,0.12);color:var(--red)}
+.sig-badge.hold{background:rgba(255,170,0,0.12);color:var(--gold)}
+.sig-right{text-align:right;flex-shrink:0}
+.sig-price{font-size:12px;font-weight:600;color:#fff;font-family:'JetBrains Mono',monospace}
+.sig-chg{font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.sig-chg.up{color:var(--green)}.sig-chg.dn{color:var(--red)}
+
+/* ═══ NEWS ═══ */
+.news-card{padding:10px;background:var(--card2);border-radius:var(--radius-sm);margin-bottom:5px;cursor:pointer;border:1px solid transparent;transition:all .2s}
+.news-card:hover{border-color:var(--accent)}
+.news-card a{text-decoration:none;color:inherit}
+.news-title{font-size:13px;font-weight:600;color:#fff;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.news-meta{display:flex;gap:8px;align-items:center;margin-top:4px}
+.news-src{font-size:10px;color:var(--accent);font-weight:600}
+.news-time{font-size:10px;color:var(--muted)}
+
+/* ═══ TABS ═══ */
+.tabs{display:flex;gap:4px;overflow-x:auto;padding:4px 0;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;background:var(--card2);color:var(--muted);border:1px solid transparent;transition:all .2s;user-select:none}
+.tab.active{background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff;border-color:transparent;box-shadow:0 2px 12px rgba(0,212,255,0.2)}
+.tab:active{transform:scale(0.96)}
+
+/* ═══ CHAT (ChatGPT-STYLE) ═══ */
+.chat-container{display:flex;flex-direction:column;height:calc(100vh - 200px);min-height:400px}
+.chat-messages{flex:1;overflow-y:auto;padding:8px 0;display:flex;flex-direction:column;gap:8px}
+.chat-msg{max-width:88%;padding:12px 16px;border-radius:16px;font-size:13px;line-height:1.6;word-break:break-word;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.chat-msg.user{align-self:flex-end;background:linear-gradient(135deg,var(--accent2),var(--purple2));color:#fff;border-bottom-right-radius:4px}
+.chat-msg.ai{align-self:flex-start;background:var(--card2);color:var(--text);border-bottom-left-radius:4px;border:1px solid var(--border)}
+.chat-msg.ai .md-bold{font-weight:700;color:var(--accent)}
+.chat-msg.ai .md-bullet{color:var(--accent);margin-right:4px}
+.chat-msg.thinking{color:var(--muted);font-style:italic}
+.chat-msg.thinking::after{content:'';display:inline-block;width:4px;height:14px;background:var(--accent);margin-left:4px;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.chat-input-area{padding:8px 0;display:flex;gap:6px;align-items:flex-end}
+.chat-input{flex:1;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;color:#fff;font-size:13px;font-family:inherit;outline:none;resize:none;min-height:44px;max-height:120px;transition:border-color .2s;line-height:1.4}
+.chat-input:focus{border-color:var(--accent)}
+.chat-input::placeholder{color:var(--dim)}
+.chat-send{width:44px;height:44px;border-radius:var(--radius);background:linear-gradient(135deg,var(--accent),var(--purple));border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.chat-send:active{transform:scale(0.92)}
+.chat-send:disabled{opacity:0.5;cursor:not-allowed}
+.chat-actions{display:flex;gap:6px;padding:4px 0}
+.chat-action-btn{padding:4px 10px;border-radius:20px;font-size:10px;font-weight:600;background:var(--card2);color:var(--muted);border:1px solid var(--border);cursor:pointer;transition:all .2s}
+.chat-action-btn:hover{color:var(--accent);border-color:var(--accent)}
+
+/* ═══ BUTTONS ═══ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border-radius:var(--radius);font-size:13px;font-weight:700;cursor:pointer;border:none;transition:all .2s;font-family:inherit;user-select:none}
+.btn:active{transform:scale(0.96)}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff;box-shadow:0 2px 12px rgba(0,212,255,0.2)}
+.btn-green{background:var(--green);color:#000}.btn-red{background:var(--red);color:#fff}
+.btn-gold{background:var(--gold);color:#000}.btn-ghost{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.btn-sm{padding:6px 12px;font-size:11px;border-radius:var(--radius-sm)}
+.btn-full{width:100%}
+.btn-group{display:flex;gap:6px;flex-wrap:wrap}
+
+/* ═══ FORM INPUTS ═══ */
+.input-row{display:flex;gap:6px;margin-bottom:8px}
+.input{flex:1;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;color:#fff;font-size:13px;font-family:inherit;outline:none;transition:border-color .2s}
+.input:focus{border-color:var(--accent)}
+.input::placeholder{color:var(--dim)}
+select.input{appearance:none;cursor:pointer}
+
+/* ═══ PHANTOM WALLET ═══ */
+.phantom-connect{padding:16px;background:linear-gradient(135deg,rgba(168,85,247,0.15),rgba(0,212,255,0.1));border-radius:var(--radius);border:1px solid rgba(168,85,247,0.3);text-align:center;margin-bottom:10px}
+.phantom-addr{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);word-break:break-all;margin:8px 0}
+.phantom-bal{font-size:24px;font-weight:800;color:#fff;margin:4px 0}
+
+/* ═══ BOTTOM NAV ═══ */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border);z-index:100;padding:4px 0 max(4px, env(safe-area-inset-bottom))}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:6px 0;cursor:pointer;color:var(--dim);font-size:9px;font-weight:600;gap:2px;transition:all .2s;user-select:none;letter-spacing:0.3px}
+.nav-item.active{color:var(--accent)}
+.nav-item .nav-ico{font-size:20px;line-height:1}
+.nav-item:active{transform:scale(0.9)}
+
+/* ═══ SECTIONS ═══ */
+.section{display:none}.section.active{display:block;animation:fadeIn .2s ease}
+
+/* ═══ LOADING ═══ */
+.loader{text-align:center;padding:20px;color:var(--muted);font-size:12px}
+.loader::after{content:'';display:block;width:24px;height:24px;margin:8px auto 0;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:20px;color:var(--dim);font-size:12px}
+.skeleton{background:linear-gradient(90deg,var(--card2) 25%,var(--card3) 50%,var(--card2) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:var(--radius-sm);height:20px;margin-bottom:6px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ═══ BADGES ═══ */
+.badge{font-size:9px;padding:3px 7px;border-radius:var(--radius-xs);font-weight:700;text-transform:uppercase;letter-spacing:0.3px}
+.badge.ok{background:rgba(0,255,136,0.12);color:var(--green)}
+.badge.warn{background:rgba(255,170,0,0.12);color:var(--gold)}
+.badge.err{background:rgba(255,51,85,0.12);color:var(--red)}
+.badge.info{background:rgba(0,212,255,0.12);color:var(--accent)}
+
+/* ═══ RESPONSIVE ═══ */
+@media(max-width:360px){.stat-val{font-size:15px}.gauge-num{font-size:36px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-row">
+      <div class="logo">
+        <div class="logo-icon">J</div>
+        <div class="logo-text">
+          <h1>JARVIS AI</h1>
+          <div class="ver"><span class="live-dot"></span>LIVE — v5.0 Real-Time</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="hdr-btn" onclick="switchTab('ai')" title="AI Chat">🤖</div>
+        <div class="hdr-btn" onclick="toggleAdmin()" title="Admin">⚙️</div>
+      </div>
+    </div>
+    <div class="ticker" id="tickerBar"><div class="loader">Connecting to markets...</div></div>
+  </div>
+
+  <!-- ═══ HOME ═══ -->
+  <div class="section active" id="sec-home">
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">💰</span>Portfolio</div>
+      <div class="stats" id="portfolioStats">
+        <div class="stat"><div class="stat-val" id="pBal">₹0</div><div class="stat-lbl">Balance</div></div>
+        <div class="stat"><div class="stat-val" id="pPnl">₹0</div><div class="stat-lbl">P&amp;L</div></div>
+        <div class="stat"><div class="stat-val" id="pInv">₹0</div><div class="stat-lbl">Invested</div></div>
+        <div class="stat"><div class="stat-val" id="pPos">0</div><div class="stat-lbl">Positions</div></div>
+      </div>
+    </div>
+
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">🧠</span>Market Sentiment</div>
+      <div class="gauge">
+        <div class="gauge-num" id="fgVal">--</div>
+        <div class="gauge-label" id="fgLbl">Loading...</div>
+        <div class="gauge-bar"><div class="gauge-ptr" id="fgPtr" style="left:50%"></div></div>
+      </div>
+    </div>
+
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">📊</span>Market Regime</div>
+      <div class="stats">
+        <div class="stat"><div class="stat-val gold" id="rReg">--</div><div class="stat-lbl">Regime</div></div>
+        <div class="stat"><div class="stat-val" id="rConf">--</div><div class="stat-lbl">Confidence</div></div>
+      </div>
+      <div style="text-align:center;margin-top:6px;font-size:11px;color:var(--muted)" id="rRec"></div>
+    </div>
+
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">📡</span>Live Signals</div>
+      <div id="quickSignals"><div class="loader">Finding signals...</div></div>
+    </div>
+
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">🔥</span>Top Movers</div>
+      <div class="tabs">
+        <div class="tab active" data-mover="gainers" onclick="showMovers('gainers',this)">🟢 Gainers</div>
+        <div class="tab" data-mover="losers" onclick="showMovers('losers',this)">🔴 Losers</div>
+      </div>
+      <div id="moversBox"><div class="loader">Loading...</div></div>
+    </div>
+
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">📰</span>Breaking News</div>
+      <div id="newsBox"><div class="loader">Loading news...</div></div>
+    </div>
+
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">🇮🇳</span>Indian Indices</div>
+      <div id="indicesBox"><div class="loader">Loading indices...</div></div>
+    </div>
+  </div>
+
+  <!-- ═══ MARKETS ═══ -->
+  <div class="section" id="sec-markets">
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">🔍</span>Search Token</div>
+      <div class="input-row">
+        <input class="input" id="tokenSearch" placeholder="Search any token (BTC, SOL, PEPE, address...)"/>
+        <button class="btn btn-primary btn-sm" onclick="searchToken()">Search</button>
+      </div>
+      <div id="searchResults"></div>
+    </div>
+
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">💎</span>Top Crypto (Live)</div>
+      <div id="cryptoList"><div class="loader">Loading markets...</div></div>
+    </div>
+
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">🚀</span>DexScreener Trending</div>
+      <div id="dexTrending"><div class="loader">Scanning DexScreener...</div></div>
+    </div>
+
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">🎰</span>Pump.fun Hot</div>
+      <div id="pumpfunList"><div class="loader">Scanning Pump.fun...</div></div>
+    </div>
+
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">💎</span>Gem Scanner (Dips)</div>
+      <div class="tabs">
+        <div class="tab active" onclick="loadGems('all')">All</div>
+        <div class="tab" onclick="loadGems('dip')">Dips 📉</div>
+        <div class="tab" onclick="loadGems('trending')">Trending 🔥</div>
+        <div class="tab" onclick="loadGems('pumpfun')">Pump.fun 🎰</div>
+      </div>
+      <div id="gemsList"><div class="loader">Scanning gems...</div></div>
+    </div>
+
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">🔍</span>Rug Detector</div>
+      <div class="input-row">
+        <input class="input" id="rugInput" placeholder="Token symbol or address..."/>
+        <button class="btn btn-red btn-sm" onclick="checkRug()">Scan</button>
+      </div>
+      <div id="rugResult"></div>
+    </div>
+  </div>
+
+  <!-- ═══ AI CHAT ═══ -->
+  <div class="section" id="sec-ai">
+    <div class="chat-container">
+      <div class="chat-actions">
+        <div class="chat-action-btn" onclick="quickChat('What are the best crypto to buy today?')">🔥 Best buys</div>
+        <div class="chat-action-btn" onclick="quickChat('Give me a market briefing')">📊 Briefing</div>
+        <div class="chat-action-btn" onclick="quickChat('Analyze BTC')">₿ BTC</div>
+        <div class="chat-action-btn" onclick="quickChat('Show me trending meme coins')">🐸 Memes</div>
+        <div class="chat-action-btn" onclick="clearChat()">🗑️ Clear</div>
+      </div>
+      <div class="chat-messages" id="chatMsgs">
+        <div class="chat-msg ai">
+          👋 <strong>I'm JARVIS</strong> — your AI trading intelligence.<br><br>
+          I have <strong>real-time</strong> access to:<br>
+          • 📈 Live crypto prices (CoinGecko, DexScreener)<br>
+          • 🎰 Pump.fun & DexTools trending<br>
+          • 🇮🇳 Indian stock market (NSE/BSE)<br>
+          • 🧠 AI-powered analysis & predictions<br>
+          • 🎯 Auto-trading signals<br><br>
+          Ask me anything about markets, tokens, or trading strategies!
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <textarea class="chat-input" id="chatIn" placeholder="Ask JARVIS anything..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}" oninput="autoResize(this)"></textarea>
+        <button class="chat-send" id="chatSendBtn" onclick="sendChat()">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TRADER ═══ -->
+  <div class="section" id="sec-trader">
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">🤖</span>Auto-Sniper</div>
+      <div id="traderStatus"><div class="loader">Loading...</div></div>
+      <div class="btn-group" style="margin-top:10px">
+        <button class="btn btn-green btn-sm" onclick="toggleStartForm()">▶ Start</button>
+        <button class="btn btn-red btn-sm" onclick="stopTrader()">⏹ Stop</button>
+        <button class="btn btn-gold btn-sm" onclick="compoundTrader()">🔄 Compound</button>
+      </div>
+    </div>
+
+    <div class="card" id="startForm" style="display:none"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">🚀</span>Launch Auto-Sniper</div>
+      <select class="input" id="stratSelect" style="margin-bottom:8px">
+        <option value="conservative">🛡️ Conservative — Low risk, +15% target</option>
+        <option value="balanced" selected>⚖️ Balanced — Medium risk, +25% target</option>
+        <option value="aggressive">🔥 Aggressive — High risk, +50% target</option>
+        <option value="scalper">⚡ Scalper — Quick trades, +8% target</option>
+        <option value="moonshot">🌙 Moonshot — Extreme risk, +200% target</option>
+      </select>
+      <input class="input" id="amtInput" type="number" placeholder="Amount (₹)" style="margin-bottom:8px"/>
+      <input class="input" id="targetInput" type="number" placeholder="Target profit ₹ (optional)" style="margin-bottom:8px"/>
+      <button class="btn btn-primary btn-full" onclick="startTrader()">🚀 Launch Auto-Sniper</button>
+    </div>
+
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">📋</span>Strategies</div>
+      <div id="stratList"><div class="loader">Loading...</div></div>
+    </div>
+
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">📊</span>Performance</div>
+      <div id="perfBox"><div class="empty">Start trading to see performance</div></div>
+    </div>
+
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">🎯</span>Sniper Gems (Auto-detected)</div>
+      <div id="sniperGems"><div class="loader">Scanning for profitable tokens...</div></div>
+    </div>
+  </div>
+
+  <!-- ═══ WALLET ═══ -->
+  <div class="section" id="sec-wallet">
+    <div class="card phantom-connect" id="phantomCard">
+      <div class="card-title" style="justify-content:center"><span class="ico">👻</span>Phantom Wallet</div>
+      <div id="phantomStatus">
+        <button class="btn btn-primary" onclick="connectPhantom()" id="phantomConnectBtn">Connect Phantom Wallet</button>
+      </div>
+    </div>
+
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">💳</span>Trading Wallet</div>
+      <div class="stats">
+        <div class="stat"><div class="stat-val green" id="wBal">₹0</div><div class="stat-lbl">Balance</div></div>
+        <div class="stat"><div class="stat-val" id="wProfit">₹0</div><div class="stat-lbl">Total Profit</div></div>
+      </div>
+    </div>
+
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">📦</span>Open Positions</div>
+      <div id="positionsBox"><div class="empty">No open positions</div></div>
+    </div>
+
+    <div class="card"><div class="card-glow"></div>
+      <div class="card-title"><span class="ico">📜</span>Trade History</div>
+      <div id="txnBox"><div class="empty">No trades yet</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item active" onclick="switchTab('home')"><span class="nav-ico">🏠</span>Home</div>
+  <div class="nav-item" onclick="switchTab('markets')"><span class="nav-ico">📊</span>Markets</div>
+  <div class="nav-item" onclick="switchTab('ai')"><span class="nav-ico">🤖</span>Jarvis</div>
+  <div class="nav-item" onclick="switchTab('trader')"><span class="nav-ico">🎯</span>Sniper</div>
+  <div class="nav-item" onclick="switchTab('wallet')"><span class="nav-ico">💎</span>Wallet</div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   JARVIS Mini App v5.0 — Real-Time JavaScript Engine
+   ═══════════════════════════════════════════════════════ */
+const API = '/api/miniapp';
+let userId = '0';
+let moversData = { gainers: [], losers: [] };
+let ws = null;
+let phantomWallet = null;
+let phantomAddress = null;
+
+// Telegram WebApp init
+try {
+  const tg = window.Telegram?.WebApp;
+  if (tg) {
+    tg.ready();
+    tg.expand();
+    tg.setHeaderColor('#050a14');
+    tg.setBackgroundColor('#050a14');
+    userId = String(tg.initDataUnsafe?.user?.id || '0');
+  }
+} catch(e) {}
+
+/* ── Helpers ── */
+const $ = id => document.getElementById(id);
+function fmt(n, d=2) {
+  if (n === null || n === undefined) return '--';
+  const num = Number(n);
+  if (isNaN(num)) return String(n);
+  if (Math.abs(num) >= 1e12) return (num/1e12).toFixed(2)+'T';
+  if (Math.abs(num) >= 1e9) return (num/1e9).toFixed(2)+'B';
+  if (Math.abs(num) >= 1e7) return '₹'+(num/1e7).toFixed(2)+'Cr';
+  if (Math.abs(num) >= 1e5) return '₹'+(num/1e5).toFixed(2)+'L';
+  if (Math.abs(num) >= 1000) return num.toLocaleString('en-IN',{maximumFractionDigits:d});
+  if (Math.abs(num) < 0.01 && num !== 0) return num.toFixed(6);
+  return num.toFixed(d);
+}
+function fmtUsd(n) {
+  if (!n && n !== 0) return '--';
+  const num = Number(n);
+  if (Math.abs(num) >= 1e9) return '$'+(num/1e9).toFixed(2)+'B';
+  if (Math.abs(num) >= 1e6) return '$'+(num/1e6).toFixed(2)+'M';
+  if (Math.abs(num) >= 1000) return '$'+num.toLocaleString('en-US',{maximumFractionDigits:2});
+  if (Math.abs(num) < 0.01 && num !== 0) return '$'+num.toFixed(8);
+  return '$'+num.toFixed(2);
+}
+function chgCls(v) { return Number(v) >= 0 ? 'up' : 'dn'; }
+function chgSign(v) { const n = Number(v||0); return (n>=0?'+':'')+n.toFixed(2)+'%'; }
+function chgColor(v) { return Number(v) >= 0 ? 'var(--green)' : 'var(--red)'; }
+
+async function api(path, opts) {
+  try {
+    const r = await fetch(API+path, {...opts, headers:{'Content-Type':'application/json',...(opts?.headers||{})}});
+    return await r.json();
+  } catch(e) { console.warn('API:', path, e); return null; }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+/* ═══ TAB SWITCHING ═══ */
+function switchTab(t) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  $('sec-'+t)?.classList.add('active');
+  const tabs = ['home','markets','ai','trader','wallet'];
+  document.querySelectorAll('.nav-item')[tabs.indexOf(t)]?.classList.add('active');
+  
+  if (t === 'markets') loadMarkets();
+  if (t === 'trader') { loadTraderStatus(); loadStrategies(); loadSniperGems(); }
+  if (t === 'wallet') loadWallet();
+}
+
+/* ═══ WEBSOCKET — Real-Time Prices ═══ */
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const wsUrl = `${proto}://${location.host}${API}/ws/prices`;
+  
+  try {
+    ws = new WebSocket(wsUrl);
+    ws.onopen = () => console.log('WS connected');
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'ticker' && msg.data) {
+          renderTicker(msg.data);
+        }
+      } catch(err) {}
+    };
+    ws.onclose = () => { setTimeout(connectWS, 5000); };
+    ws.onerror = () => {};
+  } catch(e) {
+    setTimeout(connectWS, 5000);
+  }
+}
+
+/* ═══ DASHBOARD LOADING ═══ */
+async function loadDashboard() {
+  const d = await api('/dashboard?user_id='+userId);
+  if (!d) return;
+  
+  // Ticker
+  if (d.market_ticker?.length) renderTicker(d.market_ticker);
+  
+  // Portfolio
+  const p = d.portfolio || {};
+  $('pBal').textContent = '₹'+fmt(p.balance_inr||0);
+  $('pPnl').textContent = '₹'+fmt(p.pnl_inr||0);
+  $('pPnl').style.color = chgColor(p.pnl_inr||0);
+  $('pInv').textContent = '₹'+fmt(p.total_invested_inr||0);
+  $('pPos').textContent = p.positions || '0';
+  
+  // Fear & Greed
+  const fg = d.fear_greed || d.sentiment || {};
+  const fgVal = fg.value || 50;
+  const fgLbl = fg.label || 'Neutral';
+  $('fgVal').textContent = Math.round(fgVal);
+  $('fgLbl').textContent = fgLbl;
+  $('fgVal').style.color = fgVal > 60 ? 'var(--green)' : fgVal < 40 ? 'var(--red)' : 'var(--gold)';
+  $('fgPtr').style.left = Math.min(Math.max(fgVal, 2), 98) + '%';
+  
+  // Regime
+  const rg = d.regime || {};
+  $('rReg').textContent = rg.regime || '--';
+  $('rConf').textContent = (rg.confidence||0)+'%';
+  $('rRec').textContent = rg.recommendation || '';
+  
+  // Signals
+  renderSignals(d.signals||[], 'quickSignals');
+  
+  // Movers
+  moversData = d.top_movers || {gainers:[], losers:[]};
+  showMovers('gainers');
+  
+  // News
+  renderNews(d.news||[], 'newsBox');
+  
+  // Indices
+  renderIndices(d.indices||[]);
+}
+
+/* ═══ TICKER RENDER ═══ */
+function renderTicker(tickers) {
+  if (!tickers?.length) return;
+  $('tickerBar').innerHTML = tickers.map(t => {
+    const chg = Number(t.change_24h || 0);
+    return `<div class="tick" onclick="quickChat('Analyze ${t.symbol} in detail')">
+      <span class="tick-sym">${t.symbol}</span>
+      <span class="tick-price">${t.currency==='INR'?'₹':'$'}${t.price_usd?t.price_usd.toLocaleString('en-US',{maximumFractionDigits:t.price_usd<1?6:2}):(t.price_inr||0).toLocaleString('en-IN',{maximumFractionDigits:2})}</span>
+      <span class="tick-chg ${chgCls(chg)}">${chgSign(chg)}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ═══ SIGNALS RENDER ═══ */
+function renderSignals(sigs, containerId) {
+  const el = $(containerId);
+  if (!sigs?.length) { el.innerHTML = '<div class="empty">No signals right now</div>'; return; }
+  el.innerHTML = sigs.slice(0,8).map(s => {
+    const st = String(s.signal||'HOLD').toUpperCase();
+    const cls = st.includes('BUY')?'buy':st.includes('SELL')?'sell':'hold';
+    return `<div class="sig-row" onclick="quickChat('Analyze ${s.symbol} - should I ${st}?')">
+      <div class="sig-icon">${s.symbol?.slice(0,2)||'?'}</div>
+      <div class="sig-info"><div class="sig-sym">${s.symbol}</div><div class="sig-name">${s.confidence||0}% confidence</div></div>
+      <span class="sig-badge ${cls}">${st}</span>
+      <div class="sig-right">
+        <div class="sig-price">${s.price?fmtUsd(s.price):''}</div>
+        <div class="sig-chg ${chgCls(s.change)}">${s.change?chgSign(s.change):''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ═══ MOVERS ═══ */
+function showMovers(type, tabEl) {
+  if (tabEl) {
+    tabEl.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tabEl.classList.add('active');
+  }
+  const list = type==='gainers' ? (moversData.gainers||[]) : (moversData.losers||[]);
+  if (!list.length) { $('moversBox').innerHTML='<div class="empty">No data</div>'; return; }
+  $('moversBox').innerHTML = list.slice(0,8).map(m => `<div class="sig-row" onclick="quickChat('Analyze ${m.symbol||m.name}')">
+    <div class="sig-icon">${(m.symbol||m.name||'?').slice(0,2)}</div>
+    <div class="sig-info"><div class="sig-sym">${m.symbol||m.name}</div><div class="sig-name">${m.name||''}</div></div>
+    <div class="sig-right">
+      <div class="sig-price">${fmtUsd(m.price_usd||m.price)}</div>
+      <div class="sig-chg ${chgCls(m.change_24h||m.change_pct)}">${chgSign(m.change_24h||m.change_pct||0)}</div>
+    </div>
+  </div>`).join('');
+}
+
+/* ═══ NEWS RENDER ═══ */
+function renderNews(articles, containerId) {
+  const el = $(containerId);
+  if (!articles?.length) { el.innerHTML='<div class="empty">No news available</div>'; return; }
+  el.innerHTML = articles.slice(0,8).map(a => {
+    const url = a.url || '#';
+    const hasUrl = url && url !== '#';
+    return `<div class="news-card" onclick="${hasUrl ? "window.open('"+url+"','_blank')" : ''}">
+      <div class="news-title">${a.title||'Untitled'}</div>
+      <div class="news-meta">
+        <span class="news-src">${a.source||'News'}</span>
+        ${a.published?'<span class="news-time">'+a.published.slice(0,16)+'</span>':''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ═══ INDICES ═══ */
+function renderIndices(indices) {
+  if (!indices?.length) { $('indicesBox').innerHTML='<div class="empty">Market closed or no data</div>'; return; }
+  $('indicesBox').innerHTML = indices.map(i => `<div class="sig-row">
+    <div class="sig-icon">🇮🇳</div>
+    <div class="sig-info"><div class="sig-sym">${i.name}</div><div class="sig-name">${i.symbol}</div></div>
+    <div class="sig-right">
+      <div class="sig-price">₹${Number(i.price||0).toLocaleString('en-IN',{maximumFractionDigits:2})}</div>
+      <div class="sig-chg ${chgCls(i.change_pct)}">${chgSign(i.change_pct||0)}</div>
+    </div>
+  </div>`).join('');
+}
+
+/* ═══ MARKETS PAGE ═══ */
+async function loadMarkets() {
+  const d = await api('/markets');
+  if (!d) return;
+  
+  // Crypto list
+  if (d.crypto?.length) {
+    $('cryptoList').innerHTML = d.crypto.slice(0,30).map(c => `<div class="sig-row" onclick="quickChat('Deep analysis of ${c.symbol}')">
+      ${c.image?'<img src="'+c.image+'" width="28" height="28" style="border-radius:8px" onerror="this.style.display=\'none\'"/>':'<div class="sig-icon">'+((c.symbol||'?').slice(0,2))+'</div>'}
+      <div class="sig-info"><div class="sig-sym">${c.symbol}</div><div class="sig-name">${c.name||''} #${c.rank||''}</div></div>
+      <div class="sig-right">
+        <div class="sig-price">${fmtUsd(c.price_usd)}</div>
+        <div class="sig-chg ${chgCls(c.change_24h)}">${chgSign(c.change_24h||0)}</div>
+      </div>
+    </div>`).join('');
+  }
+  
+  // DEX Trending
+  if (d.trending?.length) {
+    $('dexTrending').innerHTML = d.trending.slice(0,10).map(t => `<div class="sig-row">
+      <div class="sig-icon">🔥</div>
+      <div class="sig-info"><div class="sig-sym">${t.symbol||t.name||t.address?.slice(0,6)}</div><div class="sig-name">${t.chain||''} • ${t.source||''}</div></div>
+      ${t.url?'<a href="'+t.url+'" target="_blank" class="btn btn-ghost btn-sm">View</a>':''}
+    </div>`).join('');
+  } else { $('dexTrending').innerHTML='<div class="empty">No trending data</div>'; }
+  
+  // Pump.fun
+  if (d.pumpfun?.length) {
+    $('pumpfunList').innerHTML = d.pumpfun.slice(0,10).map(p => `<div class="sig-row">
+      <div class="sig-icon">🎰</div>
+      <div class="sig-info"><div class="sig-sym">${p.symbol}</div><div class="sig-name">${p.name||''}</div></div>
+      <div class="sig-right">
+        <div class="sig-price">${p.market_cap?fmtUsd(p.market_cap):''}</div>
+        ${p.url?'<a href="'+p.url+'" target="_blank" style="font-size:10px;color:var(--accent)">pump.fun</a>':''}
+      </div>
+    </div>`).join('');
+  } else { $('pumpfunList').innerHTML='<div class="empty">No Pump.fun data</div>'; }
+}
+
+async function searchToken() {
+  const q = $('tokenSearch').value.trim();
+  if (!q) return;
+  $('searchResults').innerHTML = '<div class="loader">Searching DexScreener...</div>';
+  const d = await api('/search?q='+encodeURIComponent(q));
+  if (!d?.results?.length) { $('searchResults').innerHTML='<div class="empty">No results for "'+q+'"</div>'; return; }
+  $('searchResults').innerHTML = '<div style="font-size:10px;color:var(--muted);margin:6px 0">'+d.count+' results</div>' + d.results.slice(0,15).map(r => `<div class="sig-row" onclick="quickChat('Analyze ${r.symbol} at $${r.price_usd}')">
+    <div class="sig-icon">${(r.symbol||'?').slice(0,2)}</div>
+    <div class="sig-info">
+      <div class="sig-sym">${r.symbol} <span class="badge info">${r.chain||''}</span></div>
+      <div class="sig-name">${r.name||''} • ${r.dex||''}</div>
+    </div>
+    <div class="sig-right">
+      <div class="sig-price">${fmtUsd(r.price_usd)}</div>
+      <div class="sig-chg ${chgCls(r.change_24h)}">${chgSign(r.change_24h||0)}</div>
+    </div>
+  </div>`).join('');
+}
+
+async function loadGems(src) {
+  $('gemsList').innerHTML='<div class="loader">Scanning gems...</div>';
+  const d = await api('/gems?source='+src);
+  if (!d?.gems?.length) { $('gemsList').innerHTML='<div class="empty">No gems found</div>'; return; }
+  $('gemsList').innerHTML = '<div style="font-size:10px;color:var(--muted);margin:6px 0">'+d.count+' gems found</div>' + d.gems.slice(0,20).map(g => `<div class="sig-row">
+    <div class="sig-icon">💎</div>
+    <div class="sig-info">
+      <div class="sig-sym">${g.symbol||g.name||'?'} ${g.chain?'<span class="badge info">'+g.chain+'</span>':''}</div>
+      <div class="sig-name">${g.name||''} • Score: ${g.gem_score||0}</div>
+    </div>
+    <div class="sig-right">
+      <div class="sig-price">${g.price_usd?fmtUsd(g.price_usd):(g.market_cap?fmtUsd(g.market_cap):'')}</div>
+      <div class="sig-chg ${chgCls(g.change_24h)}">${g.change_24h?chgSign(g.change_24h):''}</div>
+    </div>
+  </div>`).join('');
+}
+
+async function checkRug() {
+  const sym = $('rugInput').value.trim();
+  if (!sym) return;
+  $('rugResult').innerHTML='<div class="loader">Scanning for rugs...</div>';
+  const d = await api('/rug-check?symbol='+encodeURIComponent(sym));
+  if (!d || d.error) { $('rugResult').innerHTML='<div class="empty">'+(d?.error||'Error')+'</div>'; return; }
+  const risk = d.risk_score||0;
+  const cls = risk>70?'err':risk>40?'warn':'ok';
+  $('rugResult').innerHTML = `<div style="text-align:center;padding:12px">
+    <div style="font-size:36px;font-weight:900;font-family:'JetBrains Mono',monospace" class="stat-val ${risk>70?'red':risk>40?'gold':'green'}">${risk}%</div>
+    <div style="font-size:14px;font-weight:700;margin:4px 0">${d.verdict||'Analysis complete'}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">${(d.warnings||[]).map(w=>'⚠️ '+w).join('<br>')}</div>
+    <div style="display:flex;justify-content:center;gap:8px;margin-top:8px;font-size:10px;color:var(--muted)">
+      <span>Liq: ${fmtUsd(d.liquidity)}</span>
+      <span>Vol: ${fmtUsd(d.volume_24h)}</span>
+      <span>MCap: ${fmtUsd(d.market_cap)}</span>
+    </div>
+  </div>`;
+}
+
+/* ═══ AI CHAT (ChatGPT-style) ═══ */
+let chatBusy = false;
+
+function quickChat(msg) {
+  switchTab('ai');
+  setTimeout(() => { $('chatIn').value = msg; sendChat(); }, 100);
+}
+
+async function sendChat() {
+  if (chatBusy) return;
+  const msg = $('chatIn').value.trim();
+  if (!msg) return;
+  
+  chatBusy = true;
+  $('chatSendBtn').disabled = true;
+  $('chatIn').value = '';
+  autoResize($('chatIn'));
+  
+  // Add user message
+  const msgEl = document.createElement('div');
+  msgEl.className = 'chat-msg user';
+  msgEl.textContent = msg;
+  $('chatMsgs').appendChild(msgEl);
+  
+  // Add thinking message
+  const thinkEl = document.createElement('div');
+  thinkEl.className = 'chat-msg ai thinking';
+  thinkEl.id = 'aiThinking';
+  thinkEl.textContent = 'Thinking';
+  $('chatMsgs').appendChild(thinkEl);
+  $('chatMsgs').scrollTop = $('chatMsgs').scrollHeight;
+  
+  const d = await api('/chat', { method:'POST', body: JSON.stringify({message:msg, user_id:userId}) });
+  
+  // Replace thinking with response
+  thinkEl.remove();
+  const aiEl = document.createElement('div');
+  aiEl.className = 'chat-msg ai';
+  aiEl.innerHTML = formatAIResponse(d?.reply || 'Sorry, no response. Please try again.');
+  $('chatMsgs').appendChild(aiEl);
+  $('chatMsgs').scrollTop = $('chatMsgs').scrollHeight;
+  
+  chatBusy = false;
+  $('chatSendBtn').disabled = false;
+}
+
+function formatAIResponse(text) {
+  // Convert markdown-like formatting to HTML
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--accent)">$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/^[-•] (.+)/gm, '<span class="md-bullet">•</span> $1')
+    .replace(/^(\d+)\. (.+)/gm, '<strong style="color:var(--gold)">$1.</strong> $2')
+    .replace(/`([^`]+)`/g, '<code style="background:var(--card3);padding:1px 4px;border-radius:3px;font-family:JetBrains Mono,monospace;font-size:12px">$1</code>')
+    .replace(/\n/g, '<br>');
+}
+
+async function clearChat() {
+  await api('/chat/clear', { method:'POST', body: JSON.stringify({user_id:userId}) });
+  $('chatMsgs').innerHTML = '<div class="chat-msg ai">Chat cleared. Ask me anything!</div>';
+}
+
+/* ═══ TRADER ═══ */
+async function loadTraderStatus() {
+  const d = await api('/auto-trader/status?user_id='+userId);
+  if (!d?.traders?.length) { $('traderStatus').innerHTML='<div class="empty">No active sniper</div>'; return; }
+  const t = d.traders[0];
+  $('traderStatus').innerHTML = `<div class="stats">
+    <div class="stat"><div class="stat-val ${t.active?'green':'red'}">${t.active?'ACTIVE':'OFF'}</div><div class="stat-lbl">Status</div></div>
+    <div class="stat"><div class="stat-val">${t.strategy_name||t.strategy}</div><div class="stat-lbl">Strategy</div></div>
+    <div class="stat"><div class="stat-val">₹${fmt(t.amount||0)}</div><div class="stat-lbl">Amount</div></div>
+    <div class="stat"><div class="stat-val ${t.profit>=0?'green':'red'}">₹${fmt(t.profit||0)}</div><div class="stat-lbl">Profit</div></div>
+    <div class="stat"><div class="stat-val">${t.trades||0}</div><div class="stat-lbl">Trades</div></div>
+    <div class="stat"><div class="stat-val">${t.win_rate||0}%</div><div class="stat-lbl">Win Rate</div></div>
+  </div>`;
+  loadPerformance();
+}
+
+async function loadStrategies() {
+  const d = await api('/auto-trader/strategies');
+  if (!d?.strategies?.length) return;
+  $('stratList').innerHTML = d.strategies.map(s => `<div style="padding:10px;background:var(--card2);border-radius:var(--radius-sm);margin-bottom:5px;border:1px solid var(--border)">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-weight:700;font-size:13px;color:#fff">${s.name}</div>
+      <span class="badge ${s.risk_level==='LOW'?'ok':s.risk_level==='HIGH'||s.risk_level==='EXTREME'?'err':'warn'}">${s.risk_level}</span>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:3px">${s.description}</div>
+    <div style="display:flex;gap:8px;margin-top:4px;font-size:10px;color:var(--dim)">
+      <span>Buy at ${s.buy_dip_pct}%</span>
+      <span>Target +${s.sell_target_pct}%</span>
+      <span>SL ${s.stop_loss_pct}%</span>
+      <span>Min ₹${s.min_amount}</span>
+    </div>
+  </div>`).join('');
+}
+
+function toggleStartForm() { $('startForm').style.display = $('startForm').style.display==='none'?'block':'none'; }
+
+async function startTrader() {
+  const strat = $('stratSelect').value;
+  const amt = Number($('amtInput').value) || 0;
+  const target = Number($('targetInput').value) || 0;
+  if (amt < 50) { alert('Minimum ₹50'); return; }
+  const d = await api('/auto-trader/start', {method:'POST', body:JSON.stringify({user_id:userId, amount:amt, strategy:strat, target_inr:target})});
+  if (d?.error) alert(d.error);
+  else { alert(d?.message || 'Auto-Sniper started!'); loadTraderStatus(); $('startForm').style.display='none'; }
+}
+
+async function stopTrader() {
+  if (!confirm('Stop the auto-sniper?')) return;
+  const d = await api('/auto-trader/stop', {method:'POST', body:JSON.stringify({user_id:userId, sell_all:true})});
+  alert(d?.message || d?.error || 'Stopped');
+  loadTraderStatus();
+}
+
+async function compoundTrader() {
+  const d = await api('/auto-trader/compound', {method:'POST', body:JSON.stringify({user_id:userId})});
+  alert(d?.message || d?.error || 'Done');
+  loadTraderStatus();
+}
+
+async function loadPerformance() {
+  const d = await api('/auto-trader/performance?user_id='+userId);
+  if (!d || d.error) return;
+  $('perfBox').innerHTML = `<div class="stats">
+    <div class="stat"><div class="stat-val ${d.total_profit>=0?'green':'red'}">₹${fmt(d.total_profit||0)}</div><div class="stat-lbl">Total Profit</div></div>
+    <div class="stat"><div class="stat-val">${d.win_rate||0}%</div><div class="stat-lbl">Win Rate</div></div>
+    <div class="stat"><div class="stat-val">${d.total_trades||0}</div><div class="stat-lbl">Trades</div></div>
+    <div class="stat"><div class="stat-val">${d.active_positions||0}</div><div class="stat-lbl">Open</div></div>
+    <div class="stat"><div class="stat-val green">₹${fmt(d.best_trade||0)}</div><div class="stat-lbl">Best Trade</div></div>
+    <div class="stat"><div class="stat-val">${d.roi_pct||0}%</div><div class="stat-lbl">ROI</div></div>
+  </div>`;
+}
+
+async function loadSniperGems() {
+  $('sniperGems').innerHTML='<div class="loader">AI scanning for profitable tokens...</div>';
+  const d = await api('/auto-trader/gems?strategy='+ ($('stratSelect')?.value || 'balanced'));
+  if (!d?.gems?.length) { $('sniperGems').innerHTML='<div class="empty">No gems detected. Markets may be quiet.</div>'; return; }
+  $('sniperGems').innerHTML = d.gems.slice(0,10).map(g => `<div class="sig-row">
+    <div class="sig-icon">🎯</div>
+    <div class="sig-info">
+      <div class="sig-sym">${g.symbol||'?'} <span class="badge info">${g.chain||''}</span></div>
+      <div class="sig-name">Score: ${g.gem_score||0} • Dip: ${g.dip_score||0}</div>
+    </div>
+    <div class="sig-right">
+      <div class="sig-price">${fmtUsd(g.price_usd)}</div>
+      <div class="sig-chg ${chgCls(g.change_24h)}">${chgSign(g.change_24h||0)}</div>
+    </div>
+  </div>`).join('');
+}
+
+/* ═══ WALLET ═══ */
+async function loadWallet() {
+  const d = await api('/wallet?user_id='+userId);
+  if (!d) return;
+  $('wBal').textContent = '₹'+fmt(d.balance_inr||0);
+  $('wProfit').textContent = '₹'+fmt(d.total_profit||0);
+  $('wProfit').style.color = chgColor(d.total_profit||0);
+  
+  const positions = d.portfolio?.positions || [];
+  if (positions.length) {
+    $('positionsBox').innerHTML = positions.map(p => `<div class="sig-row">
+      <div class="sig-icon">📦</div>
+      <div class="sig-info"><div class="sig-sym">${p.symbol||'?'}</div><div class="sig-name">${p.chain||''} • ${p.status||''}</div></div>
+      <div class="sig-right">
+        <div class="sig-price">₹${fmt(p.current_value||p.amount_invested||0)}</div>
+        <div class="sig-chg ${chgCls(p.pnl_pct)}">${chgSign(p.pnl_pct||0)}</div>
+      </div>
+    </div>`).join('');
+  }
+  
+  const txns = d.transactions || [];
+  if (txns.length) {
+    $('txnBox').innerHTML = txns.slice(0,15).map(t => `<div class="sig-row">
+      <div class="sig-icon">${t.profit>0?'🟢':'🔴'}</div>
+      <div class="sig-info"><div class="sig-sym">${t.symbol||'?'}</div><div class="sig-name">${t.closed_at||''}</div></div>
+      <div class="sig-right">
+        <div class="sig-price" style="color:${chgColor(t.profit)}">₹${fmt(t.profit||0)}</div>
+        <div class="sig-chg ${chgCls(t.pnl_pct)}">${chgSign(t.pnl_pct||0)}</div>
+      </div>
+    </div>`).join('');
+  }
+  
+  // Check Phantom
+  if (phantomAddress) loadPhantomBalance();
+}
+
+/* ═══ PHANTOM WALLET ═══ */
+async function connectPhantom() {
+  try {
+    // Check if Phantom is available (mobile deep link or browser extension)
+    if (window.solana?.isPhantom) {
+      const resp = await window.solana.connect();
+      phantomAddress = resp.publicKey.toString();
+      onPhantomConnected();
+    } else if (window.phantom?.solana) {
+      const resp = await window.phantom.solana.connect();
+      phantomAddress = resp.publicKey.toString();
+      onPhantomConnected();
+    } else {
+      // Open Phantom app / install page
+      const isIOS = /iPhone|iPad/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      if (isIOS || isAndroid) {
+        // Deep link to Phantom app
+        window.open('https://phantom.app/ul/browse/' + encodeURIComponent(window.location.href), '_blank');
+      } else {
+        window.open('https://phantom.app/', '_blank');
+      }
+    }
+  } catch(e) {
+    console.error('Phantom connect error:', e);
+    // Fallback: manual entry
+    const addr = prompt('Enter your Solana wallet address:');
+    if (addr && addr.length >= 32) {
+      phantomAddress = addr;
+      onPhantomConnected();
+    }
+  }
+}
+
+async function onPhantomConnected() {
+  // Save to backend
+  await api('/wallet/connect-phantom', {method:'POST', body:JSON.stringify({user_id:userId, wallet_address:phantomAddress})});
+  
+  $('phantomStatus').innerHTML = `
+    <div class="phantom-addr">${phantomAddress.slice(0,6)}...${phantomAddress.slice(-4)}</div>
+    <div class="phantom-bal" id="solBal">Loading...</div>
+    <div style="font-size:11px;color:var(--muted)" id="solVal"></div>
+    <button class="btn btn-ghost btn-sm" onclick="disconnectPhantom()" style="margin-top:8px">Disconnect</button>
+  `;
+  loadPhantomBalance();
+}
+
+async function loadPhantomBalance() {
+  if (!phantomAddress) return;
+  const d = await api('/wallet/phantom-balance?address='+phantomAddress);
+  if (d && !d.error) {
+    $('solBal').textContent = d.sol_balance + ' SOL';
+    $('solVal').textContent = '$'+d.usd_value+' (₹'+d.inr_value+')';
+  }
+}
+
+function disconnectPhantom() {
+  phantomAddress = null;
+  $('phantomStatus').innerHTML = '<button class="btn btn-primary" onclick="connectPhantom()" id="phantomConnectBtn">Connect Phantom Wallet</button>';
+}
+
+/* ═══ ADMIN ═══ */
+function toggleAdmin() {
+  quickChat('Show me admin stats and system health');
+}
+
+/* ═══ INIT ═══ */
+loadDashboard();
+connectWS();
+
+// Auto-refresh dashboard every 30 seconds
+setInterval(() => {
+  if (document.querySelector('#sec-home.active')) loadDashboard();
+}, 30000);
+
+// Handle search on Enter
+$('tokenSearch')?.addEventListener('keypress', e => { if (e.key === 'Enter') searchToken(); });
+$('rugInput')?.addEventListener('keypress', e => { if (e.key === 'Enter') checkRug(); });
+</script>
+</body>
+</html>

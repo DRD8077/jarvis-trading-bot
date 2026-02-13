@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 JARVIS Admin Panel</title>
+
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- Socket.IO for real-time communication -->
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+
+    <!-- TensorFlow.js for emotion detection -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.0.7/dist/blazeface.min.js"></script>
+
+    <!-- Chart.js for analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="admin.css">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🤖%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading" class="screen loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2>🔧 Admin Panel Loading...</h2>
+            <p>Please wait while we initialize the admin interface</p>
+        </div>
+    </div>
+
+    <!-- Auth Screen -->
+    <div id="auth" class="screen auth-screen hidden">
+        <div class="auth-content">
+            <h1>🔐 Admin Authentication</h1>
+            <p>Only authorized administrators can access this panel</p>
+            <button id="authButton">Verify Admin Access</button>
+        </div>
+    </div>
+
+    <!-- Main Admin Panel -->
+    <div id="admin" class="admin-panel hidden">
+        <header class="admin-header">
+            <h1>🤖 JARVIS Admin Panel</h1>
+            <div class="admin-info">
+                <span id="adminName"></span>
+                <span class="admin-badge">👑 Admin</span>
+            </div>
+        </header>
+
+        <nav class="admin-nav">
+            <button class="nav-tab active" data-tab="dashboard">📊 Dashboard</button>
+            <button class="nav-tab" data-tab="users">👥 Users</button>
+            <button class="nav-tab" data-tab="analytics">📈 Analytics</button>
+            <button class="nav-tab" data-tab="emotions">😊 Emotions</button>
+            <button class="nav-tab" data-tab="settings">⚙️ Settings</button>
+        </nav>
+
+        <main class="admin-content">
+            <!-- Dashboard Tab -->
+            <div id="dashboardTab" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>👥 Total Users</h3>
+                        <div class="stat-value" id="totalUsers">-</div>
+                        <div class="stat-change" id="usersChange">+0%</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>💬 Total Chats</h3>
+                        <div class="stat-value" id="totalChats">-</div>
+                        <div class="stat-change" id="chatsChange">+0%</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>⭐ Premium Users</h3>
+                        <div class="stat-value" id="premiumUsers">-</div>
+                        <div class="stat-change" id="premiumChange">+0%</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>💰 Revenue</h3>
+                        <div class="stat-value" id="totalRevenue">₹0</div>
+                        <div class="stat-change" id="revenueChange">+0%</div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>📈 User Activity (24h)</h3>
+                        <canvas id="activityChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>😊 Emotion Distribution</h3>
+                        <canvas id="emotionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Tab -->
+            <div id="usersTab" class="tab-content hidden">
+                <div class="users-controls">
+                    <input type="text" id="userSearch" placeholder="Search users..." class="search-input">
+                    <select id="userFilter" class="filter-select">
+                        <option value="all">All Users</option>
+                        <option value="premium">Premium Only</option>
+                        <option value="active">Active Today</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+                <div class="users-list" id="usersList">
+                    <!-- Users will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div id="analyticsTab" class="tab-content hidden">
+                <div class="analytics-controls">
+                    <select id="timeRange" class="time-select">
+                        <option value="24h">Last 24 Hours</option>
+                        <option value="7d">Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
+                        <option value="90d">Last 90 Days</option>
+                    </select>
+                </div>
+                <div class="analytics-charts">
+                    <canvas id="usageChart"></canvas>
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Emotions Tab -->
+            <div id="emotionsTab" class="tab-content hidden">
+                <div class="emotions-header">
+                    <h2>😊 Emotion Detection System</h2>
+                    <div class="emotion-controls">
+                        <button id="startEmotionDetection" class="btn btn-primary">🎥 Start Detection</button>
+                        <button id="stopEmotionDetection" class="btn btn-secondary">⏹️ Stop</button>
+                    </div>
+                </div>
+
+                <div class="emotion-detection">
+                    <div class="emotion-camera">
+                        <video id="emotionVideo" autoplay playsinline></video>
+                        <canvas id="emotionCanvas" class="emotion-overlay"></canvas>
+                        <div class="emotion-status" id="emotionStatus">Camera not active</div>
+                    </div>
+
+                    <div class="emotion-results">
+                        <h3>🎭 Current Emotions</h3>
+                        <div class="emotion-bars" id="emotionBars">
+                            <!-- Emotion bars will be populated here -->
+                        </div>
+
+                        <div class="emotion-history">
+                            <h4>📊 Emotion History</h4>
+                            <canvas id="emotionHistoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="emotion-analytics">
+                    <h3>📈 Emotion Analytics</h3>
+                    <div class="emotion-stats">
+                        <div class="emotion-stat">
+                            <span class="emotion-label">Happy</span>
+                            <span class="emotion-value" id="happyCount">0</span>
+                        </div>
+                        <div class="emotion-stat">
+                            <span class="emotion-label">Sad</span>
+                            <span class="emotion-value" id="sadCount">0</span>
+                        </div>
+                        <div class="emotion-stat">
+                            <span class="emotion-label">Angry</span>
+                            <span class="emotion-value" id="angryCount">0</span>
+                        </div>
+                        <div class="emotion-stat">
+                            <span class="emotion-label">Neutral</span>
+                            <span class="emotion-value" id="neutralCount">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="settingsTab" class="tab-content hidden">
+                <div class="settings-section">
+                    <h3>🤖 AI Settings</h3>
+                    <div class="setting-group">
+                        <label>Primary AI Provider:</label>
+                        <select id="aiProvider">
+                            <option value="openai">OpenAI</option>
+                            <option value="gemini">Google Gemini</option>
+                            <option value="azure">Azure OpenAI</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label>Emotion Detection:</label>
+                        <input type="checkbox" id="emotionEnabled" checked>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>🔒 Security Settings</h3>
+                    <div class="setting-group">
+                        <label>Rate Limit (requests/minute):</label>
+                        <input type="number" id="rateLimit" value="100" min="10" max="1000">
+                    </div>
+                </div>
+
+                <div class="settings-actions">
+                    <button id="saveSettings" class="btn btn-primary">💾 Save Settings</button>
+                    <button id="resetSettings" class="btn btn-secondary">🔄 Reset to Default</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="admin.js"></script>
+</body>
+</html>

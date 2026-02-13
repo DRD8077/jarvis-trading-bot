@@ -1,0 +1,33 @@
+{
+  "user_info": {
+    "name": "Rahul Sharma",
+    "chat_id": 5424845791,
+    "first_seen": "2026-02-09T11:23:21.730415+05:30",
+    "language": "hinglish",
+    "risk_appetite": "moderate",
+    "trading_style": "",
+    "budget": ""
+  },
+  "conversations": [
+    {
+      "role": "user",
+      "text": "☀️ Morning Brief 📊",
+      "intent": "",
+      "timestamp": "2026-02-09T11:23:21.732768+05:30"
+    },
+    {
+      "role": "user",
+      "text": "Nifty 50 put m jayega ya call m",
+      "intent": "",
+      "timestamp": "2026-02-09T11:24:24.675890+05:30"
+    }
+  ],
+  "positions": [],
+  "facts": {
+    "name": "Rahul Sharma"
+  },
+  "predictions": [],
+  "learnings": [],
+  "summary": "",
+  "last_active": "2026-02-09T11:24:24.675924+05:30"
+}

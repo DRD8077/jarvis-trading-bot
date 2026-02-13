@@ -1,0 +1,39 @@
+{
+  "user_info": {
+    "name": "Abhinav Sharma",
+    "chat_id": 7171322090,
+    "first_seen": "2026-02-10T22:58:01.092239+05:30",
+    "language": "hinglish",
+    "risk_appetite": "moderate",
+    "trading_style": "",
+    "budget": ""
+  },
+  "conversations": [
+    {
+      "role": "user",
+      "text": "/start",
+      "intent": "",
+      "timestamp": "2026-02-10T22:58:01.092506+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🤖 AI Crypto Pick 🧠",
+      "intent": "",
+      "timestamp": "2026-02-10T22:58:32.330962+05:30"
+    },
+    {
+      "role": "user",
+      "text": "💵 Deposit (UPI) 📱",
+      "intent": "",
+      "timestamp": "2026-02-10T22:59:00.414558+05:30"
+    }
+  ],
+  "positions": [],
+  "facts": {
+    "name": "Abhinav Sharma"
+  },
+  "predictions": [],
+  "learnings": [],
+  "summary": "",
+  "last_active": "2026-02-10T22:59:00.414593+05:30"
+}

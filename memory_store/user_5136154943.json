@@ -1,0 +1,27 @@
+{
+  "user_info": {
+    "name": "Kuldeep Sharma",
+    "chat_id": 5136154943,
+    "first_seen": "2026-02-10T22:58:00.295010+05:30",
+    "language": "hinglish",
+    "risk_appetite": "moderate",
+    "trading_style": "",
+    "budget": ""
+  },
+  "conversations": [
+    {
+      "role": "user",
+      "text": "🔱 NIFTY Signals 📊",
+      "intent": "",
+      "timestamp": "2026-02-10T22:58:00.295668+05:30"
+    }
+  ],
+  "positions": [],
+  "facts": {
+    "name": "Kuldeep Sharma"
+  },
+  "predictions": [],
+  "learnings": [],
+  "summary": "",
+  "last_active": "2026-02-10T22:58:00.295693+05:30"
+}

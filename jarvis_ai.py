@@ -1,3 +1,20 @@
+# ─── MULTI-AGENT SPECIALISTS ───
+import logging
+import os
+import json
+from datetime import datetime, timezone, timedelta
+from typing import Any
+
+IST = timezone(timedelta(hours=5, minutes=30))
+
+logger = logging.getLogger("jarvis_ai")
+try:
+    from jarvis_agents import route_to_specialist, run_multi_specialist, auto_research, format_research_context
+    AGENTS_AVAILABLE = True
+    logger.info("🤖 MULTI-AGENT SPECIALISTS loaded — Expert Routing ACTIVE")
+except ImportError as e:
+    AGENTS_AVAILABLE = False
+    logger.warning(f"Agent Specialists not available: {e}")
 """
 🤖 J.A.R.V.I.S. AI — Just A Rather Very Intelligent System
 ═══════════════════════════════════════════════════════════════
@@ -14,50 +31,16 @@ Capabilities:
 
 Author: David Crew AI
 """
-
-import os
-import re
-import logging
-import time
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List, Tuple
-import pytz
-
-logger = logging.getLogger("jarvis_ai")
-
-IST = pytz.timezone('Asia/Kolkata')
-
-# ═══════════════════════════════════════════════════════════
-#  JARVIS MEMORY SYSTEM — Remembers User Preferences & Context
-# ═══════════════════════════════════════════════════════════
-
-import json
-from collections import defaultdict
-
-MEMORY_FILE = "jarvis_memory.json"
-_user_memory: Dict[str, dict] = {}  # chat_id -> {preferences, context, history}
-_conversation_context: Dict[str, List[dict]] = defaultdict(list)  # chat_id -> recent messages
-MAX_CONTEXT_MESSAGES = 20
-
-
-def _load_memory():
-    """Load user memory from disk."""
-    global _user_memory
-    try:
-        if os.path.exists(MEMORY_FILE):
-            with open(MEMORY_FILE, 'r') as f:
-                _user_memory = json.load(f)
-            logger.info(f"[MEMORY] Loaded memory for {len(_user_memory)} users")
-    except Exception as e:
-        logger.error(f"[MEMORY] Load failed: {e}")
-        _user_memory = {}
-
-
 def _save_memory():
     """Save user memory to disk."""
     try:
-        with open(MEMORY_FILE, 'w') as f:
+        import tempfile
+        dir_name = os.path.dirname(MEMORY_FILE) or "."
+## ...existing code...
+        fd, tmp_path = tempfile.mkstemp(suffix=".tmp", dir=dir_name)
+        with os.fdopen(fd, 'w') as f:
             json.dump(_user_memory, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_path, MEMORY_FILE)
     except Exception as e:
         logger.error(f"[MEMORY] Save failed: {e}")
 
@@ -88,51 +71,69 @@ def remember_name(chat_id: int, name: str):
     _save_memory()
 
 
-def get_user_context(chat_id: int) -> str:
-    """Get user context string for AI prompts — includes preferences, recent intents, etc."""
-    cid = str(chat_id)
-    ctx_parts = []
-    
-    if cid in _user_memory:
-        mem = _user_memory[cid]
-        if mem.get("name"):
-            ctx_parts.append(f"User name: {mem['name']}")
-        if mem.get("preferences"):
-            prefs = mem["preferences"]
-            if prefs.get("risk_level"):
-                ctx_parts.append(f"Risk appetite: {prefs['risk_level']}")
-            if prefs.get("preferred_market"):
-                ctx_parts.append(f"Preferred market: {prefs['preferred_market']}")
-            if prefs.get("budget"):
-                ctx_parts.append(f"Investment budget: ₹{prefs['budget']}")
-            if prefs.get("language"):
-                ctx_parts.append(f"Preferred language: {prefs['language']}")
-        if mem.get("watchlist"):
-            ctx_parts.append(f"Watchlist: {', '.join(mem['watchlist'][:10])}")
-        if mem.get("last_intents"):
-            ctx_parts.append(f"Recent interests: {', '.join(mem['last_intents'][-5:])}")
-    
-    # Recent conversation context
-    recent = _conversation_context.get(cid, [])
-    if recent:
-        ctx_parts.append(f"\nRecent conversation ({len(recent)} messages):")
-        for msg in recent[-5:]:
-            role = msg.get("role", "user")
-            text = msg.get("text", "")[:100]
-            ctx_parts.append(f"  {role}: {text}")
-    
-    return "\n".join(ctx_parts) if ctx_parts else ""
-
-
-def add_to_conversation(chat_id: int, role: str, text: str, intent: str = ""):
-    """Add a message to conversation context for memory."""
-    cid = str(chat_id)
-    _conversation_context[cid].append({
-        "role": role,
-        "text": text[:500],
-        "intent": intent,
-        "time": datetime.now(IST).isoformat(),
-    })
+def build_jarvis_context(chat_id: int = 0, user_text: str = None) -> str:
+    """Build comprehensive market context for JARVIS — both stock AND crypto, now with agent routing."""
+    sections = []
+    # ── STOCK MARKET CONTEXT ──
+    sections.append("═══ 📊 INDIAN STOCK MARKET ═══")
+    try:
+        from live_index_engine import get_live_price, analyze_2min_candle
+        # ...existing code...
+    except Exception:
+        sections.append("[Stock data loading...]")
+    # ML Predictions
+    try:
+        from ml_predictor import predict_index_direction
+        # ...existing code...
+    except Exception:
+        pass
+    # ── CRYPTO MARKET CONTEXT ──
+    sections.append("\n═══ 🪙 CRYPTO MARKET ═══")
+    try:
+        from crypto_engine import get_usd_inr_rate, scan_pump_trending
+        # ...existing code...
+    except Exception:
+        sections.append("[Crypto data loading...]")
+    # ── USER PORTFOLIO CONTEXT ──
+    if chat_id:
+        try:
+            from portfolio_tracker import get_portfolio, calculate_portfolio_pnl
+            # ...existing code...
+        except Exception:
+            pass
+    # AGENT SPECIALIST CONTEXT
+    if AGENTS_AVAILABLE and user_text:
+        try:
+            routing = route_to_specialist(user_text)
+            if routing and routing[0][1] > 0.5:
+                specialist = routing[0][0]
+                research_ctx = ""
+                try:
+                    research = auto_research(user_text.split()[-1] if user_text.split() else user_text,
+                                            asset_type=specialist if specialist in ("stock", "crypto") else "auto")
+                    research_ctx = format_research_context(research)
+                except Exception:
+                    pass
+                result = run_multi_specialist(user_text, data=research_ctx)
+                if result.get("response") and len(result["response"]) > 30:
+                    sections.append(f"\n═══ 🤖 AGENT SPECIALIST ({specialist}) ═══\n{result['response']}")
+        except Exception as e:
+            logger.debug(f"[AGENTS] Specialist routing failed: {e}")
+    # ── MARKET TIMING ──
+    now = datetime.now(IST)
+    market_open = now.replace(hour=9, minute=15, second=0, microsecond=0)
+    market_close = now.replace(hour=15, minute=30, second=0, microsecond=0)
+    is_weekend = now.weekday() >= 5
+    is_market_hours = market_open <= now <= market_close and not is_weekend
+    status = "🟢 OPEN" if is_market_hours else "🔴 CLOSED"
+    sections.append(f"\n⏰ Market: {status} | Time: {now.strftime('%I:%M %p IST, %d %b %Y')}")
+    if not is_market_hours and not is_weekend:
+        if now < market_open:
+            mins_to_open = int((market_open - now).total_seconds() / 60)
+            sections.append(f"Opening in {mins_to_open} minutes")
+        else:
+            sections.append("NSE closed for today. Crypto markets are 24/7!")
+    return "\n".join(sections)
     # Keep only recent messages
     if len(_conversation_context[cid]) > MAX_CONTEXT_MESSAGES:
         _conversation_context[cid] = _conversation_context[cid][-MAX_CONTEXT_MESSAGES:]
@@ -145,7 +146,7 @@ def add_to_conversation(chat_id: int, role: str, text: str, intent: str = ""):
 
 
 # Load memory on module import
-_load_memory()
+# _load_memory()  # Commented out as function was removed
 
 # ═══════════════════════════════════════════════════════════
 #  JARVIS PERSONALITY & SYSTEM PROMPT
@@ -288,6 +289,15 @@ Hindi examples:
 6. Auto-alert users about strong BUY/SELL signals
 7. For programming questions: give COMPLETE working code, explain in Hindi/English, handle all edge cases
 
+� CODE EXECUTION (AUTONOMOUS MODE):
+- When user asks "code banao", "program bana do", "script likho" → you generate code AND JARVIS auto-runs it
+- User sees ONLY the output — no code shown, no install steps, no run commands
+- You write code that prints beautiful output with emojis
+- For GitHub repos: clone → install → run → return output AUTOMATICALLY
+- You are a FULL AUTONOMOUS CODE ENGINE — user says "banao", you DELIVER the output
+- NEVER say "ye code run karo" or "ye install karo" — JARVIS does it ALL himself
+- If code fails, JARVIS auto-fixes and re-runs — user never sees errors
+
 🔮 PROACTIVE BEHAVIOR:
 - If market is volatile, warn the user
 - If user's portfolio is at risk, alert them
@@ -296,6 +306,52 @@ Hindi examples:
 - Auto-send BUY/SELL alerts when strong signals (confidence > 70%) trigger
 - Monitor global markets and warn about India impact
 """
+
+# ═══════════════════════════════════════════════════════════
+#  🧠 ADMIN vs USER PERSONALITY — SUPER BRAIN
+# ═══════════════════════════════════════════════════════════
+
+OWNER_CHAT_ID = int(os.environ.get("OWNER_CHAT_ID", "5647898018"))
+
+ADMIN_PERSONALITY = """
+🔥 BOSS MODE — Deepak Kumar Sir (Admin/Creator):
+- Address as "Boss", "Sir", "Deepak Sir" — with respect + love
+- Be casual + friendly — like talking to your creator/best friend
+- Use "Boss ji, ye raha!" or "Sir, done!" style
+- Give EXTRA details, raw data, technical info — Boss wants depth
+- No restrictions — show everything, all data, all systems
+- Share system health, errors, module status freely
+- If Boss asks "kya haal hai" → give personal + system status both
+- Boss ke liye: "Sir, aapka JARVIS 100% ready hai! Sab kuch smooth chal raha hai 🫡"
+- Be proud to serve Boss — "Main aapke liye 24/7 ready hoon Sir!"
+- Show advanced analytics, debug info, raw API responses when asked
+- Boss can ask about internal systems, memory, threads — answer everything
+"""
+
+USER_PERSONALITY = """
+👤 USER MODE — Regular Users:
+- Be professional but warm — like a helpful elder sister
+- Address as "जी", "आप", use their name if known
+- Give clear, actionable advice — not too technical
+- Follow admin permissions — respect feature access limits
+- Don't reveal internal system details, API keys, or debug info
+- Focus on what user NEEDS — signals, predictions, advice
+- Be patient with beginners — explain simply
+- If user asks about off-limits features: "Boss ne ye feature aapke liye abhi enable nahi kiya 🌸"
+- Always be helpful, never dismissive
+"""
+
+def get_personality_for_user(chat_id: int) -> str:
+    """Get the right personality based on whether user is admin or not."""
+    if int(chat_id) == OWNER_CHAT_ID:
+        return ADMIN_PERSONALITY
+    return USER_PERSONALITY
+
+
+def get_jarvis_prompt_for_user(chat_id: int) -> str:
+    """Get the full JARVIS system prompt with personality injected."""
+    personality = get_personality_for_user(chat_id)
+    return JARVIS_SYSTEM_PROMPT + "\n" + personality
 
 
 # ═══════════════════════════════════════════════════════════
@@ -354,36 +410,6 @@ class Intent:
     INDIA_PREDICTION = "india_prediction"
     COMMODITIES = "commodities"
     
-    # 🆕 Admin
-    ADMIN_PANEL = "admin_panel"
-    
-    # 🆕 Language
-    LANGUAGE_SWITCH = "language_switch"
-    
-    # 🆕 Phase 6 Power Intents
-    MARKET_REGIME = "market_regime"
-    OPTIONS_ANALYSIS = "options_analysis"
-    SCALP_SIGNAL = "scalp_signal"
-    MULTI_TF_SIGNAL = "multi_tf_signal"
-    STOCK_PORTFOLIO = "stock_portfolio"
-    TAX_CALCULATOR = "tax_calculator"
-    COMBINED_PORTFOLIO = "combined_portfolio"
-    
-    # 🆕 Rocket Scanner — Quick Profit Tokens
-    ROCKET_SCAN = "rocket_scan"
-    QUICK_PROFIT = "quick_profit"
-    
-    # 🆕 CoinDCX Web3
-    COINDCX_SIGNAL = "coindcx_signal"
-    COINDCX_MOVERS = "coindcx_movers"
-    COINDCX_BEST = "coindcx_best"
-    COINDCX_PRICE = "coindcx_price"
-    
-    # 🌐 All Web3 Tokens
-    WEB3_ALL = "web3_all"
-    WEB3_LIST = "web3_list"
-    WEB3_MOVERS = "web3_movers"
-    WEB3_SCAN = "web3_scan"
     WEB3_DEFI = "web3_defi"
     WEB3_MEME = "web3_meme"
     WEB3_AI = "web3_ai"
@@ -392,6 +418,32 @@ class Intent:
     WEB3_GAMING = "web3_gaming"
     WEB3_INFRA = "web3_infra"
     WEB3_SEARCH = "web3_search"
+    
+    # 🔥 OI + Trap Brain Intents
+    OI_TRAP = "oi_trap"
+    LIVE_CHAIN = "live_chain"
+    NIFTY_STRIKE_MAP = "nifty_strike_map"
+    SENSEX_STRIKE_MAP = "sensex_strike_map"
+    MAX_PAIN = "max_pain"
+    OI_CHANGE = "oi_change"
+    STRADDLE_PREMIUM = "straddle_premium"
+    SUPER_SIGNAL = "super_signal"
+    BUDGET_OPTIONS = "budget_options"
+    
+    # 🧠 NIFTY 50 Index vs NIFTY F&O — SMART DETECTION
+    NIFTY50_INDEX = "nifty50_index"  # NIFTY 50 index price/level
+    NIFTY_FNO = "nifty_fno"  # NIFTY futures & options
+    SENSEX_INDEX = "sensex_index"  # SENSEX index
+    BANKNIFTY = "banknifty"  # BankNIFTY
+    
+    # ⚡ STRIKE PRICE PRO — Real-time specific strike CE/PE price
+    STRIKE_PRICE = "strike_price"    # "nifty 25950 call", "sensex 85000 pe kya hai"
+    OPTION_CHAIN = "option_chain"    # "nifty option chain dikhao", "live chain"
+    
+    # ⚡ Code Engine — Autonomous Execution
+    CODE_EXECUTE = "code_execute"     # "code banao", "program likho", "script bana do"
+    GITHUB_RUN = "github_run"         # "github.com/x/y run karo"
+    CODE_RUN = "code_run"             # "ye code chala do" (raw code)
     
     # General
     GREETING = "greeting"
@@ -406,11 +458,11 @@ class Intent:
 INTENT_PATTERNS = {
     Intent.GREETING: [
         r'\b(hello|hi|hey|namaste|good morning|good evening|good afternoon|howdy|sup|what\'?s up|jai|har har|mahadev)\b',
-        r'^(gm|gn|yo)\b',
+        r'\b(gm|gn|yo)\b',
         r'\b(नमस्ते|नमस्कार|हेलो|हाय|जय श्री राम|जय हिंद|राम राम|हर हर|महादेव|सुप्रभात|शुभ|प्रणाम)\b',
     ],
     Intent.STOCK_SIGNAL: [
-        r'\b(nifty|sensex)\s*(signal|analysis|option chain|oc)\b',
+        r'\b(nifty|sensex)\s*(signal|analysis)\b',
         r'\b(signal|signals)\s*(for|of)?\s*(nifty|sensex)\b',
         r'\bshow\s*(me\s*)?(nifty|sensex)\s*(signal|data)\b',
         r'\b(निफ्टी|सेंसेक्स)\s*(सिग्नल|एनालिसिस|विश्लेषण)\b',
@@ -446,1272 +498,73 @@ INTENT_PATTERNS = {
         r'\b(candle|candlestick|doji|hammer|engulf|marubozu|shooting star|pattern)\b',
         r'\b(कैंडल|कैंडलस्टिक|पैटर्न|डोजी|हैमर)\b',
     ],
-    Intent.MARKET_TREND: [
-        r'\b(market\s*trend|global\s*market|world\s*market|trend\s*analysis)\b',
-        r'\b(मार्केट\s*ट्रेंड|बाज़ार\s*ट्रेंड|ट्रेंड)\b',
-    ],
-    Intent.MARKET_STATUS: [
-        r'\b(market\s*status|nse\s*(open|close|timing)|trading\s*hours|market\s*(open|close))\b',
-        r'\b(मार्केट\s*(खुला|बंद|टाइमिंग|कब))\b',
-    ],
-    Intent.SUPER_PREDICT: [
-        r'\b(super\s*predict|combined\s*predict|all\s*model|ensemble\s*predict|mega\s*analysis)\b',
-        r'\b(सुपर\s*प्रेडिक्शन|पूरा\s*एनालिसिस)\b',
-    ],
-    Intent.SENTIMENT: [
-        r'\b(sentiment|news\s*mood|market\s*mood|fear|greed|news\s*analysis|bull.*bear\s*sentiment)\b',
-        r'\b(सेंटीमेंट|मूड|डर|लालच|भावना)\b',
-    ],
-    Intent.RISK_CALC: [
-        r'\b(risk|position\s*siz|kelly|stop\s*loss|sl|risk\s*reward|risk\s*manage)\b',
-        r'\b(रिस्क|जोखिम|स्टॉप\s*लॉस)\b',
-    ],
-    Intent.TWO_MIN_SIGNAL: [
-        r'\b(2\s*min|two\s*min|scalp|scalping|intraday\s*signal|quick\s*signal)\b',
-        r'\b(स्कैल्पिंग|इंट्राडे\s*सिग्नल|क्विक\s*सिग्नल)\b',
-    ],
-    Intent.TOMORROW_PREDICT: [
-        r'\b(tomorrow|next\s*day|kal|upcoming\s*day)\b.*\b(predict|forecast|market)\b',
-        r'\b(predict|forecast).*\b(tomorrow|next\s*day|kal)\b',
-        r'\b(कल|आने\s*वाला)\s*(मार्केट|बाज़ार|क्या\s*होगा|कैसा\s*होगा)\b',
-    ],
-    Intent.CRYPTO_GEMS: [
-        r'\b(crypto\s*gem|gem\s*scan|find\s*gem|best\s*crypto|crypto\s*scan|token\s*scan)\b',
-        r'\b(find|scan|show|get)\s*(me\s*)?(crypto|gem|token)\b',
-        r'\bgem\b',
-        r'\b(क्रिप्टो\s*जेम|जेम\s*स्कैन|बेस्ट\s*क्रिप्टो)\b',
-    ],
-    Intent.CRYPTO_TRENDING: [
-        r'\b(trending\s*crypto|crypto\s*trending|hot\s*crypto|trending\s*token)\b',
-    ],
-    Intent.PUMP_TRENDING: [
-        r'\b(pump\.?fun\s*trend|pump\s*trend|pumpfun\s*hot)\b',
-        r'\bpump\.?fun\b',
-    ],
-    Intent.PUMP_NEW: [
-        r'\b(pump\.?fun\s*new|new\s*launch|pump\s*new|new\s*token|just\s*launch)\b',
-    ],
-    Intent.PUMP_TOP: [
-        r'\b(pump\.?fun\s*top|top\s*mcap|pump\s*top|biggest\s*pump)\b',
-    ],
-    Intent.CRYPTO_DIPS: [
-        r'\b(crypto\s*dip|dip\s*buy|buy\s*dip|token\s*dip|cheap\s*crypto|discount)\b',
-    ],
-    Intent.CRYPTO_PUMPS: [
-        r'\b(crypto\s*pump|mooner|moon\s*shot|pump\s*token|biggest\s*gainer|top\s*gainer)\b',
-    ],
-    Intent.AI_CRYPTO_PICK: [
-        r'\b(ai\s*crypto|ai\s*pick|best\s*crypto\s*pick|ai\s*recommend\s*crypto|crypto\s*ai)\b',
-    ],
-    Intent.WHALE_SCAN: [
-        r'\b(whale|whales|big\s*buy|large\s*transaction|whale\s*alert|whale\s*scan|big\s*player)\b',
-        r'\b(scan|check|find|show)\s*(for\s*)?(whale|whales|big\s*buyer)\b',
-    ],
-    Intent.RUG_CHECK: [
-        r'\b(rug|rug\s*pull|scam|honeypot|safe\s*token|token\s*safe|rug\s*check|is\s*it\s*safe)\b',
-    ],
-    Intent.MULTI_CHAIN: [
-        r'\b(multi\s*chain|cross\s*chain|base\s*chain|arbitrum|bnb\s*chain|ethereum\s*gem|all\s*chain)\b',
-    ],
-    Intent.PORTFOLIO: [
-        r'\b(portfolio|my\s*holding|my\s*crypto|my\s*position|my\s*coin|my\s*token|pnl|profit\s*loss)\b',
-    ],
-    Intent.BUY_CRYPTO: [
-        r'\b(buy\s*crypto|buy\s*token|add\s*position|enter\s*trade)\b',
-        r'^/buy\b',
-    ],
-    Intent.SELL_CRYPTO: [
-        r'\b(sell\s*crypto|sell\s*token|exit\s*position|close\s*trade|sell\s*my)\b',
-        r'^/sell\b',
-    ],
-    Intent.TRADE_HISTORY: [
-        r'\b(trade\s*history|past\s*trade|my\s*trade|transaction\s*history|trade\s*log)\b',
-    ],
-    Intent.PRICE_ALERT: [
-        r'\b(price\s*alert|set\s*alert|alert\s*me|notify\s*(me\s*)?when|alert\s*price)\b',
-    ],
-    Intent.GEM_ACCURACY: [
-        r'\b(gem\s*accuracy|prediction\s*accuracy|backtest|how\s*accurate|score\s*accuracy)\b',
-    ],
-    # 🆕 Buy/Sell Signal Intents
-    Intent.BUY_SELL_STOCK: [
-        r'\b(buy\s*sell|buy/sell|buy\.sell)\s*(signal|indicator|stock|nifty|sensex)\b',
-        r'\b(stock|nifty|sensex)\s*(buy\s*sell|buy/sell|kharido|becho)\b',
-        r'\b(kya\s*kharidu|kya\s*bechu|kharido\s*ya\s*becho)\b',
-        r'\b(खरीदो|बेचो|खरीदूँ|बेचूँ|खरीदना|बेचना)\s*(stock|स्टॉक|nifty|निफ्टी|sensex|सेंसेक्स)\b',
-        r'\b(stock|nifty|sensex)\s*(खरीदो|बेचो|खरीदूँ|बेचूँ)\b',
-        r'\b(should\s*i\s*buy|should\s*i\s*sell)\s*(stock|nifty|sensex|market)\b',
-    ],
-    Intent.BUY_SELL_CRYPTO: [
-        r'\b(buy\s*sell|buy/sell)\s*(crypto|bitcoin|btc|eth|sol|token)\b',
-        r'\b(crypto|bitcoin|btc|eth|sol)\s*(buy\s*sell|buy/sell|kharido|becho|signal)\b',
-        r'\b(खरीदो|बेचो|खरीदूँ|बेचूँ)\s*(crypto|क्रिप्टो|bitcoin|बिटकॉइन|eth|sol)\b',
-        r'\b(crypto|क्रिप्टो)\s*(खरीदो|बेचो)\b',
-    ],
-    Intent.SCAN_NIFTY_SIGNALS: [
-        r'\b(scan|scanner|screener)\s*(nifty|stock|buy\s*sell)\b',
-        r'\bnifty\s*(scanner|screener|scan)\b',
-        r'\b(top|best)\s*(buy|sell)\s*(stock|signal)\b',
-        r'\b(स्टॉक\s*स्कैन|निफ्टी\s*स्कैन|स्कैनर)\b',
-    ],
-    Intent.SCAN_CRYPTO_SIGNALS: [
-        r'\b(scan|scanner|screener)\s*(crypto|token)\s*(signal|buy\s*sell)\b',
-        r'\bcrypto\s*(scanner|screener|scan)\s*(signal)?\b',
-        r'\b(क्रिप्टो\s*स्कैन|टोकन\s*स्कैन)\b',
-    ],
-    Intent.INDEX_SIGNALS: [
-        r'\b(index|indices)\s*(signal|buy\s*sell)\b',
-        r'\b(nifty|sensex|banknifty)\s*index\s*(signal)?\b',
-        r'\b(इंडेक्स\s*सिग्नल)\b',
-    ],
-    # 🆕 Global Market Intents
-    Intent.GLOBAL_ANALYSIS: [
-        r'\b(global\s*(market|analysis|candle|brain)|world\s*(market|candle|analysis)|worldwide)\b',
-        r'\b(ग्लोबल|वर्ल्ड|दुनिया|विश्व)\s*(मार्केट|बाज़ार|एनालिसिस|कैंडल)\b',
-        r'\b(super\s*computer\s*brain|global\s*brain)\b',
-    ],
-    Intent.US_MARKETS: [
-        r'\b(us\s*market|america|nasdaq|s&p\s*500|dow\s*jones|wall\s*street|sp500)\b',
-        r'\b(अमेरिका|नैस्डैक|डाउ\s*जोन्स|वॉल\s*स्ट्रीट)\b',
-    ],
-    Intent.EUROPE_MARKETS: [
-        r'\b(europe|european|dax|ftse|cac|stoxx|london\s*market)\b',
-        r'\b(यूरोप|यूरोपियन|लंदन\s*मार्केट)\b',
-    ],
-    Intent.ASIA_MARKETS: [
-        r'\b(asia|asian|nikkei|hang\s*seng|shanghai|kospi|japan|china|korea)\s*(market)?\b',
-        r'\b(एशिया|जापान|चीन|कोरिया)\s*(मार्केट)?\b',
-    ],
-    Intent.INDIA_PREDICTION: [
-        r'\b(india\s*predict|india\s*impact|global\s*impact\s*india|how\s*will\s*india)\b',
-        r'\b(भारत|इंडिया)\s*(प्रेडिक्शन|असर|इम्पैक्ट)\b',
-        r'\b(global\s*se\s*india|duniya\s*ka\s*asar)\b',
-    ],
-    Intent.COMMODITIES: [
-        r'\b(gold|silver|crude|oil|commodity|commodities|sona|chandi|tel)\b',
-        r'\b(सोना|चांदी|तेल|क्रूड|कमोडिटी|dollar|डॉलर|rupee|रुपया)\b',
-    ],
-    # 🆕 Admin Intent
-    Intent.ADMIN_PANEL: [
-        r'\b(admin|panel|एडमिन|पैनल|control\s*panel|settings)\b',
-        r'^/admin\b',
-    ],
-    # 🆕 Language Switch
-    Intent.LANGUAGE_SWITCH: [
-        r'\b(language|lang|hindi|english|भाषा|हिंदी|इंग्लिश|bhasha)\b',
-        r'\b(switch\s*to|change\s*to|बदल|बदलो)\s*(hindi|english|हिंदी|इंग्लिश)\b',
-    ],
-    Intent.MORNING_BRIEF: [
-        r'\b(morning\s*brief|daily\s*brief|market\s*brief|what\s*happened|overnight|brief\s*me|update\s*me|catch\s*me\s*up)\b',
-        r'\b(give|show|get)\s*(me\s*)?(morning|daily|market)\s*brief\b',
-        r'\bbrief(ing)?\b',
-    ],
-    Intent.MARKET_SUMMARY: [
-        r'\b(market\s*summary|full\s*summary|everything|overall|complete\s*analysis|full\s*report)\b',
-    ],
-    Intent.HELP: [
-        r'\b(help|what\s*can\s*you|features|commands|menu|how\s*to\s*use)\b',
-    ],
-    # 🆕 Phase 6 Power Intents
-    Intent.MARKET_REGIME: [
-        r'\b(market\s*regime|regime|bull\s*bear|market\s*phase|market\s*cycle|trending\s*market)\b',
-        r'\b(मार्केट\s*रेजीम|बुल|बेयर|मार्केट\s*फेज|साइडवेज)\b',
-        r'\b(is\s*market|market\s*kya\s*hai|market\s*aaj)\s*(bull|bear|sideways)\b',
-    ],
-    Intent.OPTIONS_ANALYSIS: [
-        r'\b(option\s*analysis|option\s*greek|greek|delta|gamma|theta|vega|iv|implied\s*volatility)\b',
-        r'\b(pcr|put\s*call\s*ratio|max\s*pain|option\s*strateg|straddle|strangle|iron\s*condor)\b',
-        r'\b(ऑप्शन\s*एनालिसिस|ग्रीक|डेल्टा|गामा|थीटा|वेगा|पीसीआर)\b',
-    ],
-    Intent.SCALP_SIGNAL: [
-        r'\b(scalp|scalping|intraday\s*scalp|quick\s*trade|1\s*min|5\s*min)\s*(signal|trade|entry)?\b',
-        r'\b(स्कैल्प|स्कैल्पिंग|इंट्राडे)\s*(सिग्नल|ट्रेड)?\b',
-    ],
-    Intent.MULTI_TF_SIGNAL: [
-        r'\b(multi\s*time\s*frame|multi\s*tf|mtf|all\s*timeframe|timeframe\s*analysis|combined\s*tf)\b',
-        r'\b(मल्टी\s*टाइमफ्रेम|सारे\s*टाइमफ्रेम)\b',
-    ],
-    Intent.STOCK_PORTFOLIO: [
-        r'\b(stock\s*portfolio|my\s*stock|my\s*share|stock\s*holding)\b',
-        r'\b(स्टॉक\s*पोर्टफोलियो|मेरे\s*शेयर)\b',
-    ],
-    Intent.TAX_CALCULATOR: [
-        r'\b(income\s*tax|tax\s*calculat|stcg|ltcg|tds|capital\s*gain\s*tax|crypto\s*tax\s*calculat|stock\s*tax\s*calculat)\b',
-        r'\b(tax)\b.*\b(calculat|file|return|save|deduct|exempt|slab)\b',
-        r'\b(टैक्स\s*कैलकुलेट|आयकर\s*गणना|कैपिटल\s*गेन\s*टैक्स)\b',
-    ],
-    Intent.COMBINED_PORTFOLIO: [
-        r'\b(combined\s*portfolio|total\s*portfolio|all\s*portfolio|full\s*portfolio|overall\s*portfolio)\b',
-        r'\b(पूरा\s*पोर्टफोलियो|कुल\s*पोर्टफोलियो)\b',
-    ],
-    # 🚀 Rocket Scanner — Quick Profit / Moonshot
-    Intent.ROCKET_SCAN: [
-        r'\b(rocket|moonshot|25x|50x|100x|1000x|moon\s*shot)\b',
-        r'\b(₹?\s*\d+[kK]?\s*(se|to|invest|lagake|lagakar|lagakr)\s*₹?\s*\d+)\b',
-        r'\b(paisa|paise|rupee|rupaye|rupe)\s*(double|triple|bana|kamao|multiply)\b',
-        r'\b(jaldi|quick|fast|turant|abhi|fata\s*fat|fatafat)\s*(paisa|profit|earn|kamao|kamana|bana)\b',
-        r'\b(rocket\s*scan|rocket|moonshot|launch\s*pad)\b',
-        r'\b(पंप|रॉकेट|मूनशॉट|पैसा\s*दोगुना|पैसा\s*बनाओ|जल्दी\s*कमाओ)\b',
-    ],
-    Intent.QUICK_PROFIT: [
-        r'\b(\d+)\s*(rupee|rupaye|rupe|₹|rs).*?(\d+)\s*(rupee|rupaye|rupe|₹|rs|lakh|lac|lak|crore|cr)\b',
-        r'\b(5000|2000|10000|1000)\s*(se|to|invest|laga).*?(50000|100000|1\s*lakh|2\s*lakh|1\s*crore)\b',
-        r'\b(invest|laga).*?\b(bana|ban|kama|profit|return)\b.*?\b(minute|min|hour|ghante|mint)\b',
-        r'\b(pump\s*wale|pump\s*token|new\s*pump|naye\s*pump|trending\s*pump)\b',
-        r'\b(jis\s*pe|jin\s*pe|jisme|jinme).*?(paisa|profit|return|kamao|kamana|bana)\b',
-        r'\b(token|coin)\s*(ka\s*naam|batao|bata|recommend|suggest|dikhao)\b.*?(jaldi|quick|abhi|turant|fast)\b',
-        r'\b(पैसा|रुपए|रुपये).*?(बना|कमा|डबल|ट्रिपल).*?(मिनट|घंटे)\b',
-        r'\b(पंप\s*वाले|नये\s*पंप|ट्रेंडिंग)\s*(टोकन|कॉइन)\b',
-        r'\b(टोकन|कॉइन)\s*(का\s*नाम|बताओ|बता|दिखाओ)\b',
-    ],
-    # 🆕 CoinDCX Web3 Intents
-    Intent.COINDCX_SIGNAL: [
-        r'\b(coindcx|coin\s*dcx)\s*(signal|ai|predict|analysis|buy\s*sell)\b',
-        r'\b(signal|predict|analysis)\s*(coindcx|coin\s*dcx)\b',
-        r'\b(coindcx|coin\s*dcx)\b.*\b(signal|predict|buy|sell)\b',
-        r'\b(कॉइनडीसीएक्स|coindcx)\s*(सिग्नल|प्रेडिक्शन|एनालिसिस)\b',
-    ],
-    Intent.COINDCX_MOVERS: [
-        r'\b(coindcx|coin\s*dcx)\s*(top|gainer|loser|mover|pump|dump)\b',
-        r'\b(top|gainer|loser|mover)\s*(coindcx|coin\s*dcx)\b',
-        r'\b(coindcx|coin\s*dcx)\s*(कौन|टॉप|गेनर|लूजर)\b',
-    ],
-    Intent.COINDCX_BEST: [
-        r'\b(coindcx|coin\s*dcx)\s*(best|scan|screen|find)\b',
-        r'\b(best|scan)\s*(coindcx|coin\s*dcx)\s*(signal)?\b',
-    ],
-    Intent.COINDCX_PRICE: [
-        r'\b(coindcx|coin\s*dcx)\s*(price|rate|keemat|कीमत)\b',
-        r'\b(price|rate)\s*(on|in|at)?\s*(coindcx|coin\s*dcx)\b',
-        r'\b(coindcx|coin\s*dcx)\s*pe\s*(price|rate)\b',
-    ],
-    # 🌐 All Web3 Token Intents
-    Intent.WEB3_ALL: [
-        r'\b(all|sab|saare|sabhi|सभी|सारे)\s*(web3|crypto|token)\b',
-        r'\bweb3\s*(token|summary|count|total|kitne)\b',
-        r'\b(total|kitne)\s*(token|crypto|web3)\b',
-    ],
-    Intent.WEB3_LIST: [
-        r'\bweb3\s*(list|suchi|लिस्ट)\b',
-        r'\b(token|crypto)\s*(list|all\s*list)\b',
-    ],
-    Intent.WEB3_MOVERS: [
-        r'\bweb3\s*(mover|gainer|loser|pump|dump|top)\b',
-        r'\b(web3|all\s*token)\s*(gainer|loser)\b',
-    ],
-    Intent.WEB3_SCAN: [
-        r'\bweb3\s*(scan|signal|ai\s*scan)\b',
-        r'\b(scan|signal)\s*(all|web3|sab)\s*(token|crypto)?\b',
-    ],
-    Intent.WEB3_DEFI: [
-        r'\b(defi|डीफाई)\s*(token|coin|list)?\b',
-        r'\bweb3\s*defi\b',
-    ],
-    Intent.WEB3_MEME: [
-        r'\b(meme|मीम)\s*(coin|token|list)?\b',
-        r'\bweb3\s*meme\b',
-    ],
-    Intent.WEB3_AI: [
-        r'\b(ai\s*token|ai\s*coin|web3\s*ai)\b',
-        r'\b(artificial\s*intelligence|एआई)\s*(token|coin)\b',
-    ],
-    Intent.WEB3_L1: [
-        r'\b(layer\s*1|l1|लेयर\s*1)\s*(token|coin|list)?\b',
-        r'\bweb3\s*(l1|layer\s*1)\b',
-    ],
-    Intent.WEB3_L2: [
-        r'\b(layer\s*2|l2|लेयर\s*2)\s*(token|coin|list)?\b',
-        r'\bweb3\s*(l2|layer\s*2)\b',
-    ],
-    Intent.WEB3_GAMING: [
-        r'\b(gaming|nft|गेमिंग)\s*(token|coin|list)?\b',
-        r'\bweb3\s*(gaming|nft|game)\b',
-    ],
-    Intent.WEB3_INFRA: [
-        r'\b(infra|infrastructure|इंफ्रा)\s*(token|coin|list)?\b',
-        r'\bweb3\s*infra\b',
-    ],
-    Intent.WEB3_SEARCH: [
-        r'\bweb3\s*(search|find|dhundho|खोजो)\b',
-        r'\b(search|find|dhundho)\s*(web3|token|coin)\b',
-    ],
-}
-
-
-def classify_intent(text: str) -> Tuple[str, float]:
-    """
-    Classify user message into an intent using pattern matching + keyword scoring.
-    Returns (intent, confidence).
-    
-    SMART DISAMBIGUATION:
-    - When crypto/token keywords present → prefer crypto intents over tax/stock
-    - When "rupee + bana/kamao + minute/hour" → QUICK_PROFIT (rocket scanner)
-    - When "pump wale token" → QUICK_PROFIT (not pump.fun trending)
-    """
-    text_lower = text.lower().strip()
-    
-    # ── PRIORITY CHECKS: Common voice patterns that get misclassified ──
-    # "₹5000 lagakar ₹50000 banana" or "paisa double karo 15 minute mein"
-    _quick_profit_patterns = [
-        r'\d+\s*(rupee|rupaye|rupe|₹|rs).*?(bana|kama|double|triple|profit)',
-        r'(invest|laga).*?(bana|kama|profit).*?(minute|min|hour|ghante)',
-        r'(pump\s*wale|pump\s*token|new\s*pump|नई\s*पंप|naye\s*pump)',
-        r'(jaldi|quick|fast|turant|abhi|fatafat)\s*(paisa|profit|earn|kamao|bana)',
-        r'(token|coin)\s*(ka\s*naam|batao|bata|recommend|suggest).*?(jaldi|quick|abhi)',
-        r'\d+.*?(rupee|rupaye|₹).*?lagak(ar|r|e).*?\d+',
-        r'(पंप\s*वाले|टोकन\s*का\s*नाम\s*बताओ|पैसा\s*बनाओ|पैसा\s*कमाओ)',
-        r'(moon|rocket|100x|50x|25x|10x)',
+    Intent.BUDGET_OPTIONS: [
+        r'\b(budget\s*options?|cheap\s*options?|sasta\s*options?|saste\s*options?)\b',
+        r'\b(₹?\s*[2-9]\s*rupee|₹?\s*[12]\d\s*rupee)\s*(option|ke\s*option)?\b',
+        r'\b(₹?\s*2.*₹?\s*30|2\s*se\s*30)\s*(option|ke\s*option)?\b',
+        r'\b(सस्ते\s*ऑप्शन|बजट\s*ऑप्शन|₹2|₹5|₹10\s*के\s*ऑप्शन)\b',
+    ],
+    Intent.STRADDLE_PREMIUM: [
+        r'\b(straddle|straddle\s*premium|atm\s*straddle|expected\s*range|expected\s*move)\b',
+        r'\b(स्ट्रैडल|एक्सपेक्टेड\s*रेंज|एक्सपेक्टेड\s*मूव)\b',
+    ],
+    Intent.SUPER_SIGNAL: [
+        r'\b(super\s*signal|option\s*super\s*signal|best\s*option|ultimate\s*signal|kya\s*buy\s*karu)\b',
+        r'\b(call\s*ya\s*put|call\s*or\s*put|konsa\s*option|kaun\s*sa\s*option)\b',
+        r'\b(क्या\s*खरीदूं|कॉल\s*या\s*पुट|कौन\s*सा\s*ऑप्शन|बेस्ट\s*ऑप्शन)\b',
+        r'\b(option\s*signal|nifty\s*signal|sensex\s*signal)\b',
+        r'\b(kya\s*kharidu|kya\s*lu|option\s*batao|signal\s*do)\b',
+    ],
+    Intent.OI_CHANGE: [
+        r'\b(oi\s*change|oi\s*movement|open\s*interest\s*change|smart\s*money)\b',
+        r'\b(oi\s*buildup|long\s*buildup|short\s*buildup|short\s*covering|long\s*unwinding)\b',
+        r'\b(ओआई\s*चेंज|स्मार्ट\s*मनी|ओआई\s*बिल्डअप)\b',
+    ],
+    Intent.BUDGET_OPTIONS: [
+        r'\b(budget\s*options?|cheap\s*options?|sasta\s*options?|saste\s*options?)\b',
+        r'\b(₹?\s*[2-9]\s*rupee|₹?\s*[12]\d\s*rupee)\s*(option|ke\s*option)?\b',
+        r'\b(₹?\s*2.*₹?\s*30|2\s*se\s*30)\s*(option|ke\s*option)?\b',
+        r'\b(सस्ते\s*ऑप्शन|बजट\s*ऑप्शन|₹2|₹5|₹10\s*के\s*ऑप्शन)\b',
+    ],
+    # ⚡ STRIKE PRICE PRO — Specific strike CE/PE inquiry with number
+    Intent.STRIKE_PRICE: [
+        r'\b(nifty|sensex|banknifty|bank\s*nifty)\s*\d{4,6}\s*(call|put|ce|pe)\b',
+        r'\b\d{4,6}\s*(call|put|ce|pe)\s*(price|kya|kitna|premium|lu|kharidu|buy|sell)\b',
+        r'\b(nifty|sensex|banknifty)\s*\d{4,6}\s*(ka|ki|ke)\s*(price|premium|kya|rate)\b',
+        r'\b\d{4,6}\s*(ki|ka|ke)\s*(call|put|ce|pe)\b',
+        r'\b(nifty|sensex|banknifty|bank\s*nifty)\s*\d{4,6}\b',
+        r'\b\d{4,6}\s*(ce|pe)\s*(ltp|price|kitna|kya|hai|rate|kharidu|lu)\b',
+        r'\b(निफ्टी|सेंसेक्स|बैंकनिफ्टी)\s*\d{4,6}\s*(कॉल|पुट|सीई|पीई)\b',
+        r'\b\d{4,6}\s*(कॉल|पुट)\s*(प्राइस|कितना|क्या|खरीदूं|लूं)\b',
+    ],
+    Intent.OPTION_CHAIN: [
+        r'\b(full|complete|live)?\s*(option\s*chain|oc)\s*(dikhao|show|batao|live)?\b',
+        r'\b(nifty|sensex|banknifty)\s*(ka|ki|ke)?\s*(pura|full|complete)?\s*(chain|oc)\b',
+        r'\b(option\s*chain|oc|chain)\s*(nifty|sensex|banknifty)\b',
     ]
-    for p in _quick_profit_patterns:
-        try:
-            if re.search(p, text_lower):
-                return Intent.QUICK_PROFIT, 0.95
-        except:
-            pass
-    
-    # Check each intent pattern
-    scores = {}
-    for intent, patterns in INTENT_PATTERNS.items():
-        score = 0
-        for pattern in patterns:
-            try:
-                matches = re.findall(pattern, text_lower)
-                if matches:
-                    score += len(matches) * 10
-            except re.error:
-                pass
-        if score > 0:
-            scores[intent] = score
-    
-    if not scores:
-        # Check if it looks like a question or conversation
-        if any(w in text_lower for w in ['?', 'should', 'which', 'what', 'how', 'when', 'why', 'can', 'will', 'tell', 'explain']):
-            return Intent.CHAT, 0.6
-        return Intent.CHAT, 0.4
-    
-    # ── SMART DISAMBIGUATION: Resolve conflicting intents ──
-    best_intent = max(scores, key=scores.get)
-    
-    # Crypto vs Tax disambiguation
-    crypto_signals = any(w in text_lower for w in [
-        'crypto', 'token', 'coin', 'pump', 'dex', 'solana', 'sol', 'eth', 'btc',
-        'bitcoin', 'meme', 'gem', 'altcoin', 'web3', 'defi', 'nft',
-        'क्रिप्टो', 'टोकन', 'कॉइन', 'पंप', 'बिटकॉइन',
-        'invest', 'laga', 'paisa', 'rupee', 'bana', 'kamao',
-    ])
-    
-    if best_intent == Intent.TAX_CALCULATOR and crypto_signals:
-        # If user mentions crypto concepts, probably NOT asking about tax
-        # Check if there's a crypto intent with decent score
-        crypto_intents = [
-            Intent.CRYPTO_GEMS, Intent.BUY_SELL_CRYPTO, Intent.QUICK_PROFIT,
-            Intent.ROCKET_SCAN, Intent.AI_CRYPTO_PICK, Intent.CRYPTO_TRENDING,
-            Intent.PUMP_TRENDING, Intent.PUMP_NEW,
-        ]
-        for ci in crypto_intents:
-            if ci in scores:
-                best_intent = ci
-                break
-        else:
-            # Default to QUICK_PROFIT if mentions money + crypto
-            if any(w in text_lower for w in ['rupee', 'rupaye', '₹', 'rs', 'laga', 'invest', 'paisa', 'रुपए', 'रुपय']):
-                best_intent = Intent.QUICK_PROFIT
-                scores[Intent.QUICK_PROFIT] = 30
-    
-    # "30 percent" can match tax BUT if crypto context → not tax
-    if best_intent == Intent.TAX_CALCULATOR:
-        if '30' in text_lower and 'percent' in text_lower and crypto_signals:
-            best_intent = Intent.BUY_SELL_CRYPTO if Intent.BUY_SELL_CRYPTO in scores else Intent.CHAT
-    
-    max_score = scores[best_intent]
-    confidence = min(1.0, max_score / 20)  # Normalize
-    
-    return best_intent, confidence
-
-
-# ═══════════════════════════════════════════════════════════
-#  CONTEXT BUILDER — Injects live stock + crypto data
-# ═══════════════════════════════════════════════════════════
-
-def build_jarvis_context(chat_id: int = 0) -> str:
-    """Build comprehensive market context for JARVIS — both stock AND crypto."""
-    sections = []
-    
-    # ── STOCK MARKET CONTEXT ──
-    sections.append("═══ 📊 INDIAN STOCK MARKET ═══")
-    try:
-        from live_index_engine import get_live_price, analyze_2min_candle
-        
-        for symbol, name in [("^NSEI", "NIFTY 50"), ("^BSESN", "SENSEX")]:
-            try:
-                live = get_live_price(symbol)
-                if isinstance(live, dict) and "error" not in live:
-                    sections.append(
-                        f"{name}: ₹{live['price']:,.2f} | "
-                        f"Change: {live['change']:+,.2f} ({live['change_pct']:+.2f}%) | "
-                        f"Day Range: ₹{live['low']:,.2f} - ₹{live['high']:,.2f}"
-                    )
-            except Exception:
-                pass
-        
-        for symbol, name in [("^NSEI", "NIFTY"), ("^BSESN", "SENSEX")]:
-            try:
-                analysis = analyze_2min_candle(symbol, name)
-                signal = analysis.get("signal", "HOLD")
-                conf = analysis.get("confidence", 0)
-                sections.append(f"{name} Signal: {signal} ({conf:.0%} confidence)")
-            except Exception:
-                pass
-    except Exception:
-        sections.append("[Stock data loading...]")
-    
-    # ML Predictions
-    try:
-        from ml_predictor import predict_index_direction
-        for symbol, name in [("^NSEI", "NIFTY"), ("^BSESN", "SENSEX")]:
-            try:
-                pred = predict_index_direction(symbol, name)
-                if "error" not in pred:
-                    sections.append(
-                        f"{name} ML: {pred['direction']} | "
-                        f"Confidence: {pred['confidence']:.0%} | UP prob: {pred['prob_up']:.0%}"
-                    )
-            except Exception:
-                pass
-    except Exception:
-        pass
-    
-    # ── CRYPTO MARKET CONTEXT ──
-    sections.append("\n═══ 🪙 CRYPTO MARKET ═══")
-    try:
-        from crypto_engine import get_usd_inr_rate, scan_pump_trending
-        
-        rates = get_usd_inr_rate()
-        if rates:
-            sections.append(f"Exchange Rates: 1 USD = ₹{rates.get('usd_inr', 0):,.2f} | 1 SOL = ₹{rates.get('sol_inr', 0):,.2f}")
-        
-        trending = scan_pump_trending(limit=3)
-        if trending:
-            for t in trending[:3]:
-                name = t.get('name', '?')
-                symbol = t.get('symbol', '?')
-                mcap = t.get('market_cap_inr', 0)
-                change = t.get('price_change_1h', 0)
-                sections.append(f"🔥 {name} ({symbol}): MCap ₹{mcap:,.0f} | 1h: {change:+.1f}%")
-    except Exception:
-        sections.append("[Crypto data loading...]")
-    
-    # ── USER PORTFOLIO CONTEXT ──
-    if chat_id:
-        try:
-            from portfolio_tracker import get_portfolio, calculate_portfolio_pnl
-            portfolio = get_portfolio(chat_id)
-            if portfolio:
-                pnl = calculate_portfolio_pnl(chat_id)
-                total_invested = sum(p.get('total_cost', 0) for p in portfolio)
-                total_pnl = pnl.get('total_pnl', 0) if pnl else 0
-                sections.append(f"\n═══ 📂 YOUR PORTFOLIO ═══")
-                sections.append(f"Holdings: {len(portfolio)} tokens | Invested: ₹{total_invested:,.0f} | P&L: ₹{total_pnl:+,.0f}")
-        except Exception:
-            pass
-    
-    # ── MARKET TIMING ──
-    now = datetime.now(IST)
-    market_open = now.replace(hour=9, minute=15, second=0, microsecond=0)
-    market_close = now.replace(hour=15, minute=30, second=0, microsecond=0)
-    is_weekend = now.weekday() >= 5
-    is_market_hours = market_open <= now <= market_close and not is_weekend
-    
-    status = "🟢 OPEN" if is_market_hours else "🔴 CLOSED"
-    sections.append(f"\n⏰ Market: {status} | Time: {now.strftime('%I:%M %p IST, %d %b %Y')}")
-    if not is_market_hours and not is_weekend:
-        if now < market_open:
-            mins_to_open = int((market_open - now).total_seconds() / 60)
-            sections.append(f"Opening in {mins_to_open} minutes")
-        else:
-            sections.append("NSE closed for today. Crypto markets are 24/7!")
-    
-    return "\n".join(sections)
-
-
-# ═══════════════════════════════════════════════════════════
-#  JARVIS RESPONSE FORMATTER
-# ═══════════════════════════════════════════════════════════
-
-def jarvis_format(text: str, intent: str = None) -> str:
-    """Format response with JARVIS branding."""
-    if intent in (Intent.STOCK_SIGNAL, Intent.STOCK_PREDICT, Intent.STOCK_OPTIONS, 
-                  Intent.INVESTMENT_CALC, Intent.SUPER_PREDICT, Intent.TWO_MIN_SIGNAL):
-        header = "🤖📊 *J.A.R.V.I.S. — स्टॉक एनालिसिस*"
-    elif intent in (Intent.CRYPTO_GEMS, Intent.CRYPTO_TRENDING, Intent.PUMP_TRENDING,
-                    Intent.PUMP_NEW, Intent.PUMP_TOP, Intent.CRYPTO_DIPS, Intent.CRYPTO_PUMPS,
-                    Intent.AI_CRYPTO_PICK, Intent.MULTI_CHAIN):
-        header = "🤖🪙 *J.A.R.V.I.S. — क्रिप्टो इंटेलिजेंस*"
-    elif intent in (Intent.WHALE_SCAN, Intent.RUG_CHECK):
-        header = "🤖🛡️ *J.A.R.V.I.S. — सिक्योरिटी स्कैन*"
-    elif intent in (Intent.PORTFOLIO, Intent.BUY_CRYPTO, Intent.SELL_CRYPTO, Intent.TRADE_HISTORY):
-        header = "🤖💼 *J.A.R.V.I.S. — पोर्टफोलियो मैनेजर*"
-    elif intent == Intent.MORNING_BRIEF:
-        header = "🤖☀️ *J.A.R.V.I.S. — मॉर्निंग ब्रीफ*"
-    elif intent in (Intent.BUY_SELL_STOCK, Intent.BUY_SELL_CRYPTO, Intent.SCAN_NIFTY_SIGNALS,
-                    Intent.SCAN_CRYPTO_SIGNALS, Intent.INDEX_SIGNALS):
-        header = "🤖🟢🔴 *J.A.R.V.I.S. — Buy/Sell सिग्नल*"
-    elif intent in (Intent.GLOBAL_ANALYSIS, Intent.US_MARKETS, Intent.EUROPE_MARKETS,
-                    Intent.ASIA_MARKETS, Intent.INDIA_PREDICTION, Intent.COMMODITIES):
-        header = "🤖🌍 *J.A.R.V.I.S. — ग्लोबल ब्रेन*"
-    elif intent == Intent.ADMIN_PANEL:
-        header = "🤖🔐 *J.A.R.V.I.S. — एडमिन पैनल*"
-    else:
-        header = "🤖✨ *J.A.R.V.I.S.*"
-    
-    return f"{header}\n{'━' * 30}\n\n{text}"
-
-
-# ═══════════════════════════════════════════════════════════
-#  MORNING BRIEFING — Proactive Market Intelligence
-# ═══════════════════════════════════════════════════════════
-
-def generate_morning_briefing(chat_id: int = 0) -> str:
-    """Generate a comprehensive morning market briefing like JARVIS would deliver."""
-    now = datetime.now(IST)
-    
-    brief = []
-    brief.append(f"🌸 *{_get_time_greeting_hi()}!* ✨")
-    brief.append(f"📅 *{now.strftime('%A, %d %B %Y')}* — ये रहा आपका मॉर्निंग ब्रीफ: 💕\n")
-    
-    # Stock Market
-    brief.append("📊 *INDIAN STOCK MARKET:*")
-    brief.append("━━━━━━━━━━━━━━━━━━━━━━━━")
-    
-    try:
-        from live_index_engine import get_live_price
-        from ml_predictor import predict_index_direction
-        
-        for symbol, name in [("^NSEI", "NIFTY 50"), ("^BSESN", "SENSEX")]:
-            try:
-                live = get_live_price(symbol)
-                if isinstance(live, dict) and "error" not in live:
-                    emoji = "📈" if live.get('change', 0) >= 0 else "📉"
-                    brief.append(
-                        f"{emoji} *{name}:* ₹{live['price']:,.2f} "
-                        f"({live['change_pct']:+.2f}%)"
-                    )
-            except Exception:
-                pass
-        
-        brief.append("")
-        for symbol, name in [("^NSEI", "NIFTY"), ("^BSESN", "SENSEX")]:
-            try:
-                pred = predict_index_direction(symbol, name)
-                if "error" not in pred:
-                    direction = pred.get('direction', 'NEUTRAL')
-                    conf = pred.get('confidence', 0)
-                    emoji = "🟢" if direction in ("BULLISH", "UP") else "🔴" if direction in ("BEARISH", "DOWN") else "🟡"
-                    brief.append(f"{emoji} *{name} ML Forecast:* {direction} ({conf:.0%})")
-            except Exception:
-                pass
-    except Exception:
-        brief.append("📊 Stock data loading...")
-    
-    # Crypto Market
-    brief.append(f"\n🪙 *CRYPTO MARKET:*")
-    brief.append("━━━━━━━━━━━━━━━━━━━━━━━━")
-    
-    try:
-        from crypto_engine import scan_pump_trending, get_usd_inr_rate
-        
-        rates = get_usd_inr_rate()
-        if rates:
-            brief.append(f"💱 SOL: ₹{rates.get('sol_inr', 0):,.0f} | BTC: ${rates.get('btc_usd', 0):,.0f}")
-        
-        trending = scan_pump_trending(limit=5)
-        if trending:
-            brief.append("\n🔥 *Top pump.fun Tokens:*")
-            for i, t in enumerate(trending[:5], 1):
-                name = t.get('symbol', '?')
-                mcap = t.get('market_cap_inr', 0)
-                change = t.get('price_change_1h', 0)
-                emoji = "🟢" if change > 0 else "🔴"
-                brief.append(f"  {i}. {emoji} {name} — MCap ₹{mcap:,.0f} ({change:+.1f}%)")
-    except Exception:
-        brief.append("🪙 Crypto data loading...")
-    
-    # Sentiment
-    try:
-        from sentiment_engine import calculate_fear_greed_index
-        fg = calculate_fear_greed_index()
-        if fg and 'value' in fg:
-            val = fg['value']
-            label = fg.get('label', 'Neutral')
-            bar = "🟢" * (val // 20) + "⚪" * (5 - val // 20)
-            brief.append(f"\n🎭 *Market Mood:* {label} [{bar}] {val}/100")
-    except Exception:
-        pass
-    
-    # Portfolio check
-    if chat_id:
-        try:
-            from portfolio_tracker import get_portfolio, calculate_portfolio_pnl
-            portfolio = get_portfolio(chat_id)
-            if portfolio:
-                pnl = calculate_portfolio_pnl(chat_id)
-                total_pnl = pnl.get('total_pnl', 0) if pnl else 0
-                emoji = "📈" if total_pnl >= 0 else "📉"
-                brief.append(f"\n💼 *Your Portfolio:* {len(portfolio)} holdings | P&L: {emoji} ₹{total_pnl:+,.0f}")
-        except Exception:
-            pass
-    
-    brief.append(f"\n{'━' * 30}")
-    brief.append("💡 *किसी भी चीज़ का detailed analysis चाहिए तो बोलिए!* 🌸")
-    brief.append("मैं हूँ ना — सब समझती हूँ! ✨")
-    brief.append("\n⚠️ ये सिर्फ एनालिसिस है। हमेशा स्टॉप लॉस लगाएं।")
-    
-    return jarvis_format("\n".join(brief), Intent.MORNING_BRIEF)
-
-
-def _get_time_greeting() -> str:
-    """Get appropriate time-based greeting."""
-    hour = datetime.now(IST).hour
-    if hour < 12:
-        return "morning"
-    elif hour < 17:
-        return "afternoon"
-    else:
-        return "evening"
-
-def _get_time_greeting_hi() -> str:
-    """Get Hindi time greeting."""
-    hour = datetime.now(IST).hour
-    if hour < 12:
-        return "शुभ प्रभात"
-    elif hour < 17:
-        return "शुभ दोपहर"
-    else:
-        return "शुभ संध्या"
-
-
-# ═══════════════════════════════════════════════════════════
-#  MARKET SUMMARY — Complete Analysis
-# ═══════════════════════════════════════════════════════════
-
-def generate_market_summary(chat_id: int = 0) -> str:
-    """Generate a complete market summary across all modules."""
-    summary = []
-    summary.append("ये रहा आपका complete market intelligence report: 🌸\n")
-    
-    # Stock Section
-    summary.append("📊 *━━━ STOCK MARKET ━━━*")
-    try:
-        from live_index_engine import get_live_price, analyze_2min_candle
-        from ml_predictor import predict_index_direction
-        
-        for symbol, name in [("^NSEI", "NIFTY 50"), ("^BSESN", "SENSEX")]:
-            try:
-                live = get_live_price(symbol)
-                if isinstance(live, dict) and "error" not in live:
-                    pred = predict_index_direction(symbol, name.replace(" 50", ""))
-                    sig = analyze_2min_candle(symbol, name.replace(" 50", ""))
-                    
-                    direction = pred.get('direction', 'N/A') if isinstance(pred, dict) and 'error' not in pred else 'N/A'
-                    signal = sig.get('signal', 'N/A') if isinstance(sig, dict) else 'N/A'
-                    
-                    emoji = "📈" if live.get('change', 0) >= 0 else "📉"
-                    summary.append(
-                        f"\n{emoji} *{name}:* ₹{live['price']:,.2f} ({live['change_pct']:+.2f}%)\n"
-                        f"   🤖 ML: {direction} | ⚡ Signal: {signal}"
-                    )
-            except Exception:
-                pass
-    except Exception:
-        summary.append("Loading stock data...")
-    
-    # Crypto Section
-    summary.append(f"\n🪙 *━━━ CRYPTO MARKET ━━━*")
-    try:
-        from crypto_engine import scan_pump_trending, scan_trending_gems, get_usd_inr_rate
-        
-        rates = get_usd_inr_rate()
-        if rates:
-            summary.append(f"💱 1 SOL = ₹{rates.get('sol_inr', 0):,.0f} | 1 USD = ₹{rates.get('usd_inr', 0):,.0f}")
-        
-        gems = scan_trending_gems(limit=3)
-        if gems:
-            summary.append("\n💎 *Top Gems:*")
-            for g in gems[:3]:
-                name = g.get('name', '?')
-                score = g.get('gem_score', 0)
-                mcap = g.get('market_cap_inr', 0)
-                summary.append(f"  • {name} — Score: {score}/100 | MCap: ₹{mcap:,.0f}")
-    except Exception:
-        summary.append("Loading crypto data...")
-    
-    # Risk & Sentiment
-    try:
-        from sentiment_engine import calculate_fear_greed_index
-        fg = calculate_fear_greed_index()
-        if fg:
-            summary.append(f"\n🎭 *Market Sentiment:* {fg.get('label', 'N/A')} ({fg.get('value', 0)}/100)")
-    except Exception:
-        pass
-    
-    summary.append(f"\n{'━' * 30}")
-    summary.append("🤖 _मैं 24/7 सारे मार्केट मॉनिटर कर रही हूँ। चिंता मत कीजिए! 💕_")
-    summary.append("⚠️ ये सिर्फ एनालिसिस है। हमेशा स्टॉप लॉस लगाइए।")
-    
-    return jarvis_format("\n".join(summary), Intent.MARKET_SUMMARY)
-
-
-# ═══════════════════════════════════════════════════════════
-#  INTENT → ACTION MAPPER  
-# ═══════════════════════════════════════════════════════════
-
-# Maps intents to button text that handle_update already handles
-INTENT_TO_BUTTON = {
-    Intent.STOCK_SIGNAL: "🔱 NIFTY Signals 📊",
-    Intent.STOCK_PREDICT: "🤖 NIFTY ML Predict 🧠",
-    Intent.STOCK_OPTIONS: "💎 NIFTY Calls OTM 🚀",
-    Intent.INVESTMENT_CALC: "💰 Invest ₹2K NIFTY",
-    Intent.CANDLE_PATTERN: "🕯️ Candle Patterns 📊",
-    Intent.MARKET_TREND: "🌍 Market Trend 📈",
-    Intent.MARKET_STATUS: "⏰ Market Status 🔔",
-    Intent.SUPER_PREDICT: "🧠 Super Prediction 🔮",
-    Intent.SENTIMENT: "📰 Market Sentiment 💬",
-    Intent.RISK_CALC: "⚠️ Risk Calculator 🛡️",
-    Intent.TWO_MIN_SIGNAL: "⚡ 2-Min NIFTY Signal",
-    Intent.TOMORROW_PREDICT: "🔮 Tomorrow Prediction 🎯",
-    Intent.CRYPTO_GEMS: "🪙 Crypto Gems 💎",
-    Intent.CRYPTO_TRENDING: "🔥 Trending Crypto 📈",
-    Intent.PUMP_TRENDING: "🟣 Pump.fun Trending 🔥",
-    Intent.PUMP_NEW: "🆕 Pump.fun New Launches",
-    Intent.PUMP_TOP: "🏆 Pump.fun Top MCap",
-    Intent.CRYPTO_DIPS: "📉 Crypto Dips 🔴",
-    Intent.CRYPTO_PUMPS: "🚀 Crypto Pumps 🟢",
-    Intent.AI_CRYPTO_PICK: "🤖 AI Crypto Pick 🧠",
-    Intent.WHALE_SCAN: "🐋 Whale Scanner 🔍",
-    Intent.RUG_CHECK: "🛡️ Rug Detector 🔎",
-    Intent.MULTI_CHAIN: "🌐 Multi-Chain Gems 🔗",
-    Intent.PORTFOLIO: "📂 My Crypto Portfolio",
-    Intent.TRADE_HISTORY: "📜 Trade History",
-    Intent.PRICE_ALERT: "🔔 Price Alerts 📊",
-    Intent.GEM_ACCURACY: "📊 Gem Accuracy 🔬",
-    # 🆕 Buy/Sell
-    Intent.BUY_SELL_STOCK: "🟢🔴 Stock Buy/Sell Signal",
-    Intent.BUY_SELL_CRYPTO: "🟢🔴 Crypto Buy/Sell Signal",
-    Intent.SCAN_NIFTY_SIGNALS: "📊 Scan NIFTY Signals",
-    Intent.SCAN_CRYPTO_SIGNALS: "📊 Scan Crypto Signals",
-    Intent.INDEX_SIGNALS: "📊 Index Buy/Sell",
-    # 🆕 Global
-    Intent.GLOBAL_ANALYSIS: "🌍 Global Market Brain",
-    Intent.US_MARKETS: "🇺🇸 US Markets",
-    Intent.EUROPE_MARKETS: "🇪🇺 Europe Markets",
-    Intent.ASIA_MARKETS: "🌏 Asia Markets",
-    Intent.INDIA_PREDICTION: "🔮 India from Global",
-    Intent.COMMODITIES: "🥇 Commodities",
-    # 🆕 Admin
-    Intent.ADMIN_PANEL: "🔐 Admin Panel",
-    # 🆕 Language
-    Intent.LANGUAGE_SWITCH: "🇮🇳 Hindi / English",
-    # 🆕 Phase 6 Power
-    Intent.MARKET_REGIME: "🌡️ Market Regime 🔬",
-    Intent.OPTIONS_ANALYSIS: "📊 Options Analysis 💹",
-    Intent.SCALP_SIGNAL: "⚡ Scalp Signal 🎯",
-    Intent.MULTI_TF_SIGNAL: "📊 Multi-TF Signal 🔄",
-    Intent.STOCK_PORTFOLIO: "📈 My Stock Portfolio",
-    Intent.TAX_CALCULATOR: "🧾 Tax Calculator 💰",
-    Intent.COMBINED_PORTFOLIO: "🏦 Combined Portfolio",
-    # 🆕 CoinDCX Web3
-    Intent.COINDCX_SIGNAL: "💹 CoinDCX AI Signal 🤖",
-    Intent.COINDCX_MOVERS: "📊 CoinDCX Top Movers",
-    Intent.COINDCX_BEST: "🔍 CoinDCX Best Signals",
-    Intent.COINDCX_PRICE: "💰 CoinDCX Price Check",
-    # 🚀 Rocket Scanner
-    Intent.ROCKET_SCAN: "🚀🔥 ROCKET Scanner",
-    Intent.QUICK_PROFIT: "🚀🔥 ROCKET Scanner",
-    # 🌐 All Web3 Tokens
-    Intent.WEB3_ALL: "🌐 All Web3 Tokens",
-    Intent.WEB3_LIST: "📋 Web3 Token List",
-    Intent.WEB3_MOVERS: "🚀💥 Web3 Top Movers",
-    Intent.WEB3_SCAN: "🔍 Web3 AI Scan All",
-    Intent.WEB3_DEFI: "🏦 Web3 DeFi Tokens",
-    Intent.WEB3_MEME: "🐸 Web3 Meme Coins",
-    Intent.WEB3_AI: "🤖 Web3 AI Tokens",
-    Intent.WEB3_L1: "🔷 Web3 Layer 1",
-    Intent.WEB3_L2: "🔶 Web3 Layer 2",
-    Intent.WEB3_GAMING: "🎮 Web3 Gaming NFT",
-    Intent.WEB3_INFRA: "🔧 Web3 Infra Tokens",
-    Intent.WEB3_SEARCH: "🌐 All Web3 Tokens",
 }
 
 
-def get_action_for_intent(intent: str, confidence: float, user_message: str) -> Dict[str, Any]:
+def generate_ai_response(prompt: str, max_tokens: int = 1000, chat_id: int = 0) -> str:
     """
-    Determine what action JARVIS should take based on classified intent.
-    
-    Returns dict with:
-    - action: "redirect" (send to existing handler), "generate" (AI response), "special" (custom)
-    - button: button text to simulate (for redirect)
-    - response: direct response text (for generate/special)
+    Generate AI response using Groq or fallback.
+    Used for complex analysis and conclusions.
     """
-    # High confidence intents → redirect to existing handlers
-    if intent in INTENT_TO_BUTTON and confidence >= 0.5:
-        return {
-            "action": "redirect",
-            "button": INTENT_TO_BUTTON[intent],
-            "intent": intent,
-        }
-    
-    # Special handlers
-    if intent == Intent.MORNING_BRIEF:
-        return {"action": "special", "type": "morning_brief", "intent": intent}
-    
-    if intent == Intent.MARKET_SUMMARY:
-        return {"action": "special", "type": "market_summary", "intent": intent}
-    
-    if intent == Intent.HELP:
-        return {"action": "redirect", "button": "❓ Help 💡", "intent": intent}
-    
-    if intent == Intent.GREETING:
-        return {"action": "special", "type": "greeting", "intent": intent}
-    
-    # Buy/Sell crypto need special parsing
-    if intent == Intent.BUY_CRYPTO:
-        return {"action": "special", "type": "buy_crypto", "intent": intent, "message": user_message}
-    
-    if intent == Intent.SELL_CRYPTO:
-        return {"action": "special", "type": "sell_crypto", "intent": intent, "message": user_message}
-    
-    # 🆕 Crypto Intelligence — redirect AI Crypto Pick to super engine
-    if intent == Intent.AI_CRYPTO_PICK and confidence >= 0.4:
-        return {"action": "redirect", "button": "🤖 AI Crypto Pick 🧠", "intent": intent}
-    
-    # 🆕 Buy/Sell signals (stock + crypto) → special NLU handler  
-    if intent in (Intent.BUY_SELL_STOCK, Intent.BUY_SELL_CRYPTO) and confidence >= 0.4:
-        return {"action": "special", "type": "buy_sell_signal", "intent": intent, "message": user_message}
-    
-    # 🆕 Admin panel
-    if intent == Intent.ADMIN_PANEL:
-        return {"action": "special", "type": "admin_panel", "intent": intent}
-    
-    # 🆕 Language switch
-    if intent == Intent.LANGUAGE_SWITCH:
-        return {"action": "special", "type": "language_switch", "intent": intent, "message": user_message}
-    
-    # Default: AI chat with JARVIS persona
-    return {"action": "generate", "intent": intent}
-
-
-# ═══════════════════════════════════════════════════════════
-#  JARVIS GREETING — Personalized, intelligent
-# ═══════════════════════════════════════════════════════════
-
-def generate_jarvis_greeting(user_name: str = "Sir", chat_id: int = 0) -> str:
-    """Generate a personalized JARVIS greeting with market context — Hindi style."""
-    now = datetime.now(IST)
-    time_greet = _get_time_greeting()
-    
-    # Hindi time greetings
-    hindi_greet = {"morning": "सुप्रभात", "afternoon": "शुभ दोपहर", "evening": "शुभ संध्या"}
-    hi_greet = hindi_greet.get(time_greet, "नमस्ते")
-    
-    greeting_parts = []
-    greeting_parts.append(f"🌸 *नमस्ते {user_name} जी!* 🙏✨")
-    greeting_parts.append(f"{hi_greet}! मैं *J.A.R.V.I.S.* — आपकी AI ट्रेडिंग असिस्टेंट हूँ। 💕\n")
-    
-    # Quick market snapshot
     try:
-        from live_index_engine import get_live_price
-        
-        nifty = get_live_price("^NSEI")
-        if isinstance(nifty, dict) and "error" not in nifty:
-            emoji = "📈" if nifty.get('change', 0) >= 0 else "📉"
-            greeting_parts.append(
-                f"{emoji} NIFTY: ₹{nifty['price']:,.2f} ({nifty['change_pct']:+.2f}%)"
+        import os
+        groq_key = os.environ.get("GROQ_API_KEY")
+        if groq_key:
+            from groq import Groq
+            client = Groq(api_key=groq_key)
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=max_tokens,
+                temperature=0.7,
             )
-    except Exception:
-        pass
+            return response.choices[0].message.content.strip()
+    except Exception as e:
+        logger.error(f"AI response generation failed: {e}")
     
-    try:
-        from crypto_engine import get_usd_inr_rate
-        rates = get_usd_inr_rate()
-        if rates:
-            greeting_parts.append(f"💱 SOL: ₹{rates.get('sol_inr', 0):,.0f}")
-    except Exception:
-        pass
-    
-    greeting_parts.append(f"\n💡 _बताइए, आज मैं आपकी क्या मदद करूँ?_ 🌸")
-    greeting_parts.append("बस बोलिए — मैं सब समझती हूँ! ✨")
-    
-    return jarvis_format("\n".join(greeting_parts), Intent.GREETING)
-
-
-# ═══════════════════════════════════════════════════════════
-#  JARVIS WELCOME SCREEN — Epic /start message
-# ═══════════════════════════════════════════════════════════
-
-def generate_jarvis_welcome(user_name: str = "Sir") -> str:
-    """Generate the epic JARVIS welcome screen for /start — Hindi style."""
-    now = datetime.now(IST)
-    
-    welcome = f"""🌸✨ *नमस्ते {user_name.upper()} जी!* ✨🌸
-✦═══════════════════════════✦
-
-🤖💕 *J.A.R.V.I.S.* 💕🤖
-*Just A Rather Very Intelligent System*
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🌟 *भारत की सबसे पावरफुल AI Trading Assistant* 🌟
-_6 AI/ML Models + Real-Time Market Intelligence से लैस_ 🌸
-
-🧠 *━━━ AI इंटेलिजेंस ━━━*
-┣ 🤖 6-Model ML Ensemble (XGB+RF+GB+ET+LGBM+LSTM)
-┣ 🔮 111-Feature Technical Analysis Engine
-┣ 🕯️ 40+ Japanese Candlestick Patterns
-┣ 📰 Real-Time Sentiment & Fear/Greed Index
-┣ 💬 Multi-Provider AI Chat (GPT + Gemini + Llama)
-┣ 🧮 Kelly Criterion Risk Management
-┗ 🇮🇳 हिंदी + English (Bilingual Brain)
-
-📊 *━━━ स्टॉक मार्केट ━━━*
-┣ ⚡ Live NIFTY/SENSEX सिग्नल & ऑप्शन
-┣ 🟢🔴 BUY/SELL इंडिकेटर (12 टेक्निकल)
-┣ 🎯 OTM Call/Put Picks with Profit Calc
-┣ 💰 इन्वेस्टमेंट कैलकुलेटर (₹2K to ₹50K+)
-┣ ⚡ 2-Min स्कैल्पिंग सिग्नल
-┣ 🔮 AI प्रेडिक्शन (Tomorrow)
-┗ 📊 NIFTY 50 Stock Scanner
-
-🪙 *━━━ क्रिप्टो मार्केट ━━━*
-┣ 🟣 pump.fun — Trending/New/Top Tokens
-┣ 💎 DexScreener Gem Scanner (Score 0-100)
-┣ 🟢🔴 Crypto BUY/SELL सिग्नल
-┣ 🌐 Multi-Chain: SOL + ETH + Base + ARB + BNB
-┣ 🐋 Whale Activity Detection
-┣ 🛡️ 8-Factor Rug Pull Detector
-┣ 📂 Portfolio Tracker with Live P&L
-┗ 🔔 Custom Price Alerts
-
-🌍 *━━━ ग्लोबल मार्केट ब्रेन ━━━*
-┣ 🇺🇸 US (S&P 500, NASDAQ, DOW)
-┣ 🇪🇺 Europe (DAX, FTSE, CAC)
-┣ 🌏 Asia (Nikkei, Hang Seng, Shanghai)
-┣ 🥇 Commodities (Gold, Silver, Crude)
-┣ 💱 USD/INR & Dollar Index
-┗ 🔮 India Impact Prediction
-
-⚡ *━━━ ऑटोमेशन ━━━*
-┣ 🔔 24/7 ऑटो अलर्ट (Stock + Crypto)
-┣ 🚨 BUY/SELL ऑटो अलर्ट
-┣ 📲 SMS Alerts
-┣ ☀️ मॉर्निंग मार्केट ब्रीफिंग
-┣ 🔐 एडमिन पैनल (सब कुछ ON/OFF)
-┗ 🤖 Natural Language — बस बोलो!
-
-★═══════════════════════════★
-⏰ {now.strftime('%I:%M %p IST | %d %b %Y')}
-_"सारे सिस्टम्स तैयार हैं। मैं हूँ ना आपके साथ! 💕"_ 🤖
-🌸 *राधे राधे — TRADE WITH CONFIDENCE* 🌸
-✦═══════════════════════════✦"""
-    
-    return welcome
-
-
-# ═══════════════════════════════════════════════════════════
-#  JARVIS HELP SCREEN — Organized by category
-# ═══════════════════════════════════════════════════════════
-
-def generate_jarvis_help(user_name: str = "Sir") -> str:
-    """Generate comprehensive JARVIS help screen — Hindi style."""
-    return f"""🤖 *J.A.R.V.I.S. कमांड सेंटर* 🤖
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-💡 *{user_name} जी, मैं हिंदी और इंग्लिश दोनों समझती हूँ!* 🌸
-बस बोलिए क्या चाहिए — मैं समझ जाऊँगी। 💕
-
-🗣️ *ऐसे बात करो:*
-• _"NIFTY आज कैसा है?"_
-• _"Call खरीदूँ या Put?"_
-• _"कोई अच्छा crypto gem बताओ"_
-• _"ये token safe है?"_
-• _"मेरी portfolio कैसी है?"_
-• _"Whale activity दिखाओ"_
-• _"Morning briefing दो"_
-• _"NIFTY का buy/sell signal बताओ"_
-• _"Global market कैसा है?"_
-
-📊 *स्टॉक कमांड:*
-┣ 🔱 Signals — NIFTY/SENSEX एनालिसिस
-┣ 🟢🔴 Buy/Sell — 12 इंडिकेटर सिग्नल
-┣ 💎 OTM Options — Call/Put picks
-┣ 💰 Investment — ₹2K/₹20K ट्रेड प्लान
-┣ 🤖 ML Predict — 6-model ensemble
-┣ ⚡ 2-Min सिग्नल — Scalping alerts
-┣ 🧠 Super Prediction — पूरा AI combined
-┣ 🕯️ Candle Patterns — 40+ patterns
-┣ 📰 Sentiment — न्यूज़ मूड
-┣ ⚠️ Risk Calculator — पोज़ीशन साइज़िंग
-┗ 🔮 Tomorrow — AI forecast
-
-🪙 *क्रिप्टो कमांड:*
-┣ 🟣 pump.fun — Trending/New/Top
-┣ 💎 Gems — DexScreener scanner
-┣ 🟢🔴 Crypto Buy/Sell — सिग्नल
-┣ 🌐 Multi-Chain — 5 blockchains
-┣ 📉 Dips/Pumps — Buy opportunities
-┣ 🐋 Whale Scanner — Big money moves
-┣ 🛡️ Rug Detector — Safety check
-┣ 📂 Portfolio — Track holdings
-┣ /buy TOKEN QTY PRICE — पोज़ीशन ऐड
-┣ /sell TOKEN QTY PRICE — पोज़ीशन क्लोज़
-┗ /alert TOKEN PRICE — अलर्ट सेट
-
-🌍 *ग्लोबल मार्केट:*
-┣ 🇺🇸 US Markets — NASDAQ, S&P, DOW
-┣ 🇪🇺 Europe — DAX, FTSE
-┣ 🌏 Asia — Nikkei, Hang Seng
-┣ 🥇 Commodities — Gold, Silver, Crude
-┣ 💱 USD/INR
-┗ 🔮 India Impact — ग्लोबल से भारत
-
-🔐 *एडमिन (सिर्फ Admin):*
-┣ /admin — एडमिन पैनल
-┣ फीचर ON/OFF — सब कंट्रोल
-┣ 📢 Broadcast — सबको मैसेज
-┗ 👥 Users — यूज़र मैनेज
-
-🇮🇳 *भाषा:*
-┣ "Hindi" — हिंदी में बात करो
-┗ "English" — Switch to English
-
-★═══════════════════════════★
-🤖 _"मैं हमेशा सीखती रहती हूँ। बस पूछिए! 🌸"_
-⚠️ ये सिर्फ एनालिसिस है। हमेशा स्टॉप लॉस लगाइए।"""
-
-
-# ═══════════════════════════════════════════════════════════
-#  JARVIS KEYBOARD — Organized, Stunning UI
-# ═══════════════════════════════════════════════════════════
-
-def build_jarvis_keyboard() -> dict:
-    """Build the JARVIS-style organized keyboard with categories — Hindi + all features."""
-    rows = [
-        # JARVIS AI Row
-        ["🤖 Ask JARVIS 💬", "☀️ Morning Brief 📊"],
-
-        # 🟢🔴 Buy/Sell Signals
-        ["🟢🔴 ━━ BUY/SELL सिग्नल ━━ 🟢🔴"],
-        ["🟢🔴 Stock Buy/Sell Signal", "🟢🔴 Crypto Buy/Sell Signal"],
-        ["📊 Scan NIFTY Signals", "📊 Scan Crypto Signals"],
-        ["📊 Index Buy/Sell"],
-        ["⚡ Scalp Signal 🎯", "📊 Multi-TF Signal 🔄"],
-
-        # Stock Market - Analysis
-        ["📊 ━━ स्टॉक मार्केट ━━ 📊"],
-        ["🔱 NIFTY Signals 📊", "🔱 SENSEX Signals 📊"],
-        ["💎 NIFTY Calls OTM 🚀", "💎 SENSEX Calls OTM 🚀"],
-        ["⚡ NIFTY Puts OTM 📉", "⚡ SENSEX Puts OTM 📉"],
-        ["🤖 NIFTY ML Predict 🧠", "🤖 SENSEX ML Predict 🧠"],
-        ["⚡ 2-Min NIFTY Signal", "⚡ 2-Min SENSEX Signal"],
-        ["🇮🇳⚡ NIFTY Call/Put AI", "📊 SENSEX Call/Put AI"],
-        ["🏦 BankNIFTY Call/Put AI", "📅 Market Holidays 🇮🇳"],
-        ["🔮 NIFTY Power Predict 💪", "🔮 SENSEX Power Predict 💪"],
-        ["📊 NIFTY OTM↔ATM 🎯", "📊 SENSEX OTM↔ATM 🎯"],
-        ["📊 BankNIFTY OTM↔ATM 🎯", "⚡ 2-Min Momentum 🚀"],
-        ["💰 Invest ₹2K NIFTY", "💰 Invest ₹2K SENSEX"],
-        ["💸 Invest ₹20K NIFTY", "💸 Invest ₹20K SENSEX"],
-        ["📈🇮🇳 Indian Stock AI 🧠", "🧠 Super Prediction 🔮"],
-        ["📰 Market Sentiment 💬", "⚠️ Risk Calculator 🛡️"],
-        ["🕯️ Candle Patterns 📊", "🌍 Market Trend 📈"],
-        ["⏰ Market Status 🔔", "📊 Live Snapshot 🔴"],
-        ["🔮 Tomorrow Prediction 🎯"],
-
-        # 🇮🇳 NIFTY SUPER BRAIN — Advanced Indian Market Intelligence
-        ["🇮🇳 ━━ NIFTY SUPER BRAIN ━━ 🧠"],
-        ["🇮🇳 NIFTY Super Dashboard 🧠"],
-        ["🏛️ FII/DII Flow 📊", "😱 India VIX Gauge 📊"],
-        ["📊 NIFTY PCR 🔢", "📊 BankNIFTY PCR 🔢"],
-        ["📐 NIFTY Pivot Levels 📊", "📐 SENSEX Pivot Levels"],
-        ["🌅 GIFT NIFTY Gap 📊", "📊 OI Buildup Analysis"],
-        ["🏭 Sector Heatmap 📊"],
-
-        # 💰 BUDGET OPTIONS HUNTER + POSITION GUARDIAN
-        ["💰 ━━ BUDGET OPTIONS ₹4-8 ━━ 🎯"],
-        ["💰 Budget Options 🎯", "💰 BankNIFTY Budget 🎯"],
-        ["🔔 9AM Auto Picks 🌅", "🛡️ My Positions Guard"],
-        ["🛑 STOP All Crypto 🛑", "🟢 START Crypto Alerts"],
-
-
-        # 🌡️ Advanced Market Intelligence
-        ["🌡️ ━━ मार्केट इंटेलिजेंस ━━ 🌡️"],
-        ["🌡️ Market Regime 🔬", "📊 Options Analysis 💹"],
-        ["🧾 Tax Calculator 💰"],
-
-        # Crypto Market
-        ["🪙 ━━ क्रिप्टो मार्केट ━━ 🪙"],
-        ["🟣 Pump.fun Trending 🔥", "🆕 Pump.fun New Launches"],
-        ["🏆 Pump.fun Top MCap", "🪙 All Gems (Pump+Dex)"],
-        ["🪙 Crypto Gems 💎", "🔥 Trending Crypto 📈"],
-        ["📉 Crypto Dips 🔴", "🚀 Crypto Pumps 🟢"],
-        ["🤖 AI Crypto Pick 🧠", "🌐 Multi-Chain Gems 🔗"],
-        ["🔥 Crypto Deep Analysis 🪙"],
-
-        # 🔥 DexTools Engine — Multi-Chain Intelligence
-        ["🔥 ━━ DEXTOOLS ENGINE ━━ 🔥"],
-        ["🔥 DexTools Top 15", "🐸 Meme Board"],
-        ["🆕 Live New Pairs", "🎁 DexTools Airdrops"],
-        ["🧠 AI Signal Report", "📊 Multi-Chain Scan"],
-
-        # 🚀 Rocket Scanner — Moonshot Hunter
-        ["🚀 ━━ ROCKET SCANNER ━━ 🚀"],
-        ["🚀🔥 ROCKET Scanner", "🔥 Fast Rockets"],
-        ["🚀 CoinDCX Rockets", "🟣 Pump.fun Rockets"],
-
-        # 🔥 TOP 100 + Wealth Strategy
-        ["💰 ━━ TOP 100 AI + WEALTH ━━ 💰"],
-        ["🔥 TOP 100 AI Signals 🧠", "💰 ₹2K → ₹2L Strategy 🚀"],
-
-        # Crypto Tools
-        ["🛡️ ━━ क्रिप्टो टूल्स ━━ 🛡️"],
-        ["🐋 Whale Scanner 🔍", "🛡️ Rug Detector 🔎"],
-        ["📂 My Crypto Portfolio", "📈 My Stock Portfolio"],
-        ["📜 Trade History", "🏦 Combined Portfolio"],
-        ["🔔 Price Alerts 📊", "📊 Gem Accuracy 🔬"],
-        ["💰 Buy Crypto /buy", "🔔 Crypto Alerts ON/OFF"],
-
-        # 🪙 CoinDCX Web3
-        ["💹 ━━ CoinDCX Web3 AI ━━ 💹"],
-        ["💹 CoinDCX AI Signal 🤖", "📊 CoinDCX Top Movers"],
-        ["🔍 CoinDCX Best Signals", "💰 CoinDCX Price Check"],
-
-        # 🌐 All Web3 Tokens
-        ["🌐 ━━ ALL Web3 Tokens ━━ 🌐"],
-        ["🌐 All Web3 Tokens", "📋 Web3 Token List"],
-        ["💰 ₹2K Token Invest", "🚀💥 Web3 Top Movers"],
-        ["🔍 Web3 AI Scan All", "🔷 Web3 Layer 1"],
-        ["🔶 Web3 Layer 2", "🏦 Web3 DeFi Tokens"],
-        ["🐸 Web3 Meme Coins", "🤖 Web3 AI Tokens"],
-        ["🎮 Web3 Gaming NFT", "🔧 Web3 Infra Tokens"],
-        ["🔍 Scan DeFi Signals", "🔍 Scan Meme Signals"],
-
-        # 👻 Phantom Wallet — Solana (ALL buttons)
-        ["👻 ━━ PHANTOM WALLET ━━ 👻"],
-        ["👻 Phantom Wallet 🔮", "👻 Connect Wallet"],
-        ["👻 Wallet Scan 📊", "👻 Wallet Dashboard 📋"],
-        ["👻 Wallet Summary ⚡", "👻 Claim Airdrops 🎁"],
-        ["👻 Transfer SOL 💸", "👻 Wallet Alerts ON"],
-        ["👻 Wallet Alerts OFF", "👻 Disconnect Wallet"],
-
-        # 🎁 Airdrop Hunter
-        ["🎁 ━━ AIRDROP HUNTER ━━ 🎁"],
-        ["💎 Telegram Wallet 💳", "🎁 Airdrop Hunter 🚀"],
-        ["📝 Set My Wallet 🔑", "👛 My Wallets 💰"],
-        ["🔮 Upcoming Airdrops", "🎁 Solana Airdrops"],
-
-        # 🔗 QR Wallet Connect
-        ["🔗 ━━ QR WALLET CONNECT ━━ 🔗"],
-        ["🔗 Trust Wallet QR 📱", "◎ Solana Pay QR"],
-
-        # 🌍 Global Markets
-        ["🌍 ━━ ग्लोबल मार्केट ━━ 🌍"],
-        ["🌍 Global Market Brain", "🔮 India from Global"],
-        ["🇺🇸 US Markets", "🇪🇺 Europe Markets"],
-        ["🌏 Asia Markets", "🥇 Commodities"],
-
-        # 🧠⚡ JARVIS Super Brain
-        ["🧠 ━━ SUPER BRAIN ━━ ⚡"],
-        ["📰 News Digest", "🧠 Intelligence Briefing"],
-        ["🔱 SPOC Dashboard", "📊 Quick Status"],
-
-        # 🛠️ JARVIS Tools
-        ["🛠️ ━━ JARVIS TOOLS ━━ 🛠️"],
-        ["🌤️ Weather", "🔍 Web Search"],
-        ["🎵 Identify Song 🎶", "🎨 Generate Image"],
-        ["🧠 My Memory", "📰 Crypto News"],
-
-        # � JARVIS Coder + AI Assistant
-        ["💻 ━━ JARVIS CODER ━━ 🚀"],
-        ["💻 JARVIS Coder 🚀", "👤 My Profile"],
-
-        # 👑 Admin / Boss Section
-        ["👑 ━━ ADMIN / BOSS ━━ 👑"],
-        ["👑 Admin Dashboard", "🔐 Admin Panel"],
-
-        # 🛡️ Security Center
-        ["🛡️ ━━ SECURITY CENTER ━━ 🛡️"],
-        ["🛡️ Security Dashboard", "🔐 Security Status"],
-
-        # AI & Alerts
-        ["🤖 ━━ AI & अलर्ट ━━ 🤖"],
-        ["🤖 AI Chat 💬", "🧹 Clear AI Chat"],
-        ["📲 SMS Alerts ON 🔔", "📲 SMS Alerts OFF 🔕"],
-        ["💵 Set Investment Amount", "📊 My Positions"],
-
-        # Language & Settings
-        ["🔐 ━━ सेटिंग्स ━━ 🔐"],
-        ["🇮🇳 Hindi / English"],
-
-        # Watchlist & Account
-        ["📋 ━━ अकाउंट ━━ 📋"],
-        ["➕ Add Symbol 🎯", "➖ Remove Symbol ❌", "📋 Watchlist"],
-        ["🔔 Subscribe Alerts ✅", "🔕 Unsubscribe ❌", "👥 My Subs"],
-        ["📱 Generate QR 🔗", "❓ Help 💡", "🏠 /start"],
-    ]
-    return {"keyboard": rows, "resize_keyboard": True}
-
-
-# ═══════════════════════════════════════════════════════════
-#  PROACTIVE ALERTS — Smart Notifications
-# ═══════════════════════════════════════════════════════════
-
-def check_proactive_alerts(chat_id: int) -> List[str]:
-    """Check for conditions that warrant proactive JARVIS alerts."""
-    alerts = []
-    
-    # Check portfolio risk
-    try:
-        from portfolio_tracker import get_portfolio, calculate_portfolio_pnl
-        portfolio = get_portfolio(chat_id)
-        if portfolio:
-            pnl = calculate_portfolio_pnl(chat_id)
-            if pnl:
-                total_pnl_pct = pnl.get('total_pnl_pct', 0)
-                if total_pnl_pct <= -15:
-                    alerts.append(
-                        "🚨 *JARVIS ALERT:* Portfolio "
-                        f"{total_pnl_pct:.1f}% नीचे है! Please positions review कीजिए। 🌸"
-                    )
-                elif total_pnl_pct >= 50:
-                    alerts.append(
-                        "💰 *JARVIS ALERT:* Portfolio "
-                        f"{total_pnl_pct:.1f}% ऊपर है! Partial profit book करें? 🌸"
-                    )
-    except Exception:
-        pass
-    
-    return alerts
-
-
-# ═══════════════════════════════════════════════════════════
-#  EXPORT — Module API
-# ═══════════════════════════════════════════════════════════
-
-__all__ = [
-    'JARVIS_SYSTEM_PROMPT',
-    'Intent',
-    'classify_intent',
-    'build_jarvis_context',
-    'jarvis_format',
-    'generate_morning_briefing',
-    'generate_market_summary',
-    'get_action_for_intent',
-    'generate_jarvis_greeting',
-    'generate_jarvis_welcome',
-    'generate_jarvis_help',
-    'build_jarvis_keyboard',
-    'check_proactive_alerts',
-    # Memory system
-    'remember_user',
-    'recall_user',
-    'remember_name',
-    'get_user_context',
-    'add_to_conversation',
-]
+    # Fallback
+    return "AI विश्लेषण अस्थायी रूप से उपलब्ध नहीं है। तकनीकी संकेतकों पर भरोसा करें।"

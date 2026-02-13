@@ -11,26 +11,26 @@
     "preferences": {},
     "watchlist": [],
     "last_intents": [
-      "chat",
-      "chat",
-      "chat",
-      "chat",
-      "chat",
-      "tomorrow_predict",
-      "chat",
-      "chat",
-      "india_prediction",
-      "chat",
-      "chat",
-      "chat",
-      "chat",
-      "market_status",
-      "market_status",
+      "stock_predict",
+      "stock_predict",
       "stock_options",
+      "buy_sell_stock",
+      "us_markets",
+      "us_markets",
+      "scan_nifty_signals",
+      "scan_nifty_signals",
       "chat",
       "chat",
+      "nifty_fno",
+      "chat",
+      "chat",
+      "coindcx_price",
+      "nifty50_index",
+      "chat",
+      "greeting",
+      "nifty_fno",
       "stock_options",
-      "stock_predict"
+      "market_status"
     ],
     "name": "Deepak Kumar"
   },
@@ -45,5 +45,13 @@
     "watchlist": [],
     "last_intents": [],
     "name": "Abhinav Sharma"
+  },
+  "5424845791": {
+    "preferences": {},
+    "watchlist": [],
+    "last_intents": [
+      "stock_options"
+    ],
+    "name": "Rahul Sharma"
   }
 }

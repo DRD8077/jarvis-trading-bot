@@ -290,7 +290,6 @@ def detect_market_regime(symbol: str = "^NSEI", period: str = "1y") -> RegimeAna
         "NIFTY Bank": "^NSEBANK",
         "NIFTY IT": "^CNXIT",
         "NIFTY Pharma": "^CNXPHARMA",
-        "NIFTY Auto": "NIFTY_AUTO.NS",
         "NIFTY FMCG": "^CNXFMCG",
         "NIFTY Metal": "^CNXMETAL",
         "NIFTY Realty": "^CNXREALTY",

@@ -87,13 +87,12 @@ RESPONSE FORMAT (JSON):
 
 
 def generate_code(prompt: str, chat_id: int = 0, language: str = "auto") -> Dict:
-    """Generate code using Claude Opus 4.
+    """Generate code using FREE AI providers (Groq → Gemini).
     
     Returns dict with: project_name, files[], setup[], run, explanation
     """
-    if not ANTHROPIC_API_KEY:
-        # Fallback to other AI providers
-        return _fallback_code_gen(prompt, chat_id)
+    # 100% FREE — always use Groq/Gemini (no paid Claude needed)
+    return _fallback_code_gen(prompt, chat_id)
     
     try:
         import anthropic
@@ -435,7 +434,7 @@ def start_coding_session(chat_id: int) -> str:
     return (
         "💻🌸 *JARVIS CODER Activated!*\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "Powered by *Claude Opus 4* 🧠⚡\n\n"
+        "Powered by *JARVIS FREE AI* 🧠⚡\n\n"
         "बताइए, *क्या बनाना है?* 🌸\n\n"
         "Examples:\n"
         "• _\"Python Flask API with user auth\"_\n"
@@ -604,10 +603,10 @@ Return ONLY valid JSON in the same format as before."""
 # ═══════════════════════════════════════════════════════════
 
 CODER_AVAILABLE = True
-CLAUDE_CONNECTED = bool(ANTHROPIC_API_KEY)
+CLAUDE_CONNECTED = False  # Removed — 100% FREE AI only (Groq/Gemini)
 GITHUB_CONNECTED = bool(GITHUB_TOKEN) or os.path.exists(os.path.expanduser("~/.config/gh/hosts.yml"))
 
 logger.info(
-    f"[CODER] 💻 JARVIS Coder loaded: Claude={'✅' if CLAUDE_CONNECTED else '❌'} "
+    f"[CODER] 💻 JARVIS Coder loaded: AI=Groq+Gemini(FREE) "
     f"GitHub={'✅' if GITHUB_CONNECTED else '❌'}"
 )

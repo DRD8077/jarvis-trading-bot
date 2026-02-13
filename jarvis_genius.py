@@ -313,6 +313,59 @@ def tool_python_calc(expression: str) -> str:
 
 
 # ═══════════════════════════════════════════════════════════
+#  NEW L3 TOOLS — Code Engine + NSE Option Chain
+# ═══════════════════════════════════════════════════════════
+
+@register_tool(
+    "run_code_autonomous",
+    "Generate and execute code autonomously. JARVIS writes code from description, runs it, returns output. Use for coding requests, web scraping, data analysis, file processing, etc.",
+    {"type": "object", "properties": {"prompt": {"type": "string", "description": "What to code — in English or Hindi"}}, "required": ["prompt"]}
+)
+def tool_run_code(prompt: str) -> str:
+    """Run code autonomously via JARVIS Code Engine."""
+    try:
+        from jarvis_code_engine import execute_code_autonomous, format_execution_result
+        result = execute_code_autonomous(prompt)
+        return format_execution_result(result, prompt[:60])
+    except Exception as e:
+        return f"Code engine error: {e}"
+
+
+@register_tool(
+    "get_nse_option_chain",
+    "Get REAL-TIME NSE option chain with live prices, OI, IV, Greeks for NIFTY/SENSEX/BANKNIFTY. Returns real option prices from NSE India.",
+    {"type": "object", "properties": {"symbol": {"type": "string", "description": "NIFTY or SENSEX or BANKNIFTY"}}, "required": ["symbol"]}
+)
+def tool_nse_chain(symbol: str = "NIFTY") -> str:
+    """Get real NSE option chain."""
+    try:
+        from nse_live_engine import get_atm_otm_analysis, format_atm_otm_analysis
+        analysis = get_atm_otm_analysis(symbol, budget=2000, direction="auto", num_strikes=5)
+        if "error" not in analysis:
+            return format_atm_otm_analysis(analysis, "CE")
+        return f"Option chain error: {analysis.get('error', 'unavailable')}"
+    except Exception as e:
+        return f"NSE engine error: {e}"
+
+
+@register_tool(
+    "get_live_spot_price",
+    "Get REAL-TIME spot price for NIFTY, SENSEX, or BANKNIFTY directly from NSE",
+    {"type": "object", "properties": {"symbol": {"type": "string", "description": "Index name: NIFTY, SENSEX, BANKNIFTY"}}, "required": ["symbol"]}
+)
+def tool_live_spot(symbol: str = "NIFTY") -> str:
+    """Get real-time spot price from NSE."""
+    try:
+        from nse_live_engine import get_live_spot
+        data = get_live_spot(symbol)
+        if data.get("price", 0) > 0:
+            return f"{symbol}: ₹{data['price']:,.2f} (change: {data.get('change', 0):+,.2f}, {data.get('change_pct', 0):+.2f}%) Source: {data.get('source', '')}"
+        return f"{symbol} price unavailable"
+    except Exception as e:
+        return f"Spot price error: {e}"
+
+
+# ═══════════════════════════════════════════════════════════
 #  SEMANTIC MEMORY — Vector-like memory with meaning
 # ═══════════════════════════════════════════════════════════
 
@@ -830,11 +883,8 @@ class JarvisAgent:
                               chat_id: int) -> Optional[str]:
         """Call LLM and process tool calls in the response."""
         
-        # Try Claude first (best tool calling)
-        response_text = self._call_claude_genius(system_prompt, messages)
-        
-        if not response_text:
-            response_text = self._call_groq_genius(system_prompt, messages)
+        # 100% FREE — Groq first (fast + free), then Gemini
+        response_text = self._call_groq_genius(system_prompt, messages)
         
         if not response_text:
             response_text = self._call_gemini_genius(system_prompt, messages)
@@ -886,8 +936,7 @@ class JarvisAgent:
             messages.append({"role": "user", "content": synthesis_msg})
             
             # Get final synthesized response
-            final = (self._call_claude_genius(system_prompt, messages) or
-                     self._call_groq_genius(system_prompt, messages) or
+            final = (self._call_groq_genius(system_prompt, messages) or
                      self._call_gemini_genius(system_prompt, messages))
             
             if final:

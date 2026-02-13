@@ -1,5 +1,4 @@
-[app]
-app_name = "david-crew-bot"
+app = "david-crew-bot"
 primary_region = "sin"
 kill_signal = "SIGINT"
 kill_timeout = 5
@@ -9,3 +8,29 @@ kill_timeout = 5
 
 [env]
   WATCHLIST = "NIFTY,SENSEX"
+  PORT = "8000"
+  DOMAIN = "davidcrewai.shop"
+  WEBAPP_URL = "https://davidcrewai.shop/miniapp"
+  MINI_APP_URL = "https://davidcrewai.shop/miniapp"
+
+[[services]]
+  internal_port = 8000
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    hard_limit = 100
+    soft_limit = 80
+    type = "connections"
+
+  [[services.http_checks]]
+    interval = 30000
+    timeout = 10000
+    path = "/api/miniapp/health"

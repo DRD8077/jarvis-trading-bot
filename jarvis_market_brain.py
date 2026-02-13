@@ -330,7 +330,119 @@ def analyze_indian_stock_deep(query: str) -> Dict:
     except Exception as e:
         logger.error(f"[BRAIN] Option chain error: {e}")
     
+    # 5. AI CONCLUSION — Aggregate all data for trading advice
+    try:
+        conclusion = generate_indian_market_conclusion(result)
+        if conclusion:
+            result['sections'].append({
+                'title': '🧠🤖 JARVIS AI CONCLUSION — Trading Strategy + Hindi Summary',
+                'data': conclusion,
+                'type': 'ai_conclusion'
+            })
+    except Exception as e:
+        logger.error(f"[BRAIN] AI conclusion error: {e}")
+    
     return result
+
+
+def generate_indian_market_conclusion(data: Dict) -> Dict:
+    """
+    AI-powered conclusion aggregating all analysis for trading advice.
+    Provides detailed Hindi summary with real-time recommendations.
+    """
+    sections = data.get('sections', [])
+    
+    # Aggregate signals
+    signals = {
+        'candle': [],
+        'ml': [],
+        'sentiment': [],
+        'fear_greed': 50,
+        'option_chain': {}
+    }
+    
+    for s in sections:
+        stype = s.get('type')
+        sdata = s.get('data', {})
+        
+        if stype == 'candle_analysis':
+            signal = sdata.get('signal', 'HOLD')
+            confidence = sdata.get('confidence', 0)
+            signals['candle'].append({
+                'index': s['title'].split('—')[0].strip(),
+                'signal': signal,
+                'confidence': confidence
+            })
+        
+        elif stype == 'ml_prediction':
+            pred = sdata.get('prediction', sdata.get('direction', ''))
+            conf = sdata.get('confidence', 0)
+            signals['ml'].append({
+                'index': s['title'].split(' ')[0],
+                'prediction': pred,
+                'confidence': conf
+            })
+        
+        elif stype == 'sentiment':
+            sentiment = sdata.get('overall_sentiment', 'NEUTRAL')
+            signals['sentiment'].append(sentiment)
+        
+        elif stype == 'fear_greed':
+            signals['fear_greed'] = sdata.get('index', sdata.get('value', 50))
+        
+        elif stype == 'option_chain':
+            signals['option_chain'] = sdata
+    
+    # Generate AI conclusion
+    try:
+        from jarvis_ai import generate_ai_response
+        
+        prompt = f"""
+आप एक एक्सपर्ट इंडियन स्टॉक मार्केट एआई हैं। नीचे दिए गए सभी डेटा का विश्लेषण करके एक विस्तृत हिंदी निष्कर्ष दें:
+
+**कैंडल एनालिसिस:**
+{chr(10).join([f"- {s['index']}: {s['signal']} ({s['confidence']:.0f}%)" for s in signals['candle']])}
+
+**ML प्रेडिक्शन:**
+{chr(10).join([f"- {s['index']}: {s['prediction']} ({s['confidence']:.0f}%)" for s in signals['ml']])}
+
+**मार्केट सेंटिमेंट:**
+{', '.join(signals['sentiment']) if signals['sentiment'] else 'N/A'}
+
+**फियर एंड ग्रीड इंडेक्स:**
+{signals['fear_greed']}/100
+
+**ऑप्शन चेन:**
+PCR: {signals['option_chain'].get('pcr', 'N/A')}, Max Pain: {signals['option_chain'].get('max_pain', 'N/A')}
+
+**निष्कर्ष लिखें:**
+1. मार्केट की समग्र स्थिति क्या है? (बुलिश/बेयरिश/न्यूट्रल)
+2. अगले 1-3 दिनों में क्या होगा? कितना ऊपर/नीचे जाएगा?
+3. कहाँ पैसा लगाना सही है? (निफ्टी/सेंसेक्स/बैंक निफ्टी)
+4. कॉल या पुट कौन सा अच्छा रहेगा?
+5. रिस्क मैनेजमेंट सलाह
+6. स्पेसिफिक स्टॉक्स या सेक्टर्स की सिफारिश
+
+विस्तृत, प्रोफेशनल और सटीक जवाब दें जैसे ChatGPT या Grok। सभी अंग्रेजी शब्दों का हिंदी में अनुवाद करें।
+"""
+        
+        ai_conclusion = generate_ai_response(prompt, max_tokens=2000)
+        
+        return {
+            'ai_summary': ai_conclusion,
+            'aggregated_signals': signals,
+            'recommendation': 'BUY' if any('BUY' in s['signal'] for s in signals['candle']) else 'SELL' if any('SELL' in s['signal'] for s in signals['candle']) else 'HOLD',
+            'confidence': sum(s['confidence'] for s in signals['candle']) / len(signals['candle']) if signals['candle'] else 0
+        }
+    
+    except Exception as e:
+        logger.error(f"AI conclusion generation failed: {e}")
+        return {
+            'ai_summary': "AI विश्लेषण अस्थायी रूप से उपलब्ध नहीं है। तकनीकी संकेतकों पर भरोसा करें।",
+            'aggregated_signals': signals,
+            'recommendation': 'HOLD',
+            'confidence': 0.5
+        }
 
 
 def format_indian_stock_report(data: Dict) -> List[str]:
@@ -390,7 +502,11 @@ def format_indian_stock_report(data: Dict) -> List[str]:
                 if patterns:
                     lines.append(f"")
                     lines.append(f"🕯️ *Candle Patterns:*")
-                    for p in patterns[:5]:
+                    if isinstance(patterns, dict):
+                        pattern_items = list(patterns.values())[:5]
+                    else:
+                        pattern_items = patterns[:5]
+                    for p in pattern_items:
                         if isinstance(p, dict):
                             lines.append(f"  {'🟢' if p.get('type') == 'bullish' else '🔴' if p.get('type') == 'bearish' else '⚪'} {p.get('name', 'Unknown')}")
                         elif hasattr(p, 'name'):
@@ -480,6 +596,28 @@ def format_indian_stock_report(data: Dict) -> List[str]:
                 if resistance: lines.append(f"🔴 OI Resistance: ₹{resistance:,.0f}" if isinstance(resistance, (int, float)) else f"🔴 OI Resistance: {resistance}")
             lines.append(f"")
         
+        elif stype == 'ai_conclusion':
+            lines.append(f"{'─'*28}")
+            lines.append(f"*{title}*")
+            lines.append(f"{'─'*28}")
+            if isinstance(sdata, dict):
+                ai_summary = sdata.get('ai_summary', '')
+                if ai_summary:
+                    # Split long AI summary into chunks
+                    summary_parts = [ai_summary[i:i+800] for i in range(0, len(ai_summary), 800)]
+                    for i, part in enumerate(summary_parts):
+                        if i == 0:
+                            lines.append(f"🧠 *AI Market Analysis:*")
+                        lines.append(part)
+                        if i < len(summary_parts) - 1:
+                            lines.append(f"")
+                
+                recommendation = sdata.get('recommendation', 'HOLD')
+                confidence = sdata.get('confidence', 0)
+                lines.append(f"")
+                lines.append(f"🎯 *Final Recommendation:* {recommendation} ({confidence:.0f}%)")
+            lines.append(f"")
+        
         # Page splitting (Telegram 4096 char limit)
         current = "\n".join(lines)
         if len(current) > 3500:
@@ -499,10 +637,11 @@ def format_indian_stock_report(data: Dict) -> List[str]:
 
 
 def format_indian_stock_voice(data: Dict) -> str:
-    """Hindi voice summary for Indian stock analysis."""
+    """Super-detailed Hindi voice summary for Indian stock analysis with AI conclusion."""
     sections = data.get('sections', [])
-    parts = ["Boss, Indian stock market ka AI analysis ready hai!"]
+    parts = ["नमस्ते बॉस! जार्विस आपके लिए इंडियन स्टॉक मार्केट का पूरा AI विश्लेषण लेकर आया हूं। यह विश्लेषण 20 से ज्यादा टॉप इंडियन फाइनेंशियल वेबसाइट्स से रीयल-टाइम न्यूज, कैंडल पैटर्न, मशीन लर्निंग प्रेडिक्शन और ऑप्शन चेन डेटा का कॉम्बिनेशन है।"]
     
+    # Candle Analysis
     for s in sections:
         if s['type'] == 'candle_analysis':
             d = s['data']
@@ -510,34 +649,97 @@ def format_indian_stock_voice(data: Dict) -> str:
                 signal = d.get('signal', '')
                 name = s['title'].split('—')[0].strip() if '—' in s['title'] else 'Index'
                 direction = d.get('direction', 'NEUTRAL')
+                confidence = d.get('confidence', 0)
+                price = d.get('current_price', d.get('price', 0))
+                
                 if 'BUY' in str(signal).upper() or direction == 'BULLISH':
-                    parts.append(f"{name} mein bullish signal hai! Buy call ka mauqa!")
+                    parts.append(f"{name} में बलिश सिग्नल दिख रहा है! कॉन्फिडेंस {confidence:.0f} प्रतिशत। करंट प्राइस {price:,.0f} रुपए। खरीदने का अच्छा मौका!")
                 elif 'SELL' in str(signal).upper() or direction == 'BEARISH':
-                    parts.append(f"{name} mein bearish signal hai! Put ya sell ka signal!")
+                    parts.append(f"{name} में बेयरिश सिग्नल है! कॉन्फिडेंस {confidence:.0f} प्रतिशत। प्राइस {price:,.0f} रुपए। बेचने या पुट लेने का समय!")
                 else:
-                    parts.append(f"{name} mein neutral hai, wait karo!")
+                    parts.append(f"{name} में न्यूट्रल कंडीशन है। प्राइस {price:,.0f} रुपए। अभी वेट एंड वॉच करें।")
     
-    for s in sections:
-        if s['type'] == 'fear_greed':
-            d = s['data']
-            if isinstance(d, dict):
-                val = d.get('index', d.get('value', 50))
-                if val < 30: parts.append("Market mein FEAR hai, cautious raho!")
-                elif val > 70: parts.append("Market mein GREED hai, profit book karo!")
-    
+    # ML Predictions
     for s in sections:
         if s['type'] == 'ml_prediction':
             d = s['data']
             if isinstance(d, dict):
                 pred = d.get('prediction', d.get('direction', ''))
                 conf = d.get('confidence', 0)
-                name = s['title'].split('ML')[0].strip()
+                name = s['title'].split(' ')[0]
                 if 'UP' in str(pred).upper():
-                    parts.append(f"ML model kehta hai {name} UP jayega, confidence {conf:.0f} percent!")
+                    parts.append(f"हमारे 6-मॉडल मशीन लर्निंग एनसम्बल के मुताबिक {name} अगले कुछ दिनों में ऊपर जाएगा! कॉन्फिडेंस {conf:.0f} प्रतिशत।")
                 elif 'DOWN' in str(pred).upper():
-                    parts.append(f"ML model kehta hai {name} DOWN jayega, confidence {conf:.0f} percent!")
+                    parts.append(f"ML मॉडल्स कह रहे हैं कि {name} नीचे आएगा। कॉन्फिडेंस {conf:.0f} प्रतिशत।")
     
-    parts.append("Stop loss zaroor lagao Boss! Risk manage karo!")
+    # Sentiment
+    for s in sections:
+        if s['type'] == 'sentiment':
+            d = s['data']
+            if isinstance(d, dict):
+                overall = d.get('overall_sentiment', 'NEUTRAL')
+                if 'BULLISH' in overall.upper():
+                    parts.append("मार्केट सेंटिमेंट पॉजिटिव है! न्यूज और FII/DII फ्लो से बलिश संकेत मिल रहे हैं।")
+                elif 'BEARISH' in overall.upper():
+                    parts.append("मार्केट सेंटिमेंट नेगेटिव है। न्यूज में डर और सेलिंग प्रेशर दिख रहा है।")
+                else:
+                    parts.append("मार्केट सेंटिमेंट मिक्स्ड है। कोई स्पष्ट दिशा नहीं।")
+    
+    # Fear & Greed
+    for s in sections:
+        if s['type'] == 'fear_greed':
+            d = s['data']
+            if isinstance(d, dict):
+                val = d.get('index', d.get('value', 50))
+                if val < 25:
+                    parts.append("फियर एंड ग्रीड इंडेक्स बहुत कम है! मार्केट में एक्सट्रीम फियर है, जो खरीदने का मौका हो सकता है।")
+                elif val > 75:
+                    parts.append("ग्रीड इंडेक्स बहुत हाई है! मार्केट में एक्सट्रीम ग्रीड है, प्रॉफिट बुक करने का समय।")
+                elif val < 45:
+                    parts.append("फियर इंडेक्स हाई है। काउशियस रहें।")
+                elif val > 55:
+                    parts.append("ग्रीड इंडेक्स बढ़ रहा है। ओवरकॉन्फिडेंस से बचें।")
+    
+    # Option Chain
+    for s in sections:
+        if s['type'] == 'option_chain':
+            d = s['data']
+            if isinstance(d, dict):
+                pcr = d.get('pcr', 0)
+                max_pain = d.get('max_pain', 0)
+                if pcr > 1.2:
+                    parts.append(f"PCR रेशियो {pcr:.2f} है, जो बहुत हाई है! पुट्स ज्यादा बिक रहे हैं, मार्केट में डर है।")
+                elif pcr < 0.8:
+                    parts.append(f"PCR {pcr:.2f} कम है। कॉल्स ज्यादा बिक रहे हैं, मार्केट ऑप्टिमिस्टिक है।")
+                if max_pain:
+                    parts.append(f"मैक्स पेन लेवल {max_pain:,.0f} रुपए है। यह लेवल पार करने पर वॉल्यूम कम हो सकता है।")
+    
+    # AI Conclusion - Most Important
+    for s in sections:
+        if s['type'] == 'ai_conclusion':
+            d = s['data']
+            if isinstance(d, dict):
+                ai_summary = d.get('ai_summary', '')
+                if ai_summary:
+                    parts.append("अब सबसे महत्वपूर्ण - हमारी सुपर AI का फाइनल कन्क्लूजन:")
+                    # Summarize key points from AI response
+                    summary_points = ai_summary.split('\n')[:5]  # First 5 lines
+                    for point in summary_points:
+                        if point.strip():
+                            parts.append(point.strip())
+                    
+                    recommendation = d.get('recommendation', 'HOLD')
+                    confidence = d.get('confidence', 0)
+                    parts.append(f"फाइनल रेकमेंडेशन: {recommendation} कॉन्फिडेंस {confidence:.0f} प्रतिशत।")
+    
+    # Trading Advice
+    parts.extend([
+        "ट्रेडिंग सलाह: स्टॉप लॉस जरूर लगाएं! रिस्क मैनेजमेंट सबसे महत्वपूर्ण है।",
+        "पोर्टफोलियो का सिर्फ 5-10 प्रतिशत इस मार्केट में लगाएं।",
+        "न्यूज और इकोनॉमिक डेटा को रोज चेक करते रहें।",
+        "जार्विस आपका AI ट्रेडिंग पार्टनर है। धन्यवाद बॉस!"
+    ])
+    
     return " ".join(parts)
 
 

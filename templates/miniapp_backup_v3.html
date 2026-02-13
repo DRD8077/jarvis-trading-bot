@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>JARVIS AI Trading</title>
+<script src="https://telegram.org/js/telegram-web-app.js" async onerror="console.log('Not in Telegram')"></script>
+<style>
+:root {
+  --bg: #0a0e17; --bg2: #111827; --bg3: #1a2332;
+  --card: #1e293b; --card2: #253346;
+  --primary: #6366f1; --primary2: #818cf8;
+  --green: #10b981; --green2: #34d399;
+  --red: #ef4444; --red2: #f87171;
+  --yellow: #f59e0b; --orange: #f97316;
+  --blue: #3b82f6; --cyan: #06b6d4;
+  --purple: #a855f7; --pink: #ec4899;
+  --text: #f1f5f9; --text2: #94a3b8; --text3: #64748b;
+  --border: #334155;
+  --radius: 16px; --radius2: 12px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* LOADING */
+#loader { position: fixed; inset: 0; background: var(--bg); z-index: 9999;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
+.loader-ring { width: 60px; height: 60px; border: 3px solid var(--border); border-top-color: var(--primary);
+  border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+#loader p { color: var(--text2); font-size: 14px; }
+
+/* HEADER */
+.header { position: sticky; top: 0; z-index: 100; background: rgba(10,14,23,0.95);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.header-top { display: flex; justify-content: space-between; align-items: center; }
+.logo { display: flex; align-items: center; gap: 8px; }
+.logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--primary), var(--purple));
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700; }
+.logo-text { font-size: 18px; font-weight: 800; background: linear-gradient(135deg, var(--primary2), var(--cyan));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.header-actions { display: flex; gap: 8px; }
+.hdr-btn { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 6px 10px; color: var(--text2); font-size: 13px; cursor: pointer; }
+.hdr-btn:active { background: var(--card2); }
+.live-dot { display: inline-block; width: 6px; height: 6px; background: var(--green);
+  border-radius: 50%; animation: pulse 2s infinite; margin-right: 4px; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* PORTFOLIO HERO */
+.portfolio-hero { padding: 20px 16px; background: linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%); }
+.portfolio-balance { text-align: center; }
+.balance-label { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
+.balance-amount { font-size: 36px; font-weight: 800; margin: 4px 0;
+  background: linear-gradient(135deg, #fff, var(--primary2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.balance-change { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px;
+  border-radius: 20px; font-size: 13px; font-weight: 600; }
+.balance-change.up { background: rgba(16,185,129,0.15); color: var(--green2); }
+.balance-change.down { background: rgba(239,68,68,0.15); color: var(--red2); }
+.quick-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+.stat-card { background: var(--card); border-radius: var(--radius2); padding: 10px; text-align: center; }
+.stat-card .val { font-size: 16px; font-weight: 700; }
+.stat-card .lbl { font-size: 10px; color: var(--text3); margin-top: 2px; text-transform: uppercase; }
+
+/* ACTION BUTTONS */
+.action-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 12px 16px; }
+.action-btn { display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius2);
+  padding: 12px 8px; cursor: pointer; transition: all 0.2s; }
+.action-btn:active { transform: scale(0.95); background: var(--card2); }
+.action-btn .icon { width: 36px; height: 36px; border-radius: 10px; display: flex;
+  align-items: center; justify-content: center; font-size: 18px; }
+.action-btn .label { font-size: 11px; color: var(--text2); font-weight: 500; }
+.icon-deposit { background: linear-gradient(135deg, var(--green), #059669); }
+.icon-withdraw { background: linear-gradient(135deg, var(--blue), #2563eb); }
+.icon-trade { background: linear-gradient(135deg, var(--orange), #ea580c); }
+.icon-ai { background: linear-gradient(135deg, var(--purple), #7c3aed); }
+
+/* AUTO TRADER CARD */
+.auto-trader-card { margin: 12px 16px; background: linear-gradient(135deg, var(--primary), var(--purple));
+  border-radius: var(--radius); padding: 16px; position: relative; overflow: hidden; cursor: pointer; }
+.auto-trader-card::before { content: ''; position: absolute; top: -50%; right: -20%;
+  width: 200px; height: 200px; background: rgba(255,255,255,0.05); border-radius: 50%; }
+.at-header { display: flex; justify-content: space-between; align-items: center; }
+.at-title { font-size: 16px; font-weight: 700; }
+.at-badge { background: rgba(255,255,255,0.2); padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 600; }
+.at-desc { font-size: 12px; opacity: 0.85; margin: 6px 0 12px; }
+.at-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.at-stat { text-align: center; }
+.at-stat .v { font-size: 15px; font-weight: 700; }
+.at-stat .l { font-size: 10px; opacity: 0.7; }
+
+/* SECTION */
+.section { padding: 16px; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.section-title { font-size: 16px; font-weight: 700; }
+.section-link { font-size: 12px; color: var(--primary2); cursor: pointer; }
+
+/* MARKET TICKER */
+.ticker-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px;
+  scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+.ticker-scroll::-webkit-scrollbar { display: none; }
+.ticker-item { min-width: 130px; background: var(--card); border-radius: var(--radius2);
+  padding: 12px; scroll-snap-align: start; flex-shrink: 0; }
+.ticker-item .name { font-size: 11px; color: var(--text3); }
+.ticker-item .price { font-size: 15px; font-weight: 700; margin: 2px 0; }
+.ticker-item .change { font-size: 12px; font-weight: 600; }
+.ticker-item .change.up { color: var(--green2); }
+.ticker-item .change.down { color: var(--red2); }
+
+/* SIGNAL CARDS */
+.signal-card { background: var(--card); border-radius: var(--radius2); padding: 14px;
+  margin-bottom: 10px; border-left: 3px solid var(--primary); }
+.signal-card.buy { border-left-color: var(--green); }
+.signal-card.sell { border-left-color: var(--red); }
+.signal-top { display: flex; justify-content: space-between; align-items: center; }
+.signal-symbol { font-weight: 700; font-size: 15px; }
+.signal-badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.signal-badge.buy { background: rgba(16,185,129,0.15); color: var(--green2); }
+.signal-badge.sell { background: rgba(239,68,68,0.15); color: var(--red2); }
+.signal-badge.hold { background: rgba(245,158,11,0.15); color: var(--yellow); }
+.signal-meta { display: flex; gap: 12px; margin-top: 8px; font-size: 12px; color: var(--text2); }
+.confidence-bar { height: 4px; background: var(--bg3); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+.confidence-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+
+/* GEM CARDS */
+.gem-card { background: var(--card); border-radius: var(--radius2); padding: 12px;
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.gem-left { display: flex; align-items: center; gap: 10px; }
+.gem-icon { width: 36px; height: 36px; border-radius: 10px; display: flex;
+  align-items: center; justify-content: center; font-size: 14px; font-weight: 700;
+  background: linear-gradient(135deg, var(--card2), var(--bg3)); }
+.gem-info .sym { font-weight: 700; font-size: 14px; }
+.gem-info .chain { font-size: 11px; color: var(--text3); }
+.gem-right { text-align: right; }
+.gem-right .price { font-weight: 600; font-size: 14px; }
+.gem-right .change { font-size: 12px; font-weight: 600; }
+.gem-score { background: var(--bg3); padding: 2px 8px; border-radius: 10px;
+  font-size: 10px; margin-top: 4px; display: inline-block; }
+
+/* POSITION CARDS */
+.pos-card { background: var(--card); border-radius: var(--radius2); padding: 14px; margin-bottom: 10px; }
+.pos-top { display: flex; justify-content: space-between; align-items: center; }
+.pos-symbol { font-weight: 700; }
+.pos-pnl { font-weight: 700; font-size: 15px; }
+.pos-pnl.up { color: var(--green2); }
+.pos-pnl.down { color: var(--red2); }
+.pos-details { display: flex; gap: 12px; margin-top: 6px; font-size: 11px; color: var(--text3); }
+.pos-actions { display: flex; gap: 8px; margin-top: 8px; }
+.pos-btn { padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: 600;
+  border: none; cursor: pointer; }
+.pos-btn.sell { background: rgba(239,68,68,0.15); color: var(--red2); }
+.pos-btn.sell:active { background: rgba(239,68,68,0.3); }
+
+/* TAB BAR */
+.tab-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(10,14,23,0.95); backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px); border-top: 1px solid var(--border);
+  display: flex; padding: 6px 0 env(safe-area-inset-bottom, 8px); }
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 6px 0; cursor: pointer; transition: color 0.2s; color: var(--text3); }
+.tab.active { color: var(--primary2); }
+.tab .tab-icon { font-size: 20px; }
+.tab .tab-label { font-size: 10px; font-weight: 500; }
+
+/* PAGES */
+.page { display: none; padding-bottom: 80px; }
+.page.active { display: block; }
+
+/* MODAL/OVERLAY */
+.overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.6);
+  display: none; align-items: flex-end; justify-content: center; }
+.overlay.active { display: flex; }
+.overlay-content { background: var(--bg2); border-radius: 20px 20px 0 0; width: 100%;
+  max-height: 90vh; overflow-y: auto; padding: 20px; animation: slideUp 0.3s ease; }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.overlay-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px;
+  margin: 0 auto 16px; }
+.overlay-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+
+/* STRATEGY CARDS */
+.strat-card { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius);
+  padding: 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s; }
+.strat-card.selected { border-color: var(--primary); background: rgba(99,102,241,0.1); }
+.strat-card:active { transform: scale(0.98); }
+.strat-header { display: flex; justify-content: space-between; align-items: center; }
+.strat-name { font-size: 16px; font-weight: 700; }
+.strat-risk { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.strat-desc { font-size: 12px; color: var(--text2); margin: 6px 0; }
+.strat-targets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.strat-tag { background: var(--bg3); padding: 2px 8px; border-radius: 8px; font-size: 10px; color: var(--text2); }
+
+/* INPUT */
+.input-group { margin-bottom: 16px; }
+.input-label { font-size: 12px; color: var(--text3); margin-bottom: 6px; text-transform: uppercase;
+  letter-spacing: 0.5px; }
+.input-field { width: 100%; background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius2); padding: 12px 16px; color: var(--text); font-size: 16px;
+  outline: none; transition: border-color 0.2s; }
+.input-field:focus { border-color: var(--primary); }
+.input-field::placeholder { color: var(--text3); }
+
+/* BUTTON */
+.btn-primary { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--primary), var(--purple));
+  border: none; border-radius: var(--radius2); color: #fff; font-size: 16px; font-weight: 700;
+  cursor: pointer; transition: all 0.2s; }
+.btn-primary:active { transform: scale(0.98); opacity: 0.9; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-secondary { width: 100%; padding: 12px; background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius2); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-danger { background: linear-gradient(135deg, var(--red), #dc2626); }
+
+/* REGIME BAR */
+.regime-bar { margin: 0 16px 12px; padding: 10px 14px; background: var(--card);
+  border-radius: var(--radius2); display: flex; justify-content: space-between; align-items: center; }
+.regime-label { font-size: 12px; color: var(--text2); }
+.regime-value { font-size: 13px; font-weight: 700; }
+.regime-value.bull { color: var(--green2); }
+.regime-value.bear { color: var(--red2); }
+.regime-value.sideways { color: var(--yellow); }
+
+/* EMPTY STATE */
+.empty-state { text-align: center; padding: 40px 20px; }
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state .title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.empty-state .desc { font-size: 13px; color: var(--text3); }
+
+/* TOAST */
+.toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 999;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius2);
+  padding: 10px 20px; font-size: 13px; display: none; animation: fadeIn 0.3s ease; }
+.toast.show { display: block; }
+.toast.success { border-color: var(--green); }
+.toast.error { border-color: var(--red); }
+@keyframes fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+/* AI CHAT */
+.chat-fab { position: fixed; bottom: 76px; right: 16px; z-index: 150; width: 50px; height: 50px;
+  background: linear-gradient(135deg, var(--primary), var(--purple)); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 22px;
+  cursor: pointer; box-shadow: 0 4px 20px rgba(99,102,241,0.4); }
+.chat-panel { position: fixed; bottom: 0; right: 0; left: 0; top: 0; z-index: 300;
+  background: var(--bg); display: none; flex-direction: column; }
+.chat-panel.active { display: flex; }
+.chat-header { padding: 14px 16px; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.chat-msg { max-width: 85%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5; }
+.chat-msg.user { background: var(--primary); align-self: flex-end; border-bottom-right-radius: 4px; }
+.chat-msg.bot { background: var(--card); align-self: flex-start; border-bottom-left-radius: 4px; }
+.chat-input-bar { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+.chat-input { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+  padding: 10px 16px; color: var(--text); font-size: 14px; outline: none; }
+.chat-send { width: 40px; height: 40px; background: var(--primary); border: none; border-radius: 50%;
+  color: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+/* UTILITIES */
+.text-green { color: var(--green2); }
+.text-red { color: var(--red2); }
+.text-yellow { color: var(--yellow); }
+.text-muted { color: var(--text3); }
+.text-center { text-align: center; }
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mb-8 { margin-bottom: 8px; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.gap-8 { gap: 8px; }
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-ring"></div>
+  <p>Loading JARVIS AI...</p>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div class="logo">
+      <div class="logo-icon">J</div>
+      <span class="logo-text">JARVIS AI</span>
+    </div>
+    <div class="header-actions">
+      <button class="hdr-btn" onclick="refreshData()">🔄</button>
+      <button class="hdr-btn"><span class="live-dot"></span>LIVE</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!--  PAGE: HOME                                        -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div id="page-home" class="page active">
+
+  <!-- Portfolio Hero -->
+  <div class="portfolio-hero">
+    <div class="portfolio-balance">
+      <div class="balance-label">Total Portfolio Value</div>
+      <div class="balance-amount" id="totalValue">₹0.00</div>
+      <div class="balance-change up" id="totalChange">+0.00%</div>
+    </div>
+    <div class="quick-stats">
+      <div class="stat-card">
+        <div class="val text-green" id="statInvested">₹0</div>
+        <div class="lbl">Invested</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="statProfit">₹0</div>
+        <div class="lbl">Profit/Loss</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="statPositions">0</div>
+        <div class="lbl">Positions</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="action-row">
+    <div class="action-btn" onclick="openOverlay('deposit')">
+      <div class="icon icon-deposit">💰</div>
+      <div class="label">Deposit</div>
+    </div>
+    <div class="action-btn" onclick="openOverlay('withdraw')">
+      <div class="icon icon-withdraw">🏦</div>
+      <div class="label">Withdraw</div>
+    </div>
+    <div class="action-btn" onclick="openOverlay('autotrader')">
+      <div class="icon icon-trade">🤖</div>
+      <div class="label">Auto Trade</div>
+    </div>
+    <div class="action-btn" onclick="toggleChat()">
+      <div class="icon icon-ai">🧠</div>
+      <div class="label">AI Chat</div>
+    </div>
+  </div>
+
+  <!-- Auto Trader Status Card -->
+  <div class="auto-trader-card" id="autoTraderCard" onclick="openOverlay('autotrader')" style="display:none;">
+    <div class="at-header">
+      <div class="at-title">🤖 AI Auto-Trader</div>
+      <div class="at-badge" id="atBadge">ACTIVE</div>
+    </div>
+    <div class="at-desc" id="atDesc">AI is managing your portfolio 24/7</div>
+    <div class="at-stats">
+      <div class="at-stat"><div class="v" id="atInvested">₹0</div><div class="l">Invested</div></div>
+      <div class="at-stat"><div class="v" id="atValue">₹0</div><div class="l">Current</div></div>
+      <div class="at-stat"><div class="v" id="atROI">0%</div><div class="l">ROI</div></div>
+    </div>
+  </div>
+
+  <!-- Market Regime -->
+  <div class="regime-bar" id="regimeBar" style="display:none;">
+    <div>
+      <div class="regime-label">Market Regime</div>
+      <div class="regime-value" id="regimeValue">Loading...</div>
+    </div>
+    <div style="text-align:right;">
+      <div class="regime-label">Confidence</div>
+      <div class="regime-value" id="regimeConf">-</div>
+    </div>
+  </div>
+
+  <!-- Market Ticker -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">📊 Markets</div>
+      <div class="section-link" onclick="switchTab('markets')">View All</div>
+    </div>
+    <div class="ticker-scroll" id="tickerScroll"></div>
+  </div>
+
+  <!-- Top Signals -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">⚡ AI Signals</div>
+      <div class="section-link" onclick="switchTab('signals')">View All</div>
+    </div>
+    <div id="homeSignals"></div>
+  </div>
+
+  <!-- Top Gems -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">💎 Dip Gems (-5%+)</div>
+      <div class="section-link" onclick="switchTab('gems')">View All</div>
+    </div>
+    <div id="homeGems"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!--  PAGE: MARKETS                                     -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div id="page-markets" class="page">
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">📊 Live Markets</div>
+      <button class="hdr-btn" onclick="loadMarkets()">🔄</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;">
+      <button class="hdr-btn" onclick="loadMarkets('all')" style="white-space:nowrap;">All</button>
+      <button class="hdr-btn" onclick="loadMarkets('crypto')" style="white-space:nowrap;">Crypto</button>
+      <button class="hdr-btn" onclick="loadMarkets('indices')" style="white-space:nowrap;">Indices</button>
+      <button class="hdr-btn" onclick="loadMarkets('trending')" style="white-space:nowrap;">Trending</button>
+      <button class="hdr-btn" onclick="loadMarkets('web3')" style="white-space:nowrap;">Web3</button>
+    </div>
+    <div id="marketsContent"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!--  PAGE: SIGNALS                                     -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div id="page-signals" class="page">
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">⚡ AI Trading Signals</div>
+      <button class="hdr-btn" onclick="loadSignals()">🔄</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;">
+      <button class="hdr-btn" onclick="loadSignals('all')">All</button>
+      <button class="hdr-btn" onclick="loadSignals('crypto')">Crypto</button>
+      <button class="hdr-btn" onclick="loadSignals('stock')">Stocks</button>
+      <button class="hdr-btn" onclick="loadSignals('web3')">Web3</button>
+    </div>
+    <div id="signalsContent"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!--  PAGE: GEMS                                        -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div id="page-gems" class="page">
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">💎 Gem Scanner</div>
+      <button class="hdr-btn" onclick="loadGems()">🔄</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;">
+      <button class="hdr-btn" onclick="loadGems('all')" style="white-space:nowrap;">All</button>
+      <button class="hdr-btn" onclick="loadGems('trending')" style="white-space:nowrap;">Trending</button>
+      <button class="hdr-btn" onclick="loadGems('dips')" style="white-space:nowrap;">Dips -5%</button>
+      <button class="hdr-btn" onclick="loadGems('new')" style="white-space:nowrap;">New Launch</button>
+      <button class="hdr-btn" onclick="loadGems('multichain')" style="white-space:nowrap;">Multichain</button>
+    </div>
+    <div id="gemsContent"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!--  PAGE: WALLET                                      -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div id="page-wallet" class="page">
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">💰 Wallet & Portfolio</div>
+      <button class="hdr-btn" onclick="loadWallet()">🔄</button>
+    </div>
+    <div id="walletContent"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!--  TAB BAR                                           -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="tab-bar">
+  <div class="tab active" data-tab="home" onclick="switchTab('home')">
+    <span class="tab-icon">🏠</span><span class="tab-label">Home</span>
+  </div>
+  <div class="tab" data-tab="markets" onclick="switchTab('markets')">
+    <span class="tab-icon">📊</span><span class="tab-label">Markets</span>
+  </div>
+  <div class="tab" data-tab="signals" onclick="switchTab('signals')">
+    <span class="tab-icon">⚡</span><span class="tab-label">Signals</span>
+  </div>
+  <div class="tab" data-tab="gems" onclick="switchTab('gems')">
+    <span class="tab-icon">💎</span><span class="tab-label">Gems</span>
+  </div>
+  <div class="tab" data-tab="wallet" onclick="switchTab('wallet')">
+    <span class="tab-icon">💰</span><span class="tab-label">Wallet</span>
+  </div>
+</div>
+
+<!-- AI Chat FAB -->
+<div class="chat-fab" onclick="toggleChat()">🧠</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!--  OVERLAY: AUTO TRADER                              -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="overlay" id="overlay-autotrader">
+  <div class="overlay-content">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">🤖 AI Auto-Trader</div>
+    <p class="text-muted mb-8" style="font-size:13px;">
+      Deposit INR → AI auto-invests in dip coins (-5%+) → Monitors 24/7 → Books profits at 2x, 5x, 10x, 50x, 100x, 1000x → Compounds & grows your money automatically.
+    </p>
+    <div id="traderStrategySection">
+      <div class="input-label">Choose Strategy</div>
+      <div id="strategyCards"></div>
+      <div class="input-group mt-12">
+        <div class="input-label">Investment Amount (INR)</div>
+        <input type="number" class="input-field" id="tradeAmount" placeholder="Min ₹100" value="2000">
+      </div>
+      <div class="input-group">
+        <div class="input-label">Target Amount (0 = No limit, ride forever)</div>
+        <input type="number" class="input-field" id="tradeTarget" placeholder="e.g. 200000 for ₹2L target" value="0">
+      </div>
+      <div class="flex-between mb-8">
+        <span style="font-size:13px;">Auto-withdraw at target</span>
+        <label style="position:relative;width:44px;height:24px;">
+          <input type="checkbox" id="autoWithdraw" checked style="opacity:0;width:0;height:0;">
+          <span style="position:absolute;inset:0;background:var(--border);border-radius:12px;transition:0.3s;cursor:pointer;"
+                onclick="this.previousElementSibling.checked=!this.previousElementSibling.checked;this.style.background=this.previousElementSibling.checked?'var(--primary)':'var(--border)'"></span>
+          <span style="position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:0.3s;pointer-events:none;"
+                id="toggleDot"></span>
+        </label>
+      </div>
+      <button class="btn-primary" onclick="startAutoTrader()" id="startTraderBtn">
+        🚀 Start AI Auto-Trader
+      </button>
+      <button class="btn-secondary mt-8" onclick="previewGems()">
+        👀 Preview Available Gems
+      </button>
+    </div>
+    <div id="traderActiveSection" style="display:none;">
+      <div id="traderStatusContent"></div>
+      <button class="btn-primary btn-danger mt-12" onclick="stopAutoTrader()">
+        ⏹️ Stop Auto-Trader & Sell All
+      </button>
+      <button class="btn-secondary mt-8" onclick="compoundProfits()">
+        🔄 Compound Profits Now
+      </button>
+    </div>
+    <div id="gemPreview" class="mt-12"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!--  OVERLAY: DEPOSIT                                  -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="overlay" id="overlay-deposit">
+  <div class="overlay-content">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">💰 Deposit INR</div>
+    <div class="input-group">
+      <div class="input-label">Amount</div>
+      <input type="number" class="input-field" id="depositAmount" placeholder="Min ₹100" value="2000">
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+      <button class="hdr-btn" onclick="document.getElementById('depositAmount').value=500">₹500</button>
+      <button class="hdr-btn" onclick="document.getElementById('depositAmount').value=1000">₹1,000</button>
+      <button class="hdr-btn" onclick="document.getElementById('depositAmount').value=2000">₹2,000</button>
+      <button class="hdr-btn" onclick="document.getElementById('depositAmount').value=5000">₹5,000</button>
+      <button class="hdr-btn" onclick="document.getElementById('depositAmount').value=10000">₹10,000</button>
+    </div>
+    <button class="btn-primary" onclick="makeDeposit()">Generate UPI QR</button>
+    <div id="depositResult" class="mt-12"></div>
+    <div class="input-group mt-12">
+      <div class="input-label">Verify UTR/Reference</div>
+      <input type="text" class="input-field" id="utrInput" placeholder="Enter UTR number after payment">
+    </div>
+    <button class="btn-secondary" onclick="verifyDeposit()">✅ Verify Payment</button>
+    <div id="verifyResult" class="mt-8"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!--  OVERLAY: WITHDRAW                                 -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="overlay" id="overlay-withdraw">
+  <div class="overlay-content">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">🏦 Withdraw INR</div>
+    <div id="withdrawBalance" class="text-center mb-8" style="font-size:13px;color:var(--text2);"></div>
+    <div class="input-group">
+      <div class="input-label">Amount to Withdraw</div>
+      <input type="number" class="input-field" id="withdrawAmount" placeholder="Enter amount">
+    </div>
+    <button class="btn-primary" onclick="makeWithdraw()">Request Withdrawal</button>
+    <div id="withdrawResult" class="mt-12"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!--  AI CHAT PANEL                                     -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-header">
+    <div style="font-weight:700;">🧠 JARVIS AI Chat</div>
+    <button class="hdr-btn" onclick="toggleChat()">✕</button>
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-msg bot">Hi! I'm JARVIS AI. Ask me about crypto, stocks, market analysis, or trading strategies! 🚀</div>
+  </div>
+  <div class="chat-input-bar">
+    <input type="text" class="chat-input" id="chatInput" placeholder="Ask JARVIS anything..."
+           onkeydown="if(event.key==='Enter')sendChat()">
+    <button class="chat-send" onclick="sendChat()">➤</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!--  JAVASCRIPT ENGINE                                 -->
+<!-- ═══════════════════════════════════════════════════ -->
+<script>
+const API = window.location.origin + '/api/miniapp';
+let USER_ID = '0';
+let selectedStrategy = 'balanced';
+let dashboardData = {};
+let refreshTimer = null;
+
+// ─── INIT ──────────────────────────────────────────
+function init() {
+  try {
+    if (window.Telegram && Telegram.WebApp) {
+      Telegram.WebApp.ready();
+      Telegram.WebApp.expand();
+      Telegram.WebApp.setHeaderColor('#0a0e17');
+      Telegram.WebApp.setBackgroundColor('#0a0e17');
+      const user = Telegram.WebApp.initDataUnsafe?.user;
+      if (user) USER_ID = String(user.id);
+    }
+  } catch(e) { console.log('Not in Telegram'); }
+
+  // Load everything
+  loadDashboard();
+  loadStrategies();
+
+  // Auto-refresh every 30s
+  refreshTimer = setInterval(loadDashboard, 30000);
+  setTimeout(() => { document.getElementById('loader').style.display = 'none'; }, 1500);
+}
+
+// Try init after Telegram script loads or immediately
+if (document.readyState === 'complete') init();
+else window.addEventListener('load', () => setTimeout(init, 500));
+
+// ─── API HELPERS ───────────────────────────────────
+async function api(endpoint, options = {}) {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 15000);
+    const res = await fetch(API + endpoint, { ...options, signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch(e) {
+    console.error(`API ${endpoint}:`, e);
+    return null;
+  }
+}
+async function apiPost(endpoint, body) {
+  return api(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+// ─── FORMATTING ────────────────────────────────────
+function fmt(n, decimals = 2) {
+  if (n === undefined || n === null) return '₹0';
+  n = Number(n);
+  if (Math.abs(n) >= 10000000) return '₹' + (n/10000000).toFixed(2) + ' Cr';
+  if (Math.abs(n) >= 100000) return '₹' + (n/100000).toFixed(2) + ' L';
+  if (Math.abs(n) >= 1000) return '₹' + (n/1000).toFixed(1) + 'K';
+  return '₹' + n.toFixed(decimals);
+}
+function pct(n) { return (n >= 0 ? '+' : '') + Number(n||0).toFixed(2) + '%'; }
+function signalColor(s) {
+  s = (s||'').toUpperCase();
+  if (s.includes('BUY')) return 'buy';
+  if (s.includes('SELL')) return 'sell';
+  return 'hold';
+}
+
+// ─── TOAST ─────────────────────────────────────────
+function toast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+// ─── TAB SWITCHING ─────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + tab)?.classList.add('active');
+  document.querySelector(`.tab[data-tab="${tab}"]`)?.classList.add('active');
+
+  if (tab === 'markets') loadMarkets();
+  if (tab === 'signals') loadSignals();
+  if (tab === 'gems') loadGems();
+  if (tab === 'wallet') loadWallet();
+}
+
+// ─── OVERLAYS ──────────────────────────────────────
+function openOverlay(name) {
+  document.getElementById('overlay-' + name)?.classList.add('active');
+  if (name === 'autotrader') loadTraderStatus();
+  if (name === 'withdraw') loadWithdrawBalance();
+}
+function closeOverlay(name) { document.getElementById('overlay-' + name)?.classList.remove('active'); }
+// Close overlay when clicking backdrop
+document.querySelectorAll('.overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('active'); });
+});
+
+// ─── DASHBOARD LOAD ────────────────────────────────
+async function loadDashboard() {
+  const data = await api('/dashboard?user_id=' + USER_ID);
+  if (!data) return;
+  dashboardData = data;
+
+  // Portfolio hero
+  const port = data.portfolio || {};
+  const totalVal = port.total_value_inr || port.total_current_inr || port.balance_inr || 0;
+  const pnlPct = port.pnl_pct || 0;
+  document.getElementById('totalValue').textContent = fmt(totalVal);
+  const changeEl = document.getElementById('totalChange');
+  changeEl.textContent = pct(pnlPct);
+  changeEl.className = 'balance-change ' + (pnlPct >= 0 ? 'up' : 'down');
+
+  document.getElementById('statInvested').textContent = fmt(port.total_invested_inr || 0);
+  const profitEl = document.getElementById('statProfit');
+  profitEl.textContent = fmt(port.pnl_inr || 0);
+  profitEl.className = 'val ' + ((port.pnl_inr||0) >= 0 ? 'text-green' : 'text-red');
+  document.getElementById('statPositions').textContent = (port.positions||[]).length;
+
+  // Auto-trader status
+  const at = data.auto_trader || {};
+  if (at.active_count > 0) {
+    document.getElementById('autoTraderCard').style.display = 'block';
+    const t = (at.traders||[])[0] || {};
+    document.getElementById('atInvested').textContent = fmt(t.invested_inr || 0);
+    document.getElementById('atValue').textContent = fmt(t.current_value_inr || 0);
+    document.getElementById('atROI').textContent = pct(t.profit_pct || 0);
+    document.getElementById('atDesc').textContent = `${t.strategy_emoji||'⚖️'} ${t.strategy_name||'Balanced'} — Managing ${(t.positions||[]).length} positions`;
+  } else {
+    document.getElementById('autoTraderCard').style.display = 'none';
+  }
+
+  // Market regime
+  const regime = data.regime || {};
+  if (regime.regime) {
+    document.getElementById('regimeBar').style.display = 'flex';
+    const rv = document.getElementById('regimeValue');
+    rv.textContent = regime.regime;
+    rv.className = 'regime-value ' + (regime.regime.includes('BULL') ? 'bull' : regime.regime.includes('BEAR') ? 'bear' : 'sideways');
+    document.getElementById('regimeConf').textContent = (regime.confidence||0) + '%';
+  }
+
+  // Market ticker
+  renderTicker(data.market_ticker || []);
+  // Signals
+  renderSignals(data.signals || [], 'homeSignals', 5);
+  // Will also try gems separately
+  loadHomeGems();
+}
+
+function renderTicker(tickers) {
+  const el = document.getElementById('tickerScroll');
+  if (!tickers.length) { el.innerHTML = '<div class="text-muted" style="padding:20px;">Loading markets...</div>'; return; }
+  el.innerHTML = tickers.map(t => `
+    <div class="ticker-item">
+      <div class="name">${t.name || t.symbol}</div>
+      <div class="price">${t.currency==='INR' ? '₹':'$'}${Number(t.price||0).toLocaleString('en-IN',{maximumFractionDigits:2})}</div>
+      <div class="change ${(t.change_pct||0)>=0?'up':'down'}">${pct(t.change_pct)}</div>
+    </div>
+  `).join('');
+}
+
+function renderSignals(signals, containerId, limit = 20) {
+  const el = document.getElementById(containerId);
+  if (!signals.length) { el.innerHTML = '<div class="empty-state"><div class="icon">⚡</div><div class="title">No signals yet</div><div class="desc">AI is scanning markets...</div></div>'; return; }
+  el.innerHTML = signals.slice(0, limit).map(s => {
+    const cls = signalColor(s.signal);
+    const conf = s.confidence || 0;
+    const barColor = cls === 'buy' ? 'var(--green)' : cls === 'sell' ? 'var(--red)' : 'var(--yellow)';
+    return `
+    <div class="signal-card ${cls}">
+      <div class="signal-top">
+        <div class="signal-symbol">${s.symbol || '???'}</div>
+        <div class="signal-badge ${cls}">${s.signal || 'HOLD'}</div>
+      </div>
+      <div class="signal-meta">
+        <span>₹${Number(s.price||0).toLocaleString('en-IN',{maximumFractionDigits:4})}</span>
+        <span>${s.source || ''}</span>
+        <span class="${(s.change_24h||0)>=0?'text-green':'text-red'}">${pct(s.change_24h)}</span>
+      </div>
+      <div class="confidence-bar"><div class="confidence-fill" style="width:${conf}%;background:${barColor};"></div></div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px;">Confidence: ${conf}%${s.target_1?' | T1: ₹'+Number(s.target_1).toLocaleString():''}</div>
+    </div>`;
+  }).join('');
+}
+
+async function loadHomeGems() {
+  const data = await api('/gems?min_score=10&source=dips');
+  if (data && data.gems) renderGems(data.gems, 'homeGems', 5);
+}
+
+function renderGems(gems, containerId, limit = 20) {
+  const el = document.getElementById(containerId);
+  if (!gems || !gems.length) { el.innerHTML = '<div class="empty-state"><div class="icon">💎</div><div class="title">No gems found</div><div class="desc">Scanning for dip opportunities...</div></div>'; return; }
+  el.innerHTML = gems.slice(0, limit).map(g => `
+    <div class="gem-card" onclick="analyzeGem('${g.symbol||g.token_id||''}')">
+      <div class="gem-left">
+        <div class="gem-icon">${(g.symbol||'?')[0]}</div>
+        <div class="gem-info">
+          <div class="sym">${g.symbol || '???'}</div>
+          <div class="chain">${g.chain||g.source||''} ${g.score?'• Score: '+g.score:''}</div>
+        </div>
+      </div>
+      <div class="gem-right">
+        <div class="price">$${Number(g.price_usd||0).toFixed(g.price_usd<0.01?8:4)}</div>
+        <div class="change ${(g.change_24h||g.change_1h||0)>=0?'text-green':'text-red'}">${pct(g.change_24h||g.change_1h||0)}</div>
+        ${g.market_cap ? '<div class="gem-score">MC: $'+Number(g.market_cap).toLocaleString()+'</div>' : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── MARKETS PAGE ──────────────────────────────────
+async function loadMarkets(filter = 'all') {
+  const el = document.getElementById('marketsContent');
+  el.innerHTML = '<div class="text-center text-muted" style="padding:30px;">Loading markets...</div>';
+  const data = await api('/markets?page=1&sort=volume');
+  if (!data) { el.innerHTML = '<div class="text-center text-muted">Failed to load</div>'; return; }
+
+  let html = '';
+  if ((filter === 'all' || filter === 'indices') && data.indices?.length) {
+    html += '<div class="input-label mb-8">📈 Indices</div>';
+    html += data.indices.map(i => `
+      <div class="gem-card"><div class="gem-left"><div class="gem-icon">📈</div>
+        <div class="gem-info"><div class="sym">${i.name}</div><div class="chain">${i.symbol}</div></div></div>
+        <div class="gem-right"><div class="price">₹${Number(i.price||0).toLocaleString()}</div>
+        <div class="change ${(i.change_pct||0)>=0?'text-green':'text-red'}">${pct(i.change_pct)}</div></div></div>
+    `).join('');
+  }
+  if ((filter === 'all' || filter === 'crypto') && data.crypto?.length) {
+    html += '<div class="input-label mb-8 mt-12">🪙 Crypto (INR)</div>';
+    html += data.crypto.slice(0,30).map(c => `
+      <div class="gem-card" onclick="analyzeGem('${c.symbol}')"><div class="gem-left"><div class="gem-icon">${(c.symbol||'?')[0]}</div>
+        <div class="gem-info"><div class="sym">${c.symbol}</div><div class="chain">Vol: ₹${Number(c.volume||0).toLocaleString()}</div></div></div>
+        <div class="gem-right"><div class="price">₹${Number(c.price||0).toLocaleString('en-IN',{maximumFractionDigits:2})}</div>
+        <div class="change ${(c.change_24h||0)>=0?'text-green':'text-red'}">${pct(c.change_24h)}</div></div></div>
+    `).join('');
+  }
+  if ((filter === 'all' || filter === 'trending') && data.trending?.length) {
+    html += '<div class="input-label mb-8 mt-12">🔥 Trending Gems</div>';
+    html += data.trending.slice(0,20).map(g => `
+      <div class="gem-card"><div class="gem-left"><div class="gem-icon">${(g.symbol||'?')[0]}</div>
+        <div class="gem-info"><div class="sym">${g.symbol||g.name}</div><div class="chain">${g.chain||''} • Score: ${g.score||0}</div></div></div>
+        <div class="gem-right"><div class="price">$${Number(g.price_usd||0).toFixed(g.price_usd<0.01?8:4)}</div>
+        <div class="change ${(g.change_24h||0)>=0?'text-green':'text-red'}">${pct(g.change_24h)}</div></div></div>
+    `).join('');
+  }
+  el.innerHTML = html || '<div class="empty-state"><div class="icon">📊</div><div class="title">No data</div></div>';
+}
+
+// ─── SIGNALS PAGE ──────────────────────────────────
+async function loadSignals(market = 'all') {
+  const el = document.getElementById('signalsContent');
+  el.innerHTML = '<div class="text-center text-muted" style="padding:30px;">Loading signals...</div>';
+  const data = await api('/signals?market=' + market);
+  if (data && data.signals) renderSignals(data.signals, 'signalsContent', 30);
+  else el.innerHTML = '<div class="empty-state"><div class="icon">⚡</div><div class="title">No signals</div></div>';
+}
+
+// ─── GEMS PAGE ─────────────────────────────────────
+async function loadGems(source = 'all') {
+  const el = document.getElementById('gemsContent');
+  el.innerHTML = '<div class="text-center text-muted" style="padding:30px;">Scanning gems...</div>';
+  const data = await api('/gems?min_score=5&source=' + source);
+  if (data && data.gems) renderGems(data.gems, 'gemsContent', 30);
+  else el.innerHTML = '<div class="empty-state"><div class="icon">💎</div><div class="title">No gems found</div></div>';
+}
+
+// ─── WALLET PAGE ───────────────────────────────────
+async function loadWallet() {
+  const el = document.getElementById('walletContent');
+  el.innerHTML = '<div class="text-center text-muted" style="padding:30px;">Loading wallet...</div>';
+  const data = await api('/wallet?user_id=' + USER_ID);
+  if (!data) { el.innerHTML = '<div class="text-center text-muted">Failed to load</div>'; return; }
+
+  const port = data.portfolio || {};
+  let html = `
+    <div style="background:var(--card);border-radius:var(--radius);padding:20px;text-align:center;margin-bottom:16px;">
+      <div style="font-size:12px;color:var(--text3);">Available Balance</div>
+      <div style="font-size:28px;font-weight:800;">${fmt(data.balance_inr || 0)}</div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
+        <button class="hdr-btn" onclick="openOverlay('deposit')">💰 Deposit</button>
+        <button class="hdr-btn" onclick="openOverlay('withdraw')">🏦 Withdraw</button>
+        <button class="hdr-btn" onclick="openOverlay('autotrader')">🤖 Auto Trade</button>
+      </div>
+    </div>
+    <div class="quick-stats mb-8">
+      <div class="stat-card"><div class="val">${fmt(data.total_deposited||0)}</div><div class="lbl">Deposited</div></div>
+      <div class="stat-card"><div class="val">${fmt(data.total_withdrawn||0)}</div><div class="lbl">Withdrawn</div></div>
+      <div class="stat-card"><div class="val ${(data.total_profit||0)>=0?'text-green':'text-red'}">${fmt(data.total_profit||0)}</div><div class="lbl">Profit</div></div>
+    </div>`;
+
+  // Portfolio positions
+  const positions = port.positions || [];
+  if (positions.length) {
+    html += '<div class="input-label mb-8 mt-12">Active Positions</div>';
+    html += positions.map(p => `
+      <div class="pos-card">
+        <div class="pos-top">
+          <div><div class="pos-symbol">${p.symbol||'???'}</div>
+            <div style="font-size:11px;color:var(--text3);">${p.chain||''} • ${p.source||''}</div></div>
+          <div class="pos-pnl ${(p.pnl_pct||0)>=0?'up':'down'}">${pct(p.pnl_pct)}</div>
+        </div>
+        <div class="pos-details">
+          <span>Buy: $${Number(p.buy_price_usd||0).toFixed(6)}</span>
+          <span>Now: $${Number(p.current_price_usd||0).toFixed(6)}</span>
+          <span>Inv: ₹${Number(p.invested_inr||0).toFixed(0)}</span>
+        </div>
+        <div class="pos-actions">
+          <button class="pos-btn sell" onclick="sellPosition('${p.id}')">Sell</button>
+        </div>
+      </div>
+    `).join('');
+    html += '<button class="btn-primary btn-danger mt-8" onclick="sellAllPositions()">Sell All Positions</button>';
+  } else {
+    html += '<div class="empty-state mt-12"><div class="icon">📁</div><div class="title">No active positions</div><div class="desc">Start auto-trader to invest automatically!</div></div>';
+  }
+
+  // Transactions
+  const txns = data.transactions || [];
+  if (txns.length) {
+    html += '<div class="input-label mb-8 mt-12">Recent Transactions</div>';
+    html += txns.slice(0,15).map(t => `
+      <div class="gem-card"><div class="gem-left">
+        <div class="gem-icon">${t.type==='deposit'?'💰':t.type==='auto_invest'?'🤖':t.type==='sell'?'📈':'🔄'}</div>
+        <div class="gem-info"><div class="sym">${t.type||'transaction'}</div>
+        <div class="chain">${t.created||''}</div></div></div>
+        <div class="gem-right"><div class="price">${t.amount_inr?fmt(t.amount_inr):''}</div></div></div>
+    `).join('');
+  }
+
+  // Tax info
+  if (data.tax && data.tax.tax_payable) {
+    html += `<div class="regime-bar mt-12"><div><div class="regime-label">Crypto Tax (30% + Cess)</div>
+      <div class="regime-value text-red">${fmt(data.tax.tax_payable)}</div></div>
+      <div><div class="regime-label">Net Profit After Tax</div>
+      <div class="regime-value text-green">${fmt(data.tax.net_profit)}</div></div></div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+// ─── DEPOSIT & WITHDRAW ───────────────────────────
+async function makeDeposit() {
+  const amount = Number(document.getElementById('depositAmount').value);
+  if (amount < 100) { toast('Min deposit ₹100', 'error'); return; }
+  const result = await apiPost('/deposit', { user_id: USER_ID, amount });
+  const el = document.getElementById('depositResult');
+  if (result?.qr_data) {
+    el.innerHTML = `<div style="text-align:center;padding:16px;background:var(--card);border-radius:var(--radius);">
+      <div style="font-size:14px;font-weight:600;margin-bottom:8px;">Scan QR to pay ₹${amount}</div>
+      <div style="background:#fff;padding:16px;border-radius:12px;display:inline-block;">
+        <img src="data:image/png;base64,${result.qr_image_base64||''}" style="width:200px;" onerror="this.style.display='none'">
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-top:8px;">Ref: ${result.tx_ref||''}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px;">${result.upi_string||''}</div>
+    </div>`;
+    toast('QR generated! Scan to pay.');
+  } else {
+    el.innerHTML = `<div style="color:var(--red);font-size:13px;">${result?.error||'Failed to generate QR'}</div>`;
+  }
+}
+
+async function verifyDeposit() {
+  const utr = document.getElementById('utrInput').value.trim();
+  if (!utr) { toast('Enter UTR number', 'error'); return; }
+  const result = await apiPost('/verify-deposit', { user_id: USER_ID, utr });
+  const el = document.getElementById('verifyResult');
+  if (result?.success) {
+    el.innerHTML = `<div style="color:var(--green);font-size:14px;font-weight:600;">✅ Payment verified! ₹${result.amount||0} credited.</div>`;
+    toast('✅ Deposit verified!');
+    loadDashboard();
+  } else {
+    el.innerHTML = `<div style="color:var(--red);font-size:13px;">${result?.error||'Verification failed'}</div>`;
+  }
+}
+
+async function loadWithdrawBalance() {
+  const data = await api('/wallet?user_id=' + USER_ID);
+  document.getElementById('withdrawBalance').textContent = `Available: ${fmt(data?.balance_inr||0)}`;
+}
+
+async function makeWithdraw() {
+  const amount = Number(document.getElementById('withdrawAmount').value);
+  if (amount < 100) { toast('Min withdrawal ₹100', 'error'); return; }
+  const result = await apiPost('/withdraw', { user_id: USER_ID, amount });
+  const el = document.getElementById('withdrawResult');
+  if (result?.success) {
+    el.innerHTML = `<div style="color:var(--green);">✅ Withdrawal requested! ₹${amount} will be processed.</div>`;
+    toast('Withdrawal requested!');
+  } else {
+    el.innerHTML = `<div style="color:var(--red);">${result?.error||'Failed'}</div>`;
+  }
+}
+
+// ─── AUTO TRADER ───────────────────────────────────
+async function loadStrategies() {
+  const data = await api('/auto-trader/strategies');
+  const el = document.getElementById('strategyCards');
+  if (!data?.strategies?.length) return;
+
+  el.innerHTML = data.strategies.map(s => `
+    <div class="strat-card ${s.id===selectedStrategy?'selected':''}" onclick="selectStrategy('${s.id}')">
+      <div class="strat-header">
+        <div class="strat-name">${s.emoji} ${s.name}</div>
+        <div class="strat-risk" style="background:${s.risk_level==='Low'?'rgba(16,185,129,0.15);color:var(--green2)':
+          s.risk_level==='Medium'?'rgba(245,158,11,0.15);color:var(--yellow)':
+          s.risk_level==='High'?'rgba(249,115,22,0.15);color:var(--orange)':
+          'rgba(239,68,68,0.15);color:var(--red2)'}">${s.risk_level}</div>
+      </div>
+      <div class="strat-desc">${s.description}</div>
+      <div class="strat-targets">
+        ${(s.targets||[]).map(t => `<span class="strat-tag">${t}</span>`).join('')}
+        <span class="strat-tag">SL: ${s.stop_loss}</span>
+        <span class="strat-tag">Compound: ${s.compound_pct}%</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectStrategy(id) {
+  selectedStrategy = id;
+  document.querySelectorAll('.strat-card').forEach(c => c.classList.remove('selected'));
+  document.querySelector(`.strat-card[onclick*="${id}"]`)?.classList.add('selected');
+}
+
+async function loadTraderStatus() {
+  const data = await api('/auto-trader/status?user_id=' + USER_ID);
+  if (data && data.active_count > 0) {
+    document.getElementById('traderStrategySection').style.display = 'none';
+    document.getElementById('traderActiveSection').style.display = 'block';
+
+    const t = data.traders[0];
+    document.getElementById('traderStatusContent').innerHTML = `
+      <div style="background:linear-gradient(135deg,var(--primary),var(--purple));border-radius:var(--radius);padding:16px;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:16px;font-weight:700;">${t.strategy_emoji} ${t.strategy_name}</div>
+          <div style="background:rgba(255,255,255,0.2);padding:3px 10px;border-radius:20px;font-size:11px;">${t.status.toUpperCase()}</div>
+        </div>
+        <div class="at-stats mt-8">
+          <div class="at-stat"><div class="v">${fmt(t.invested_inr)}</div><div class="l">Invested</div></div>
+          <div class="at-stat"><div class="v">${fmt(t.current_value_inr)}</div><div class="l">Current</div></div>
+          <div class="at-stat"><div class="v">${t.multiplier}</div><div class="l">Multiplier</div></div>
+        </div>
+      </div>
+      <div class="quick-stats">
+        <div class="stat-card"><div class="val ${(t.profit_inr||0)>=0?'text-green':'text-red'}">${fmt(t.profit_inr)}</div><div class="lbl">P&L</div></div>
+        <div class="stat-card"><div class="val">${pct(t.profit_pct)}</div><div class="lbl">ROI</div></div>
+        <div class="stat-card"><div class="val">${t.compounds_done||0}</div><div class="lbl">Compounds</div></div>
+      </div>
+      ${t.target_inr>0 ? `<div class="regime-bar mt-12"><div><div class="regime-label">Target</div>
+        <div class="regime-value">${fmt(t.target_inr)}</div></div>
+        <div><div class="regime-label">Progress</div>
+        <div class="regime-value ${t.target_pct>=100?'bull':''}">${t.target_pct.toFixed(1)}%</div></div></div>` : ''}
+      ${(t.positions||[]).length ? '<div class="input-label mt-12 mb-8">Active Positions ('+t.positions.length+')</div>' +
+        t.positions.slice(0,10).map(p => `<div class="gem-card"><div class="gem-left">
+          <div class="gem-icon">${(p.symbol||'?')[0]}</div>
+          <div class="gem-info"><div class="sym">${p.symbol}</div><div class="chain">${p.chain||''}</div></div></div>
+          <div class="gem-right"><div class="price">${pct(p.pnl_pct)}</div>
+          <div class="change">₹${Number(p.invested_inr||0).toFixed(0)}</div></div></div>`).join('') : ''}
+      ${(t.events||[]).length ? '<div class="input-label mt-12 mb-8">Recent Events</div>' +
+        t.events.slice(-5).reverse().map(e => `<div style="font-size:12px;color:var(--text2);padding:6px 0;border-bottom:1px solid var(--border);">
+          <span style="color:var(--text3);">${new Date(e.time).toLocaleString()}</span><br>${e.detail}</div>`).join('') : ''}
+    `;
+  } else {
+    document.getElementById('traderStrategySection').style.display = 'block';
+    document.getElementById('traderActiveSection').style.display = 'none';
+  }
+}
+
+async function startAutoTrader() {
+  const amount = Number(document.getElementById('tradeAmount').value);
+  const target = Number(document.getElementById('tradeTarget').value);
+  const autoWithdraw = document.getElementById('autoWithdraw').checked;
+
+  if (amount < 100) { toast('Min ₹100', 'error'); return; }
+
+  document.getElementById('startTraderBtn').disabled = true;
+  document.getElementById('startTraderBtn').textContent = '⏳ Starting...';
+
+  const result = await apiPost('/auto-trader/start', {
+    user_id: USER_ID,
+    amount: amount,
+    strategy: selectedStrategy,
+    target_inr: target,
+    auto_withdraw: autoWithdraw,
+  });
+
+  document.getElementById('startTraderBtn').disabled = false;
+  document.getElementById('startTraderBtn').textContent = '🚀 Start AI Auto-Trader';
+
+  if (result?.success) {
+    toast(`🤖 Auto-Trader started! ${result.num_tokens} tokens`);
+    loadTraderStatus();
+    loadDashboard();
+  } else {
+    toast(result?.error || 'Failed to start', 'error');
+  }
+}
+
+async function stopAutoTrader() {
+  if (!confirm('Stop auto-trader and sell all positions?')) return;
+  const result = await apiPost('/auto-trader/stop', { user_id: USER_ID, sell_all: true });
+  if (result?.success) {
+    toast('Auto-trader stopped!');
+    loadTraderStatus();
+    loadDashboard();
+  } else {
+    toast(result?.error || 'Failed', 'error');
+  }
+}
+
+async function compoundProfits() {
+  const result = await apiPost('/auto-trader/compound', { user_id: USER_ID });
+  if (result?.success) {
+    toast(result.message || 'Compounded!');
+    loadTraderStatus();
+  } else {
+    toast(result?.error || 'Failed', 'error');
+  }
+}
+
+async function previewGems() {
+  const el = document.getElementById('gemPreview');
+  el.innerHTML = '<div class="text-center text-muted">Scanning gems...</div>';
+  const data = await api('/auto-trader/gems?strategy=' + selectedStrategy);
+  if (data?.top_picks?.length) {
+    el.innerHTML = `<div class="input-label mb-8">🔍 AI Found ${data.gems_found} Gems (${data.strategy})</div>` +
+      data.top_picks.slice(0,10).map(g => `
+      <div class="gem-card"><div class="gem-left"><div class="gem-icon">${(g.symbol||'?')[0]}</div>
+        <div class="gem-info"><div class="sym">${g.symbol||'???'}</div>
+        <div class="chain">${g.chain||g.source||''} • Score: ${g.score||0}</div></div></div>
+        <div class="gem-right"><div class="price">$${Number(g.price_usd||0).toFixed(g.price_usd<0.01?8:4)}</div>
+        <div class="change text-red">${pct(g.change_24h||g.change_at_buy||0)}</div></div></div>
+    `).join('');
+  } else {
+    el.innerHTML = '<div class="text-center text-muted">No gems found right now. Market may be too hot.</div>';
+  }
+}
+
+// ─── SELL POSITIONS ────────────────────────────────
+async function sellPosition(posId) {
+  if (!confirm('Sell this position?')) return;
+  const result = await apiPost('/sell-position', { user_id: USER_ID, position_id: posId });
+  if (result?.success) {
+    toast(`Sold ${result.symbol}! P&L: ${pct(result.pnl_pct)}`);
+    loadWallet(); loadDashboard();
+  } else toast(result?.error||'Failed', 'error');
+}
+
+async function sellAllPositions() {
+  if (!confirm('Sell ALL positions?')) return;
+  const result = await apiPost('/sell-all', { user_id: USER_ID });
+  if (result?.success) {
+    toast(`Sold ${result.count} positions!`);
+    loadWallet(); loadDashboard();
+  } else toast(result?.error||'Failed', 'error');
+}
+
+// ─── ANALYZE ───────────────────────────────────────
+async function analyzeGem(symbol) {
+  if (!symbol) return;
+  toast(`Analyzing ${symbol}...`);
+  // Could open a detail overlay — for now just chat
+  const msg = `Analyze ${symbol} — give signal, entry, targets, stop loss`;
+  document.getElementById('chatInput').value = msg;
+  toggleChat();
+  sendChat();
+}
+
+// ─── AI CHAT ───────────────────────────────────────
+function toggleChat() {
+  document.getElementById('chatPanel').classList.toggle('active');
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  const el = document.getElementById('chatMessages');
+  el.innerHTML += `<div class="chat-msg user">${escapeHtml(msg)}</div>`;
+  el.innerHTML += `<div class="chat-msg bot" id="typing">Thinking...</div>`;
+  el.scrollTop = el.scrollHeight;
+
+  const result = await apiPost('/chat', { message: msg, user_id: USER_ID });
+  document.getElementById('typing')?.remove();
+
+  const reply = result?.reply || "Sorry, I couldn't process that.";
+  el.innerHTML += `<div class="chat-msg bot">${escapeHtml(reply).replace(/\n/g,'<br>')}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// ─── REFRESH ───────────────────────────────────────
+function refreshData() {
+  toast('Refreshing...');
+  loadDashboard();
+}
+</script>
+</body>
+</html>

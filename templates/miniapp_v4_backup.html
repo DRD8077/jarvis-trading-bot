@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>JARVIS — AI Trading Platform</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:#0a0e17;--card:#131a2b;--card2:#182035;--accent:#00d4ff;--green:#00ff88;--red:#ff4466;--gold:#ffaa00;--purple:#a855f7;--text:#e4e8f1;--muted:#7a8bb5;--border:#1f2940;--glass:rgba(19,26,43,.85)}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro','Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+.container{max-width:460px;margin:0 auto;padding:0 12px 100px}
+.header{text-align:center;padding:18px 0 10px;position:sticky;top:0;z-index:50;background:var(--bg);backdrop-filter:blur(12px)}
+.header h1{font-size:22px;background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:800;letter-spacing:-.5px}
+.header .sub{font-size:11px;color:var(--muted);margin-top:2px}
+.ticker-bar{display:flex;gap:14px;overflow-x:auto;padding:8px 0;scrollbar-width:none;-ms-overflow-style:none}
+.ticker-bar::-webkit-scrollbar{display:none}
+.tick{flex-shrink:0;font-size:12px;display:flex;gap:6px;align-items:center;padding:6px 12px;background:var(--card);border-radius:10px}
+.tick .sym{font-weight:700;color:#fff}.tick .prc{color:var(--muted)}
+.tick .chg{font-weight:700;font-size:11px;padding:2px 6px;border-radius:6px}
+.chg.up{color:var(--green);background:rgba(0,255,136,.1)}.chg.dn{color:var(--red);background:rgba(255,68,102,.1)}
+.card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:12px;border:1px solid var(--border);position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--purple))}
+.card-title{font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.card-title .icon{font-size:16px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.stat{background:var(--card2);border-radius:12px;padding:12px;text-align:center}
+.stat .val{font-size:18px;font-weight:800;color:#fff;margin-bottom:2px}.stat .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.gauge-wrap{text-align:center;padding:8px 0}
+.gauge-val{font-size:42px;font-weight:900;margin:4px 0}
+.gauge-lbl{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px}
+.gauge-bar{height:8px;border-radius:4px;background:linear-gradient(90deg,var(--red),var(--gold),var(--green));margin:10px 0}
+.gauge-dot{width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 8px #fff;position:relative;top:-11px;transition:margin-left .5s}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding:6px 0;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:var(--card2);color:var(--muted);border:1px solid transparent;transition:.2s}
+.tab.active{background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff;border-color:transparent}
+.sig-row{display:flex;align-items:center;padding:10px;background:var(--card2);border-radius:12px;margin-bottom:6px;gap:10px}
+.sig-sym{font-weight:700;font-size:14px;color:#fff;min-width:60px}
+.sig-badge{padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700;text-transform:uppercase}
+.sig-badge.buy{background:rgba(0,255,136,.15);color:var(--green)}.sig-badge.sell{background:rgba(255,68,102,.15);color:var(--red)}.sig-badge.hold{background:rgba(255,170,0,.15);color:var(--gold)}
+.sig-conf{font-size:11px;color:var(--muted);margin-left:auto}
+.sig-prc{font-size:13px;font-weight:600;color:#fff}
+.news-item{padding:10px;background:var(--card2);border-radius:12px;margin-bottom:6px;font-size:13px;color:#fff;line-height:1.4}
+.news-item .src{font-size:10px;color:var(--accent);margin-top:4px}
+.gem-row{display:flex;align-items:center;padding:10px;background:var(--card2);border-radius:12px;margin-bottom:6px;gap:8px}
+.gem-name{font-weight:700;font-size:13px;color:#fff;flex:1}
+.gem-chain{font-size:10px;padding:2px 6px;border-radius:6px;background:rgba(168,85,247,.15);color:var(--purple)}
+.gem-score{font-size:12px;font-weight:700;color:var(--gold)}
+.airdrop-item{padding:10px;background:var(--card2);border-radius:12px;margin-bottom:6px}
+.airdrop-item .name{font-weight:700;color:#fff;font-size:13px;margin-bottom:4px}
+.airdrop-item .detail{font-size:11px;color:var(--muted);line-height:1.5}
+.vix-box{text-align:center;padding:12px;background:var(--card2);border-radius:12px}
+.vix-val{font-size:36px;font-weight:900;color:var(--gold)}.vix-lbl{font-size:11px;color:var(--muted)}
+.chat-area{display:flex;flex-direction:column;gap:8px}
+.chat-msgs{max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:4px 0}
+.chat-msg{padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5;max-width:85%}
+.chat-msg.user{background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.chat-msg.ai{background:var(--card2);color:var(--text);align-self:flex-start;border-bottom-left-radius:4px}
+.chat-input-row{display:flex;gap:6px}
+.chat-input-row input{flex:1;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;color:#fff;font-size:13px;outline:none}
+.chat-input-row button{background:linear-gradient(135deg,var(--accent),var(--purple));border:none;border-radius:12px;padding:0 18px;color:#fff;font-weight:700;cursor:pointer}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:.2s}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff}.btn-green{background:var(--green);color:#000}.btn-red{background:var(--red);color:#fff}.btn-gold{background:var(--gold);color:#000}.btn-sm{padding:6px 12px;font-size:11px;border-radius:8px}
+.btn:active{transform:scale(.97);opacity:.9}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--glass);backdrop-filter:blur(16px);border-top:1px solid var(--border);z-index:100;padding:6px 0 env(safe-area-inset-bottom)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:6px 0;cursor:pointer;color:var(--muted);font-size:10px;font-weight:600;gap:2px;transition:.2s}
+.nav-item.active{color:var(--accent)}
+.nav-item .nav-icon{font-size:20px}
+.section{display:none}.section.active{display:block}
+.loader{text-align:center;padding:30px;color:var(--muted);font-size:13px}
+.loader::after{content:'';display:block;width:28px;height:28px;margin:10px auto 0;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+@media(max-width:360px){.stats{grid-template-columns:1fr 1fr}.stat .val{font-size:15px}}
+.empty{text-align:center;padding:20px;color:var(--muted);font-size:13px}
+.badge-row{display:flex;gap:4px;flex-wrap:wrap;margin:8px 0}
+.badge{font-size:10px;padding:3px 8px;border-radius:8px;font-weight:600}
+.badge.ok{background:rgba(0,255,136,.12);color:var(--green)}.badge.warn{background:rgba(255,170,0,.12);color:var(--gold)}.badge.err{background:rgba(255,68,102,.12);color:var(--red)}
+.analyze-input{display:flex;gap:6px;margin-bottom:12px}
+.analyze-input input{flex:1;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;color:#fff;font-size:13px;outline:none}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>⚡ JARVIS AI TRADER</h1>
+    <div class="sub">World's #1 AI Trading Intelligence — v4.0</div>
+  </div>
+  <div class="ticker-bar" id="tickerBar"><div class="loader">Loading markets...</div></div>
+
+  <!-- HOME -->
+  <div class="section active" id="sec-home">
+    <div class="card" id="portfolioCard">
+      <div class="card-title"><span class="icon">💰</span> Portfolio</div>
+      <div class="stats" id="portfolioStats">
+        <div class="stat"><div class="val" id="pBal">₹0</div><div class="lbl">Balance</div></div>
+        <div class="stat"><div class="val" id="pPnl">₹0</div><div class="lbl">P&amp;L</div></div>
+        <div class="stat"><div class="val" id="pInv">₹0</div><div class="lbl">Invested</div></div>
+        <div class="stat"><div class="val" id="pCur">₹0</div><div class="lbl">Current</div></div>
+      </div>
+    </div>
+    <div class="card" id="sentCard">
+      <div class="card-title"><span class="icon">🧠</span> Market Sentiment</div>
+      <div class="gauge-wrap">
+        <div class="gauge-val" id="fgVal">--</div>
+        <div class="gauge-lbl" id="fgLbl">Loading...</div>
+        <div class="gauge-bar"><div class="gauge-dot" id="fgDot"></div></div>
+      </div>
+    </div>
+    <div class="card" id="regimeCard">
+      <div class="card-title"><span class="icon">📊</span> Market Regime</div>
+      <div class="stats" id="regimeStats">
+        <div class="stat"><div class="val" id="rReg">--</div><div class="lbl">Regime</div></div>
+        <div class="stat"><div class="val" id="rConf">--</div><div class="lbl">Confidence</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">📡</span> Live Signals</div>
+      <div id="quickSignals"><div class="loader">Finding signals...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">🚀</span> Top Movers</div>
+      <div class="tabs">
+        <div class="tab active" onclick="showMovers('gainers')">Gainers</div>
+        <div class="tab" onclick="showMovers('losers')">Losers</div>
+      </div>
+      <div id="moversBox"><div class="loader">Loading...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">📰</span> Breaking News</div>
+      <div id="newsBox"><div class="loader">Loading news...</div></div>
+    </div>
+  </div>
+
+  <!-- SIGNALS -->
+  <div class="section" id="sec-signals">
+    <div class="card">
+      <div class="card-title"><span class="icon">📡</span> AI Signals Engine</div>
+      <div class="tabs" id="sigTabs">
+        <div class="tab active" onclick="loadSignals('all')">All</div>
+        <div class="tab" onclick="loadSignals('crypto')">Crypto</div>
+        <div class="tab" onclick="loadSignals('stock')">Stocks</div>
+      </div>
+      <div id="signalsList"><div class="loader">Scanning markets...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">💎</span> Gem Scanner</div>
+      <div class="tabs">
+        <div class="tab active" onclick="loadGems('all')">All</div>
+        <div class="tab" onclick="loadGems('dex')">DexScreener</div>
+        <div class="tab" onclick="loadGems('coindcx')">CoinDCX Dips</div>
+      </div>
+      <div id="gemsList"><div class="loader">Scanning gems...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">🔍</span> Rug Detector</div>
+      <div class="analyze-input">
+        <input id="rugInput" placeholder="Token address or symbol..."/>
+        <button class="btn btn-primary btn-sm" onclick="checkRug()">Scan</button>
+      </div>
+      <div id="rugResult"></div>
+    </div>
+  </div>
+
+  <!-- MARKETS -->
+  <div class="section" id="sec-markets">
+    <div class="card">
+      <div class="card-title"><span class="icon">🌍</span> Crypto Markets (INR)</div>
+      <div id="cryptoList"><div class="loader">Loading markets...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">🔥</span> Trending Gems</div>
+      <div id="trendingGems"><div class="loader">Scanning DexScreener...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">📈</span> Indian Indices</div>
+      <div id="indicesList"><div class="loader">Loading indices...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">🕯️</span> Candle Patterns</div>
+      <div class="analyze-input">
+        <input id="candleInput" value="^NSEI" placeholder="Symbol e.g. ^NSEI"/>
+        <button class="btn btn-primary btn-sm" onclick="loadCandles()">Analyze</button>
+      </div>
+      <div id="candleResult"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">⚡</span> Futures &amp; VIX</div>
+      <div id="futuresBox"><div class="loader">Loading VIX...</div></div>
+    </div>
+  </div>
+
+  <!-- AI -->
+  <div class="section" id="sec-ai">
+    <div class="card">
+      <div class="card-title"><span class="icon">🤖</span> AI Chat (Groq/OpenAI/Gemini)</div>
+      <div class="chat-area">
+        <div class="chat-msgs" id="chatMsgs">
+          <div class="chat-msg ai">Hello! I'm JARVIS AI. Ask me anything about crypto, stocks, trading strategies, or market analysis.</div>
+        </div>
+        <div class="chat-input-row">
+          <input id="chatIn" placeholder="Ask JARVIS anything..." onkeypress="if(event.key==='Enter')sendChat()"/>
+          <button onclick="sendChat()">Send</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">🔮</span> Ultra AI Predictions</div>
+      <div class="analyze-input">
+        <input id="ultraIn" value="BTC,ETH,SOL" placeholder="BTC,ETH,SOL"/>
+        <button class="btn btn-gold btn-sm" onclick="loadUltra()">Predict</button>
+      </div>
+      <div id="ultraResult"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">🧬</span> Deep Token Analysis</div>
+      <div class="analyze-input">
+        <input id="analyzeIn" placeholder="BTC, ETH, or token address"/>
+        <button class="btn btn-primary btn-sm" onclick="deepAnalyze()">Analyze</button>
+      </div>
+      <div id="analyzeResult"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">🔎</span> Smart Screener</div>
+      <div class="analyze-input">
+        <input id="screenerIn" value="momentum" placeholder="momentum, breakout, oversold..."/>
+        <button class="btn btn-primary btn-sm" onclick="loadScreener()">Screen</button>
+      </div>
+      <div id="screenerResult"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">🧠</span> Market Intelligence</div>
+      <button class="btn btn-primary" onclick="loadIntelligence()" style="width:100%;margin-bottom:10px">Get Intelligence Briefing</button>
+      <div id="intelResult"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">🎯</span> Prediction Accuracy</div>
+      <div id="predResult"><div class="loader">Loading...</div></div>
+    </div>
+  </div>
+
+  <!-- TRADER -->
+  <div class="section" id="sec-trader">
+    <div class="card">
+      <div class="card-title"><span class="icon">🤖</span> Auto Trader</div>
+      <div id="traderStatus"><div class="loader">Loading...</div></div>
+      <div style="margin-top:10px" id="traderBtns">
+        <button class="btn btn-green btn-sm" onclick="showStartTrader()">▶ Start</button>
+        <button class="btn btn-red btn-sm" onclick="stopTrader()">⏹ Stop</button>
+        <button class="btn btn-gold btn-sm" onclick="compoundTrader()">🔄 Compound</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">📋</span> Strategies</div>
+      <div id="stratList"><div class="loader">Loading...</div></div>
+    </div>
+    <div class="card" id="startForm" style="display:none">
+      <div class="card-title"><span class="icon">🚀</span> Start Auto-Trader</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <select id="stratSelect" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;color:#fff;font-size:13px"><option value="balanced">Balanced</option><option value="aggressive">Aggressive</option><option value="conservative">Conservative</option><option value="scalper">Scalper</option></select>
+        <input id="amtInput" type="number" placeholder="Amount (₹)" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;color:#fff;font-size:13px"/>
+        <input id="targetInput" type="number" placeholder="Target profit ₹ (optional)" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;color:#fff;font-size:13px"/>
+        <button class="btn btn-green" onclick="startTrader()">🚀 Launch Auto-Trader</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">📊</span> Performance</div>
+      <div id="perfBox"><div class="empty">Start trading to see performance</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">🪂</span> Airdrop Hunter</div>
+      <div id="airdropBox"><div class="loader">Scanning airdrops...</div></div>
+    </div>
+  </div>
+
+  <!-- WALLET -->
+  <div class="section" id="sec-wallet">
+    <div class="card">
+      <div class="card-title"><span class="icon">💳</span> Wallet</div>
+      <div class="stats" id="walletStats">
+        <div class="stat"><div class="val" id="wBal">₹0</div><div class="lbl">Balance</div></div>
+        <div class="stat"><div class="val" id="wProfit">₹0</div><div class="lbl">Total Profit</div></div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:12px">
+        <button class="btn btn-green btn-sm" onclick="showDeposit()" style="flex:1">Deposit</button>
+        <button class="btn btn-red btn-sm" onclick="showWithdraw()" style="flex:1">Withdraw</button>
+      </div>
+    </div>
+    <div class="card" id="depositCard" style="display:none">
+      <div class="card-title"><span class="icon">📥</span> Deposit</div>
+      <input id="depAmt" type="number" placeholder="Amount (₹)" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;color:#fff;font-size:13px;margin-bottom:8px"/>
+      <button class="btn btn-green" onclick="doDeposit()" style="width:100%">Generate QR</button>
+      <div id="depResult" style="margin-top:8px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">📦</span> Positions</div>
+      <div id="positionsBox"><div class="empty">No positions yet</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">📜</span> Transactions</div>
+      <div id="txnBox"><div class="empty">No transactions</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <div class="nav-item active" onclick="switchTab('home')"><span class="nav-icon">🏠</span>Home</div>
+  <div class="nav-item" onclick="switchTab('signals')"><span class="nav-icon">📡</span>Signals</div>
+  <div class="nav-item" onclick="switchTab('markets')"><span class="nav-icon">📊</span>Markets</div>
+  <div class="nav-item" onclick="switchTab('ai')"><span class="nav-icon">🤖</span>AI</div>
+  <div class="nav-item" onclick="switchTab('trader')"><span class="nav-icon">⚡</span>Trader</div>
+  <div class="nav-item" onclick="switchTab('wallet')"><span class="nav-icon">💳</span>Wallet</div>
+</div>
+
+<script>
+const API='/api/miniapp';let userId='0';let moversData={gainers:[],losers:[]};
+try{const tg=window.Telegram?.WebApp;if(tg){tg.ready();tg.expand();userId=String(tg.initDataUnsafe?.user?.id||'0');}}catch(e){}
+
+async function api(path,opts){try{const r=await fetch(API+path,{...opts,headers:{'Content-Type':'application/json',...(opts?.headers||{})}});return await r.json();}catch(e){console.warn('API:',path,e);return null;}}
+function $(id){return document.getElementById(id)}
+function fmt(n,d=2){if(!n&&n!==0)return'--';const num=Number(n);if(isNaN(num))return String(n);if(Math.abs(num)>=1e7)return(num/1e7).toFixed(2)+'Cr';if(Math.abs(num)>=1e5)return(num/1e5).toFixed(2)+'L';return num.toLocaleString('en-IN',{maximumFractionDigits:d})}
+function chgClass(v){return Number(v)>=0?'up':'dn'}
+function chgSign(v){const n=Number(v);return n>=0?'+'+n.toFixed(2)+'%':n.toFixed(2)+'%'}
+
+function switchTab(t){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  $('sec-'+t)?.classList.add('active');
+  document.querySelectorAll('.nav-item')[['home','signals','markets','ai','trader','wallet'].indexOf(t)]?.classList.add('active');
+  if(t==='signals'){loadSignals('all');loadGems('all');}
+  if(t==='markets')loadMarkets();
+  if(t==='ai')loadPredictions();
+  if(t==='trader'){loadTraderStatus();loadStrategies();loadAirdrops();}
+  if(t==='wallet')loadWallet();
+}
+
+async function loadDashboard(){
+  const d=await api('/dashboard?user_id='+userId);if(!d)return;
+  renderTicker(d.market_ticker||[]);
+  const p=d.portfolio||{};
+  $('pBal').textContent='₹'+fmt(p.balance_inr||0);
+  $('pPnl').textContent='₹'+fmt(p.pnl_inr||0);$('pPnl').style.color=Number(p.pnl_inr||0)>=0?'var(--green)':'var(--red)';
+  $('pInv').textContent='₹'+fmt(p.total_invested_inr||0);$('pCur').textContent='₹'+fmt(p.total_current_inr||0);
+  const s=d.sentiment||{};const fg=s.index||s.fear_greed_index||s.value||0;const fl=s.label||s.status||'--';
+  $('fgVal').textContent=Math.round(fg);$('fgLbl').textContent=fl;
+  $('fgVal').style.color=fg>60?'var(--green)':fg<40?'var(--red)':'var(--gold)';
+  $('fgDot').style.marginLeft=Math.min(Math.max(fg,0),100)+'%';
+  const rg=d.regime||{};$('rReg').textContent=rg.regime||rg.market_regime||'--';$('rConf').textContent=(rg.confidence||0)+'%';
+  renderQuickSignals(d.signals||[]);moversData=d.top_movers||{gainers:[],losers:[]};showMovers('gainers');renderNews(d.news||[]);
+}
+
+function renderTicker(tickers){
+  if(!tickers.length){$('tickerBar').innerHTML='<div class="empty">No ticker data</div>';return;}
+  $('tickerBar').innerHTML=tickers.map(t=>`<div class="tick"><span class="sym">${t.symbol||t.name}</span><span class="prc">${t.currency==='INR'?'₹':'$'}${fmt(t.price)}</span><span class="chg ${chgClass(t.change_pct)}">${chgSign(t.change_pct)}</span></div>`).join('');
+}
+function renderQuickSignals(sigs){
+  if(!sigs.length){$('quickSignals').innerHTML='<div class="empty">No signals right now</div>';return;}
+  $('quickSignals').innerHTML=sigs.slice(0,6).map(s=>{const st=String(s.signal||'HOLD').toUpperCase();const cls=st.includes('BUY')?'buy':st.includes('SELL')?'sell':'hold';return`<div class="sig-row"><span class="sig-sym">${s.symbol}</span><span class="sig-badge ${cls}">${st}</span><span class="sig-conf">${s.confidence||0}%</span><span class="sig-prc">${s.price?('₹'+fmt(s.price)):''}</span></div>`;}).join('');
+}
+function showMovers(type){
+  document.querySelectorAll('#sec-home .tabs .tab').forEach((t,i)=>{t.classList.toggle('active',type==='gainers'?i===0:i===1)});
+  const list=type==='gainers'?(moversData.gainers||[]):(moversData.losers||[]);
+  if(!list.length){$('moversBox').innerHTML='<div class="empty">No data</div>';return;}
+  $('moversBox').innerHTML=list.slice(0,8).map(m=>`<div class="sig-row"><span class="sig-sym">${m.symbol||m.market||''}</span><span class="sig-prc">₹${fmt(m.price||m.last_price)}</span><span class="chg ${chgClass(m.change_24h||m.change)}">${chgSign(m.change_24h||m.change||0)}</span></div>`).join('');
+}
+function renderNews(articles){
+  if(!articles.length){$('newsBox').innerHTML='<div class="empty">No news</div>';return;}
+  $('newsBox').innerHTML=articles.slice(0,6).map(a=>`<div class="news-item">${a.title||a}<div class="src">${a.source||''}</div></div>`).join('');
+}
+
+async function loadSignals(market){
+  $('signalsList').innerHTML='<div class="loader">Scanning...</div>';
+  const d=await api('/signals?market='+market);
+  if(!d||!d.signals?.length){$('signalsList').innerHTML='<div class="empty">No signals found</div>';return;}
+  $('signalsList').innerHTML='<div style="font-size:11px;color:var(--muted);margin-bottom:6px">'+d.count+' signals found</div>'+d.signals.slice(0,20).map(s=>{const st=String(s.signal||'HOLD').toUpperCase();const cls=st.includes('BUY')?'buy':st.includes('SELL')?'sell':'hold';return`<div class="sig-row"><span class="sig-sym">${s.symbol}</span><span class="sig-badge ${cls}">${st}</span><span class="sig-conf">${s.confidence||0}%</span><span class="sig-prc">${s.price?fmt(s.price):''}</span></div>`;}).join('');
+}
+
+async function loadGems(src){
+  $('gemsList').innerHTML='<div class="loader">Scanning...</div>';
+  const d=await api('/gems?source='+src);
+  if(!d||!d.gems?.length){$('gemsList').innerHTML='<div class="empty">No gems found</div>';return;}
+  $('gemsList').innerHTML='<div style="font-size:11px;color:var(--muted);margin-bottom:6px">'+d.count+' gems found</div>'+d.gems.slice(0,15).map(g=>`<div class="gem-row"><div class="gem-name">${g.symbol||g.name||'?'}<div style="font-size:10px;color:var(--muted)">${g.name||''}</div></div>${g.chain?'<span class="gem-chain">'+g.chain+'</span>':''}<span class="gem-score">★${g.score||0}</span><span class="chg ${chgClass(g.change_24h)}">${chgSign(g.change_24h||0)}</span></div>`).join('');
+}
+
+async function checkRug(){
+  const sym=$('rugInput').value.trim();if(!sym){$('rugResult').innerHTML='<div class="empty">Enter a token</div>';return;}
+  $('rugResult').innerHTML='<div class="loader">Scanning for rugs...</div>';
+  const d=await api('/rug-check?symbol='+encodeURIComponent(sym));
+  if(!d||d.error){$('rugResult').innerHTML='<div class="empty">'+(d?.error||'Error')+'</div>';return;}
+  const risk=d.risk_score||d.overall_risk||0;const cls=risk>70?'err':risk>40?'warn':'ok';
+  $('rugResult').innerHTML=`<div style="text-align:center;padding:12px"><div style="font-size:28px;font-weight:900" class="badge ${cls}">${risk}% Risk</div><div style="margin-top:6px;font-size:12px;color:var(--muted)">${d.verdict||d.summary||'Analysis complete'}</div></div>`;
+}
+
+async function loadMarkets(){
+  const d=await api('/markets');if(!d)return;
+  if(d.crypto?.length){$('cryptoList').innerHTML=d.crypto.slice(0,30).map(c=>`<div class="sig-row"><span class="sig-sym">${c.symbol}</span><span class="sig-prc">₹${fmt(c.price)}</span><span class="chg ${chgClass(c.change_24h)}">${chgSign(c.change_24h||0)}</span></div>`).join('');}else{$('cryptoList').innerHTML='<div class="empty">No crypto data</div>';}
+  if(d.trending?.length){$('trendingGems').innerHTML=d.trending.slice(0,15).map(g=>`<div class="gem-row"><div class="gem-name">${g.symbol}<div style="font-size:10px;color:var(--muted)">${g.name||''}</div></div>${g.chain?'<span class="gem-chain">'+g.chain+'</span>':''}<span class="gem-score">★${g.score||0}</span><span class="sig-prc">$${fmt(g.price_usd,4)}</span></div>`).join('');}else{$('trendingGems').innerHTML='<div class="empty">No trending gems</div>';}
+  if(d.indices?.length){$('indicesList').innerHTML=d.indices.map(i=>`<div class="sig-row"><span class="sig-sym">${i.name}</span><span class="sig-prc">₹${fmt(i.price)}</span><span class="chg ${chgClass(i.change_pct)}">${chgSign(i.change_pct||0)}</span></div>`).join('');}else{$('indicesList').innerHTML='<div class="empty">No indices data</div>';}
+  loadFutures();
+}
+
+async function loadCandles(){
+  const sym=$('candleInput').value.trim()||'^NSEI';$('candleResult').innerHTML='<div class="loader">Analyzing...</div>';
+  const d=await api('/candle-patterns?symbol='+encodeURIComponent(sym));
+  if(!d||(!d.patterns&&!d.analysis)){$('candleResult').innerHTML='<div class="empty">No patterns</div>';return;}
+  const p=d.patterns||d.analysis||d;
+  if(typeof p==='string'){$('candleResult').innerHTML='<div style="font-size:12px;color:var(--text);white-space:pre-wrap">'+p+'</div>';return;}
+  if(Array.isArray(p)){$('candleResult').innerHTML=p.map(c=>`<div class="sig-row"><span class="sig-sym">${c.pattern||c.name||'?'}</span><span class="sig-badge ${c.bullish?'buy':'sell'}">${c.bullish?'BULL':'BEAR'}</span></div>`).join('');}
+  else{$('candleResult').innerHTML='<div style="font-size:12px;color:var(--text);white-space:pre-wrap">'+JSON.stringify(p,null,2).slice(0,1000)+'</div>';}
+}
+
+async function loadFutures(){
+  const d=await api('/futures');if(!d)return;const vix=d.vix||{};const vVal=vix.vix||vix.value||vix.india_vix||'--';
+  $('futuresBox').innerHTML=`<div class="vix-box"><div class="vix-lbl">INDIA VIX</div><div class="vix-val">${typeof vVal==='number'?vVal.toFixed(2):vVal}</div><div class="vix-lbl">Fear Gauge</div></div>`;
+}
+
+async function sendChat(){
+  const msg=$('chatIn').value.trim();if(!msg)return;$('chatIn').value='';
+  $('chatMsgs').innerHTML+=`<div class="chat-msg user">${msg}</div><div class="chat-msg ai" id="aiTyping">Thinking...</div>`;
+  $('chatMsgs').scrollTop=$('chatMsgs').scrollHeight;
+  const d=await api('/chat',{method:'POST',body:JSON.stringify({message:msg,user_id:userId})});
+  const el=$('aiTyping');if(el){el.id='';el.textContent=d?.reply||'No response';}
+  $('chatMsgs').scrollTop=$('chatMsgs').scrollHeight;
+}
+
+async function loadUltra(){
+  const tokens=$('ultraIn').value.trim()||'BTC,ETH,SOL';$('ultraResult').innerHTML='<div class="loader">AI predicting...</div>';
+  const d=await api('/ultra-predict?tokens='+encodeURIComponent(tokens));
+  if(!d||!d.predictions?.length){$('ultraResult').innerHTML='<div class="empty">No predictions</div>';return;}
+  $('ultraResult').innerHTML=d.predictions.map(p=>{const dir=String(p.direction||p.signal||'HOLD').toUpperCase();const cls=dir.includes('UP')||dir.includes('BUY')||dir.includes('BULL')?'buy':dir.includes('DOWN')||dir.includes('SELL')?'sell':'hold';return`<div class="sig-row"><span class="sig-sym">${p.token||p.symbol||'?'}</span><span class="sig-badge ${cls}">${dir}</span><span class="sig-conf">${p.confidence||0}%</span></div>`;}).join('');
+}
+
+async function deepAnalyze(){
+  const sym=$('analyzeIn').value.trim();if(!sym){$('analyzeResult').innerHTML='<div class="empty">Enter a symbol</div>';return;}
+  $('analyzeResult').innerHTML='<div class="loader">Running deep analysis...</div>';
+  const d=await api('/analyze?symbol='+encodeURIComponent(sym));
+  if(!d){$('analyzeResult').innerHTML='<div class="empty">Failed</div>';return;}
+  let html='';for(const[k,v]of Object.entries(d)){if(k==='symbol')continue;if(v&&typeof v==='object'&&Object.keys(v).length>0){html+=`<div style="margin-top:8px"><div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase">${k}</div><div style="font-size:12px;color:var(--text);white-space:pre-wrap;margin-top:4px">${JSON.stringify(v,null,2).slice(0,800)}</div></div>`;}}
+  $('analyzeResult').innerHTML=html||'<div class="empty">No analysis data</div>';
+}
+
+async function loadScreener(){
+  const q=$('screenerIn').value.trim()||'momentum';$('screenerResult').innerHTML='<div class="loader">Screening...</div>';
+  const d=await api('/screener?query='+encodeURIComponent(q));if(!d){$('screenerResult').innerHTML='<div class="empty">No results</div>';return;}
+  const r=d.results||d;$('screenerResult').innerHTML=`<div style="font-size:12px;color:var(--text);white-space:pre-wrap">${typeof r==='string'?r:JSON.stringify(r,null,2).slice(0,2000)}</div>`;
+}
+
+async function loadIntelligence(){
+  $('intelResult').innerHTML='<div class="loader">Gathering intelligence...</div>';
+  const d=await api('/intelligence');if(!d){$('intelResult').innerHTML='<div class="empty">Unavailable</div>';return;}
+  let html='';
+  if(d.regime){html+=`<div class="stat" style="margin-bottom:8px"><div class="val">${d.regime.regime||'--'}</div><div class="lbl">Regime (${d.regime.confidence||0}% conf)</div></div>`;}
+  if(d.vix){const v=d.vix.vix||d.vix.value||'--';html+=`<div class="stat" style="margin-bottom:8px"><div class="val">${typeof v==='number'?v.toFixed(2):v}</div><div class="lbl">India VIX</div></div>`;}
+  const b=d.briefing;if(b){html+=`<div style="font-size:12px;color:var(--text);white-space:pre-wrap;margin-top:8px">${typeof b==='string'?b:JSON.stringify(b,null,2).slice(0,2000)}</div>`;}
+  $('intelResult').innerHTML=html||'<div class="empty">No intelligence data</div>';
+}
+
+async function loadPredictions(){
+  const d=await api('/predictions');if(!d){$('predResult').innerHTML='<div class="empty">No data</div>';return;}
+  $('predResult').innerHTML=`<div class="stats"><div class="stat"><div class="val">${d.total||0}</div><div class="lbl">Total</div></div><div class="stat"><div class="val">${d.accuracy||0}%</div><div class="lbl">Accuracy</div></div><div class="stat"><div class="val">${d.correct||0}</div><div class="lbl">Correct</div></div><div class="stat"><div class="val">${d.pending||0}</div><div class="lbl">Pending</div></div></div>`;
+}
+
+async function loadTraderStatus(){
+  const d=await api('/auto-trader/status?user_id='+userId);
+  if(!d||!d.traders?.length){$('traderStatus').innerHTML='<div class="empty">No active traders</div>';return;}
+  $('traderStatus').innerHTML=d.traders.map(t=>`<div class="sig-row"><span class="sig-sym">${t.strategy||'?'}</span><span class="sig-badge ${t.active?'buy':'hold'}">${t.active?'ACTIVE':'OFF'}</span><span class="sig-prc">₹${fmt(t.amount||0)}</span></div>`).join('');
+  loadPerformance();
+}
+async function loadStrategies(){
+  const d=await api('/auto-trader/strategies');if(!d||!d.strategies?.length){$('stratList').innerHTML='<div class="empty">No strategies</div>';return;}
+  $('stratList').innerHTML=d.strategies.map(s=>`<div style="padding:8px;background:var(--card2);border-radius:10px;margin-bottom:6px"><div style="font-weight:700;font-size:13px;color:#fff">${s.name||s.id||'?'}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${s.description||'Strategy'}</div><div class="badge-row"><span class="badge ok">Risk: ${s.risk_level||'?'}</span><span class="badge warn">Min: ₹${s.min_amount||100}</span></div></div>`).join('');
+}
+function showStartTrader(){$('startForm').style.display=$('startForm').style.display==='none'?'block':'none';}
+async function startTrader(){
+  const strat=$('stratSelect').value;const amt=Number($('amtInput').value)||0;const target=Number($('targetInput').value)||0;
+  if(amt<100){alert('Min ₹100');return;}
+  const d=await api('/auto-trader/start',{method:'POST',body:JSON.stringify({user_id:userId,amount:amt,strategy:strat,target_inr:target})});
+  if(d?.error)alert(d.error);else{alert('Auto-trader started!');loadTraderStatus();}
+}
+async function stopTrader(){if(!confirm('Stop auto-trader?'))return;await api('/auto-trader/stop',{method:'POST',body:JSON.stringify({user_id:userId,sell_all:true})});loadTraderStatus();}
+async function compoundTrader(){const d=await api('/auto-trader/compound',{method:'POST',body:JSON.stringify({user_id:userId})});alert(d?.message||d?.error||'Done');}
+async function loadPerformance(){const d=await api('/auto-trader/performance?user_id='+userId);if(!d||d.error)return;$('perfBox').innerHTML=`<div class="stats"><div class="stat"><div class="val">₹${fmt(d.total_profit||0)}</div><div class="lbl">Profit</div></div><div class="stat"><div class="val">${d.win_rate||0}%</div><div class="lbl">Win Rate</div></div><div class="stat"><div class="val">${d.total_trades||0}</div><div class="lbl">Trades</div></div><div class="stat"><div class="val">${d.active_positions||0}</div><div class="lbl">Open</div></div></div>`;}
+
+async function loadAirdrops(){
+  const d=await api('/airdrops');if(!d||!d.protocols?.length){$('airdropBox').innerHTML='<div class="empty">No airdrops found</div>';return;}
+  $('airdropBox').innerHTML=d.protocols.slice(0,10).map(a=>`<div class="airdrop-item"><div class="name">🪂 ${a.name||'?'}</div><div class="detail">${(a.details||[]).join('<br>')}</div></div>`).join('');
+}
+
+async function loadWallet(){
+  const d=await api('/wallet?user_id='+userId);if(!d)return;
+  $('wBal').textContent='₹'+fmt(d.balance_inr||0);$('wProfit').textContent='₹'+fmt(d.total_profit||0);
+  $('wProfit').style.color=Number(d.total_profit||0)>=0?'var(--green)':'var(--red)';
+  const pos=(d.portfolio?.positions||[]);
+  if(pos.length){$('positionsBox').innerHTML=pos.map(p=>`<div class="sig-row"><span class="sig-sym">${p.symbol||'?'}</span><span class="sig-prc">₹${fmt(p.current_value||p.amount||0)}</span><span class="chg ${chgClass(p.pnl_pct)}">${chgSign(p.pnl_pct||0)}</span></div>`).join('');}
+  const txns=(d.transactions||[]);
+  if(txns.length){$('txnBox').innerHTML=txns.slice(0,10).map(t=>`<div class="news-item"><strong>${t.type||'?'}</strong> — ₹${fmt(t.amount||0)}<div class="src">${t.date||t.timestamp||''}</div></div>`).join('');}
+}
+function showDeposit(){$('depositCard').style.display=$('depositCard').style.display==='none'?'block':'none';}
+function showWithdraw(){alert('Contact admin for withdrawals via Telegram bot.');}
+async function doDeposit(){const amt=Number($('depAmt').value)||0;if(amt<100){alert('Min ₹100');return;}const d=await api('/deposit',{method:'POST',body:JSON.stringify({user_id:userId,amount:amt})});$('depResult').innerHTML=d?.error?`<div class="empty">${d.error}</div>`:`<div style="text-align:center;padding:8px;color:var(--green)">✅ QR generated. Complete payment and submit UTR.</div>`;}
+
+loadDashboard();
+setInterval(()=>{if(document.querySelector('#sec-home.active'))loadDashboard();},60000);
+</script>
+</body>
+</html>

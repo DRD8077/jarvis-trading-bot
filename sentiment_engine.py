@@ -32,9 +32,21 @@ INDIAN_MARKET_RSS_FEEDS = {
     "et_markets": "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms",
     "livemint": "https://www.livemint.com/rss/markets",
     "ndtv_profit": "https://feeds.feedburner.com/ndtvprofit-latest",
+    "business_standard": "https://www.business-standard.com/rss/markets-106.rss",
+    "zee_business": "https://zeebiz.com/rss.xml",
+    "cnbc_tv18": "https://www.cnbctv18.com/market/rss/",
+    "financial_express": "https://www.financialexpress.com/market/rss/",
+    "bloomberg_quint": "https://www.bloombergquint.com/rss",
+    "reuters_india": "https://feeds.reuters.com/reuters/INbusinessNews",
+    "the_hindu_business": "https://www.thehindu.com/business/rss/",
+    "hindustan_times_business": "https://www.hindustantimes.com/feeds/rss/business/rssfeed.xml",
+    "times_of_india_business": "https://timesofindia.indiatimes.com/rssfeeds/1898055.cms",
     "google_nifty": "https://news.google.com/rss/search?q=NIFTY+50+NSE+India&hl=en-IN&gl=IN&ceid=IN:en",
     "google_sensex": "https://news.google.com/rss/search?q=SENSEX+BSE+India&hl=en-IN&gl=IN&ceid=IN:en",
     "google_market": "https://news.google.com/rss/search?q=Indian+stock+market+today&hl=en-IN&gl=IN&ceid=IN:en",
+    "google_fii_dii": "https://news.google.com/rss/search?q=FII+DII+flow+India&hl=en-IN&gl=IN&ceid=IN:en",
+    "google_rbi": "https://news.google.com/rss/search?q=RBI+policy+India&hl=en-IN&gl=IN&ceid=IN:en",
+    "google_inflation": "https://news.google.com/rss/search?q=Inflation+India+RBI&hl=en-IN&gl=IN&ceid=IN:en",
 }
 
 # Sentiment word lists for Indian market context
