@@ -105,33 +105,76 @@ async def dex_get_pair(chain: str, pair_address: str) -> Optional[Dict]:
 
 
 async def dex_trending() -> List[Dict]:
-    """Get trending/boosted tokens from DexScreener."""
+    """Get trending/boosted tokens from DexScreener with full pair data."""
     await _rate_limit("dexscreener_trending")
     data = await _fetch(f"{DEXSCREENER_BASE}/token-boosts/top/v1")
     if not data or not isinstance(data, list):
         return []
-    results = []
+    # Collect unique token addresses per chain to batch-fetch pair data
+    tokens_by_chain = {}
     for item in data[:30]:
-        results.append({
-            "address": item.get("tokenAddress", ""),
-            "chain": item.get("chainId", ""),
-            "name": item.get("description", item.get("tokenAddress", "")[:8]),
-            "symbol": item.get("tokenAddress", "")[:6].upper(),
-            "url": item.get("url", ""),
-            "icon": item.get("icon", ""),
-            "amount": item.get("amount", 0),
-            "source": "dexscreener_boost",
-        })
+        chain = item.get("chainId", "")
+        addr = item.get("tokenAddress", "")
+        if chain and addr:
+            tokens_by_chain.setdefault(chain, []).append(addr)
+    # Batch fetch pair data for trending tokens
+    pair_tasks = []
+    for chain, addrs in tokens_by_chain.items():
+        for addr in addrs[:10]:
+            pair_tasks.append(_fetch(f"{DEXSCREENER_BASE}/latest/dex/tokens/{addr}"))
+    pair_results = await asyncio.gather(*pair_tasks, return_exceptions=True)
+    # Parse results
+    results = []
+    seen = set()
+    for pr in pair_results:
+        if isinstance(pr, Exception) or not pr or "pairs" not in pr:
+            continue
+        pairs = pr.get("pairs", [])
+        if not pairs:
+            continue
+        # Take the highest volume pair for this token
+        best = max(pairs[:5], key=lambda p: float(p.get("volume",{}).get("h24",0) or 0), default=None)
+        if best:
+            parsed = _parse_dex_pair(best)
+            sym = parsed.get("symbol","")
+            if sym and sym not in seen:
+                parsed["source"] = "dexscreener_boost"
+                results.append(parsed)
+                seen.add(sym)
     return results
 
 
 async def dex_new_pairs(chain: str = "solana") -> List[Dict]:
-    """Get newest pairs on a chain."""
+    """Get newest token profiles and enrich with pair data."""
     await _rate_limit("dexscreener_new")
-    data = await _fetch(f"{DEXSCREENER_BASE}/latest/dex/pairs/{chain}")
-    if not data or "pairs" not in data:
+    # Use latest token profiles endpoint
+    data = await _fetch(f"{DEXSCREENER_BASE}/token-profiles/latest/v1")
+    if not data or not isinstance(data, list):
         return []
-    return [_parse_dex_pair(p) for p in data["pairs"][:20]]
+    # Fetch pair data for each new token
+    tasks = []
+    for item in data[:15]:
+        addr = item.get("tokenAddress", "")
+        if addr:
+            tasks.append(_fetch(f"{DEXSCREENER_BASE}/latest/dex/tokens/{addr}"))
+    results_raw = await asyncio.gather(*tasks, return_exceptions=True)
+    results = []
+    seen = set()
+    for pr in results_raw:
+        if isinstance(pr, Exception) or not pr or "pairs" not in pr:
+            continue
+        pairs = pr.get("pairs", [])
+        if not pairs:
+            continue
+        best = max(pairs[:5], key=lambda p: float(p.get("volume",{}).get("h24",0) or 0), default=None)
+        if best:
+            parsed = _parse_dex_pair(best)
+            sym = parsed.get("symbol","")
+            if sym and sym not in seen:
+                parsed["source"] = "dexscreener_new"
+                results.append(parsed)
+                seen.add(sym)
+    return results
 
 
 def _parse_dex_pair(p: dict) -> Dict:
@@ -234,7 +277,7 @@ async def cg_prices(ids: str = "bitcoin,ethereum,solana,cardano,dogecoin,shiba-i
 
 
 async def cg_trending() -> List[Dict]:
-    """Get trending coins from CoinGecko."""
+    """Get trending coins from CoinGecko with price data."""
     await _rate_limit("coingecko_trending")
     data = await _fetch(f"{COINGECKO_BASE}/search/trending")
     if not data or "coins" not in data:
@@ -242,12 +285,22 @@ async def cg_trending() -> List[Dict]:
     results = []
     for item in data["coins"][:15]:
         coin = item.get("item", {})
+        # CoinGecko trending includes price data in 'data' field
+        coin_data = coin.get("data", {})
+        price_usd = float(coin_data.get("price", 0) or coin.get("price_btc", 0) * 65000 or 0)
+        price_change = float(coin_data.get("price_change_percentage_24h", {}).get("usd", 0) or 0)
+        mcap = float(coin_data.get("market_cap", "0").replace(",","").replace("$","") if isinstance(coin_data.get("market_cap"), str) else coin_data.get("market_cap", 0) or 0)
+        vol = float(coin_data.get("total_volume", "0").replace(",","").replace("$","") if isinstance(coin_data.get("total_volume"), str) else coin_data.get("total_volume", 0) or 0)
         results.append({
             "symbol": coin.get("symbol", ""),
             "name": coin.get("name", ""),
             "market_cap_rank": coin.get("market_cap_rank", 0),
-            "price_btc": coin.get("price_btc", 0),
-            "score": coin.get("score", 0),
+            "price_usd": price_usd,
+            "change_24h": price_change,
+            "market_cap": mcap,
+            "volume_24h": vol,
+            "gem_score": max(0, 100 - (coin.get("score", 0) * 6)),
+            "chain": "multi",
             "thumb": coin.get("thumb", ""),
             "source": "coingecko_trending",
         })

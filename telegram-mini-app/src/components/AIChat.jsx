@@ -63,10 +63,14 @@ const ThinkingDots = () => (
 
 // ═══ Suggested prompts (like ChatGPT) ═══
 const suggestions = [
-  { icon: '📊', title: 'Market Overview', sub: 'NIFTY, BTC, global sentiment', prompt: 'Give me a complete market overview — NIFTY 50, Bank NIFTY, Bitcoin, Ethereum, Fear & Greed index, and overall sentiment analysis' },
-  { icon: '🔍', title: 'Find Gem Tokens', sub: '10x potential crypto gems', prompt: 'Find me top 5 hidden gem crypto tokens with 10x potential. Include market cap, liquidity, risk score, and why each is promising' },
+  { icon: '📊', title: 'Market Overview', sub: 'NIFTY, BTC, global view', prompt: 'Give me a complete market overview — NIFTY 50, Bank NIFTY, Bitcoin, Ethereum, Fear & Greed index, and overall sentiment analysis' },
+  { icon: '🔍', title: 'Gem Tokens', sub: '10x potential crypto gems', prompt: 'Find me top 5 hidden gem crypto tokens with 10x potential. Include market cap, liquidity, risk score, and why each is promising' },
   { icon: '📈', title: 'Trading Signals', sub: 'BUY/SELL with entry & SL', prompt: 'Give me your top 5 real-time BUY/SELL trading signals for both crypto and Indian stocks. Include entry price, stop-loss, target, and confidence level' },
   { icon: '🧠', title: 'AI Prediction', sub: '7-day price forecast', prompt: 'Predict NIFTY 50, Bitcoin, and Ethereum prices for the next 7 days. Include confidence levels, key support/resistance levels, and scenarios' },
+  { icon: '💻', title: 'Code Banao', sub: 'code generate & run karo', prompt: 'Python mein ek crypto price tracker banao jo har 10 second mein BTC aur ETH ka price dikhaye with color coding' },
+  { icon: '🚀', title: 'GitHub Clone', sub: 'repo install & run karo', prompt: 'Clone https://github.com/ccxt/ccxt and show me how to use it to get live crypto prices from Binance' },
+  { icon: '🇮🇳', title: 'Hindi Baat Karo', sub: 'Hindi/Hinglish mein baat', prompt: 'NIFTY 50 ka aaj ka analysis do Hindi mein — kahan support hai, kahan resistance, aur kal kya prediction hai?' },
+  { icon: '🪂', title: 'Airdrop Scan', sub: 'free crypto dhundho', prompt: 'Mere wallet mein koi naye airdrops aaye hain? Saare free tokens scan karo aur batao kaunse claim karne chahiye' },
 ]
 
 // ═══ Model Selector ═══
@@ -262,9 +266,9 @@ const AIChat = () => {
               <Bot size={28} className="text-white" />
             </div>
             <h2 className="text-xl font-bold mb-1">JARVIS AI</h2>
-            <p className="text-slate-500 text-xs mb-8">Your personal AI trading intelligence</p>
+            <p className="text-slate-500 text-xs mb-8">Tumhara personal AI trading intelligence — Hindi/English</p>
             
-            <div className="w-full max-w-md grid grid-cols-2 gap-2.5">
+            <div className="w-full max-w-md grid grid-cols-2 gap-2.5" style={{maxHeight:'45vh',overflowY:'auto'}}>
               {suggestions.map((s, i) => (
                 <button key={i} onClick={() => handleSend(s.prompt)}
                   className="text-left p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl hover:bg-white/[0.06] hover:border-white/10 transition-all active:scale-[0.98] group">
@@ -360,7 +364,7 @@ const AIChat = () => {
             <textarea ref={inputRef} value={input}
               onChange={e => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px' }}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-              placeholder="Message JARVIS..."
+              placeholder="JARVIS se pucho... / Ask JARVIS anything..."
               rows={1}
               className="w-full bg-transparent px-4 pt-3 pb-1 text-sm resize-none outline-none placeholder-slate-600 scrollbar-hide"
               style={{ maxHeight: '150px' }}

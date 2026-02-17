@@ -34,7 +34,7 @@ export const fetchHealth = () => api.get('/health')
 
 // ═══ MARKETS ═══
 export const fetchMarkets = () => api.get('/markets')
-export const fetchSentiment = () => api.get('/sentiment')
+export const fetchSentiment = () => api.get('/sentiment/analysis')
 export const fetchNews = (category = 'all') => api.get('/news', { params: { category } })
 export const fetchTopMovers = () => api.get('/markets')
 
@@ -46,7 +46,7 @@ export const fetchCandleAnalysis = (symbol) => api.get('/analysis/candles', { pa
 export const fetchPredictions = () => api.get('/predictions')
 
 // ═══ GEM SCANNER ═══
-export const fetchGems = () => api.get('/gems')
+export const fetchGems = (filter = 'all') => api.get('/gems', { params: { filter } })
 export const fetchRugCheck = (address) => api.get('/rug-check', { params: { address } })
 export const fetchSearch = (q) => api.get('/search', { params: { q } })
 export const fetchToken = (address) => api.get(`/token/${address}`)
@@ -62,6 +62,11 @@ export const sendChat = (message, context = '') => api.post('/chat', { message, 
 export const clearChat = (userId) => api.post('/chat/clear', { user_id: userId })
 export const fetchChatHistory = (userId) => api.get('/chat/history', { params: { user_id: userId } })
 export const fetchChatModels = () => api.get('/chat/models')
+
+// ═══ CODE ENGINE ═══
+export const executeCode = (prompt, userId) => api.post('/code/execute', { prompt, user_id: userId }, { timeout: 120000 })
+export const cloneGithub = (url, userId, runCmd = '') => api.post('/code/github', { url, user_id: userId, run_cmd: runCmd }, { timeout: 120000 })
+export const runCode = (code, language = 'python') => api.post('/code/run', { code, language }, { timeout: 60000 })
 
 // Streaming chat — SSE
 export const streamChat = async (message, userId, modelId = 'jarvis-auto', onChunk, onDone, onError) => {
@@ -144,10 +149,10 @@ export const fetchPowerPredict = (index) => api.get('/india/prediction', { param
 export const fetchMarketRegime = (symbol) => api.get('/regime', { params: { symbol } })
 export const fetchIndia2minSignal = (symbol, name) => api.get('/india/prediction', { params: { index: name } })
 export const fetchOiSuperSignal = (symbol) => api.get('/options/signal', { params: { symbol } })
-export const fetchGlobalIndiaImpact = () => api.get('/global/markets')
+export const fetchGlobalIndiaImpact = () => api.get('/global/india-impact')
 export const fetchIndiaHolidays = () => api.get('/india/dashboard')
 export const fetchInvestmentCalc = (symbol, name, investment) => api.get('/india/super-analysis', { params: { query: name, budget: investment } })
-export const fetchAiMarketVerdict = () => api.get('/india/dashboard')
+export const fetchAiMarketVerdict = () => api.get('/india/ai-verdict')
 export const fetchAiDashboard = () => api.get('/india/dashboard')
 
 // ═══ OPTIONS ═══
@@ -175,18 +180,18 @@ export const fetchCorrelation = (symbol) => api.get('/correlation', { params: { 
 
 // ═══ GLOBAL ═══
 export const fetchGlobalMarkets = () => api.get('/global/markets')
-export const fetchGlobalAnalysis = () => api.get('/global/markets')
-export const fetchGlobalIndiaImpactDirect = () => api.get('/global/markets')
+export const fetchGlobalAnalysis = () => api.get('/global/analysis')
+export const fetchGlobalIndiaImpactDirect = () => api.get('/global/india-impact')
 
 // ═══ AIRDROPS ═══
 export const fetchAirdrops = () => api.get('/airdrops')
 export const fetchNewAirdrops = () => api.get('/airdrops/new')
 
 // ═══ FUTURES ═══
-export const fetchFutures = () => api.get('/futures')
+export const fetchFutures = () => api.get('/futures/dashboard')
 
 // ═══ SCREENER ═══
-export const fetchScreener = (filters) => api.get('/signals', { params: filters })
+export const fetchScreener = (filters) => api.get('/screener/full', { params: filters })
 
 // ═══ COPY TRADING & SOCIAL ═══
 export const fetchCopyTradingSignals = () => api.get('/signals')
@@ -194,9 +199,9 @@ export const fetchCopyTradingLeaderboard = () => api.get('/auto-trader/performan
 export const fetchSocialFeed = () => api.get('/news')
 
 // ═══ WHALE ═══
-export const fetchWhaleAlert = (token) => api.get('/intelligence', { params: { token } })
-export const fetchWhaleScan = () => api.get('/intelligence/top-picks')
-export const fetchWhaleOnchain = (mint) => api.get('/intelligence', { params: { mint } })
+export const fetchWhaleAlert = (token) => api.get('/whale/token', { params: { address: token } })
+export const fetchWhaleScan = () => api.get('/whale/scan')
+export const fetchWhaleOnchain = (mint) => api.get('/whale/onchain', { params: { mint } })
 
 // ═══ PORTFOLIO ═══
 export const fetchCombinedPortfolio = (userId) => api.get('/wallet', { params: { user_id: userId } })
@@ -213,34 +218,34 @@ export const runBacktest = (strategy) => api.post('/auto-trader/start', { strate
 export const phantomConnectLink = (userId) => api.post('/wallet/connect-phantom', { user_id: userId })
 export const phantomScan = (userId) => api.get('/wallet/phantom-balance', { params: { user_id: userId } })
 export const phantomDashboard = (userId) => api.get('/wallet/phantom-balance', { params: { user_id: userId } })
-export const solanaBalance = (wallet) => api.get('/wallet/phantom-balance', { params: { wallet } })
-export const solanaTransactions = (wallet) => api.get('/transactions', { params: { wallet } })
+export const solanaBalance = (wallet) => api.get('/solana/balance', { params: { wallet } })
+export const solanaTransactions = (wallet) => api.get('/solana/transactions', { params: { wallet } })
 
 export default api
 
 // ═══ INTRADAY SCANNER (maps to signals/screener endpoints) ═══
-export const fetchIntradayScan = (params) => api.get('/signals', { params: { ...params, type: 'intraday' } })
-export const fetchIntradayBreakouts = () => api.get('/signals', { params: { type: 'breakout' } })
-export const fetchIntradayVolume = () => api.get('/signals', { params: { type: 'volume' } })
-export const fetchIntradayMomentum = () => api.get('/signals', { params: { type: 'momentum' } })
-export const fetchScreenerOversold = () => api.get('/signals', { params: { filter: 'oversold' } })
-export const fetchScreenerOverbought = () => api.get('/signals', { params: { filter: 'overbought' } })
-export const fetchScreenerVolumeSpike = () => api.get('/signals', { params: { filter: 'volume_spike' } })
-export const fetchScreenerGapUps = () => api.get('/signals', { params: { filter: 'gap_up' } })
-export const fetchScreenerMomentum = () => api.get('/signals', { params: { filter: 'momentum' } })
-export const fetchScreener52wHigh = () => api.get('/signals', { params: { filter: '52w_high' } })
-export const fetchScreenerBullish = () => api.get('/signals', { params: { filter: 'bullish' } })
-export const fetchScreenerRun = (filters) => api.get('/signals', { params: filters })
+export const fetchIntradayScan = (params) => api.get('/intraday/scan', { params })
+export const fetchIntradayBreakouts = () => api.get('/intraday/breakouts')
+export const fetchIntradayVolume = () => api.get('/intraday/volume')
+export const fetchIntradayMomentum = () => api.get('/intraday/momentum')
+export const fetchScreenerOversold = () => api.get('/screener/filter', { params: { type: 'oversold' } })
+export const fetchScreenerOverbought = () => api.get('/screener/filter', { params: { type: 'overbought' } })
+export const fetchScreenerVolumeSpike = () => api.get('/screener/filter', { params: { type: 'volume' } })
+export const fetchScreenerGapUps = () => api.get('/screener/filter', { params: { type: 'gap_up' } })
+export const fetchScreenerMomentum = () => api.get('/screener/filter', { params: { type: 'momentum' } })
+export const fetchScreener52wHigh = () => api.get('/screener/filter', { params: { type: '52w_high' } })
+export const fetchScreenerBullish = () => api.get('/screener/filter', { params: { type: 'bullish' } })
+export const fetchScreenerRun = (filters) => api.get('/screener/filter', { params: filters })
 
 // ═══ OPTIONS PRO LIVE ═══
-export const fetchStrikePrice = (symbol) => api.get('/options/chain', { params: { symbol } })
-export const fetchNearbyOptions = (symbol) => api.get('/options/chain', { params: { symbol, nearby: true } })
-export const fetchChainSummary = (symbol) => api.get('/options/analysis', { params: { symbol } })
-export const fetchFuturesDashboard = () => api.get('/futures')
-export const fetchFuturesBasis = (symbol) => api.get('/futures', { params: { symbol, type: 'basis' } })
-export const fetchFuturesStraddle = (symbol) => api.get('/futures', { params: { symbol, type: 'straddle' } })
-export const fetchFuturesOiDist = (symbol) => api.get('/futures', { params: { symbol, type: 'oi_dist' } })
-export const fetchFuturesMaxPain = (symbol) => api.get('/options/analysis', { params: { symbol } })
+export const fetchStrikePrice = (symbol) => api.get('/options/strike', { params: { symbol } })
+export const fetchNearbyOptions = (symbol) => api.get('/options/nearby', { params: { symbol } })
+export const fetchChainSummary = (symbol) => api.get('/options/chain-summary', { params: { symbol } })
+export const fetchFuturesDashboard = () => api.get('/futures/dashboard')
+export const fetchFuturesBasis = (symbol) => api.get('/futures/dashboard', { params: { symbol } })
+export const fetchFuturesStraddle = (symbol) => api.get('/futures/dashboard', { params: { symbol } })
+export const fetchFuturesOiDist = (symbol) => api.get('/futures/dashboard', { params: { symbol } })
+export const fetchFuturesMaxPain = (symbol) => api.get('/futures/dashboard', { params: { symbol } })
 export const fetchCorrelationsScan = () => api.get('/correlation', { params: { symbol: 'NIFTY' } })
 export const fetchCorrelationInsight = (symbol) => api.get('/correlation', { params: { symbol } })
 
@@ -252,7 +257,7 @@ export const fetchBullSpread = (symbol, budget) => api.get('/options/strategy', 
 export const fetchBearSpread = (symbol, budget) => api.get('/options/strategy', { params: { symbol, outlook: 'bearish', budget } })
 export const fetchIronCondor = (symbol, budget) => api.get('/options/strategy', { params: { symbol, outlook: 'iron_condor', budget } })
 export const fetchIvAnalysis = (symbol) => api.get('/options/analysis', { params: { symbol } })
-export const fetchGreeks = (symbol) => api.get('/options/analysis', { params: { symbol } })
+export const fetchGreeks = (symbol) => api.get('/options/greeks', { params: { symbol } })
 
 // ═══ RISK MANAGER EXTRAS ═══
 export const fetchKellyCriterion = (winRate, avgWin, avgLoss) => api.get('/risk/position-size', { params: { win_rate: winRate, avg_win: avgWin, avg_loss: avgLoss, type: 'kelly' } })
@@ -263,11 +268,11 @@ export const fetchStockNews = (symbol) => api.get('/news', { params: { category:
 // ═══ NIFTY OPTIONS LIVE ═══
 export const fetchNseLiveChain = (symbol, expiry) => api.get('/options/chain', { params: { symbol, expiry } })
 export const fetchNseLiveSpot = (symbol) => api.get('/india/vix', { params: { symbol } })
-export const fetchNseAtmOtm = (symbol) => api.get('/options/chain', { params: { symbol, type: 'atm_otm' } })
+export const fetchNseAtmOtm = (symbol) => api.get('/options/atm-otm', { params: { symbol } })
 export const fetchOiTraps = (symbol) => api.get('/options/traps', { params: { symbol } })
 export const fetchOiBudgetPlays = (symbol, budget) => api.get('/options/budget-plays', { params: { symbol, budget } })
 export const fetchOiChange = (symbol) => api.get('/options/analysis', { params: { symbol } })
-export const fetchOtmAtmAnalysis = (symbol) => api.get('/options/analysis', { params: { symbol } })
+export const fetchOtmAtmAnalysis = (symbol) => api.get('/options/atm-otm', { params: { symbol } })
 export const fetchRapidMomentum = (symbol) => api.get('/india/prediction', { params: { index: symbol } })
 
 // ═══ CANDLE INDICATORS ═══
@@ -276,7 +281,7 @@ export const fetchCandleIndicators = (symbol) => api.get('/analysis/technical', 
 
 // ═══ TRADING EXTRAS ═══
 export const fetchCandlePatternsOld = (symbol) => api.get('/analysis/candles', { params: { symbol } })
-export const fetchUltraPredict = (symbol) => api.get('/predictions', { params: { symbol } })
+export const fetchUltraPredict = (symbol) => api.get('/ultra/predict', { params: { symbol } })
 
 // ═══ OPTIONS CHAIN EXTRAS ═══
 export const fetchBudgetPicks = (symbol, budget) => api.get('/options/budget-plays', { params: { symbol, budget } })
@@ -288,8 +293,81 @@ export const solanaAirdrops = (wallet) => api.get('/airdrops', { params: { walle
 export const fetchPortfolioTax = (userId) => api.get('/auto-trader/performance', { params: { user_id: userId, type: 'tax' } })
 
 // ═══ POWER PREDICTOR EXTRAS ═══
-export const fetchMlPredict = (symbol) => api.get('/india/ml-prediction', { params: { symbol } })
+export const fetchMlPredict = (symbol) => api.get('/ml/predict', { params: { symbol } })
+
+// ═══ WEB3 ROCKETS ═══
+export const fetchWeb3Rockets = () => api.get('/web3/rockets')
+export const fetchWeb3Launches = () => api.get('/web3/new-launches')
+
+// ═══ SOLANA ═══
+export const fetchSolanaBalance = (wallet) => api.get('/solana/balance', { params: { wallet } })
+export const fetchSolanaTokens = (wallet) => api.get('/solana/tokens', { params: { wallet } })
+export const fetchSolanaTransactions = (wallet) => api.get('/solana/transactions', { params: { wallet } })
+
+// ═══ INR PRICES ═══
+export const fetchInrPrices = () => api.get('/inr/prices')
+export const fetchInrGainers = () => api.get('/inr/gainers')
+export const fetchInrLosers = () => api.get('/inr/losers')
+
+// ═══ PNL JOURNAL ═══
+export const fetchPnlDaily = (userId) => api.get('/pnl/daily', { params: { user_id: userId } })
+export const fetchPnlWeekly = (userId) => api.get('/pnl/weekly', { params: { user_id: userId } })
+export const fetchPnlMonthly = (userId) => api.get('/pnl/monthly', { params: { user_id: userId } })
+export const logTrade = (data) => api.post('/pnl/log', data)
+export const closeTrade = (data) => api.post('/pnl/close', data)
+
+// ═══ CHARTS ═══
+export const fetchChart = (symbol, timeframe = '1d') => api.get('/chart', { params: { symbol, timeframe } })
+
+// ═══ BRIEFING / SUPER BRAIN ═══
+export const fetchBriefing = () => api.get('/briefing')
+export const fetchMarketIntel = () => api.get('/market-intel')
+
+// ═══ MARKET BRAIN ═══
+export const fetchMarketBrainAnalysis = (query) => api.get('/market-brain/analyze', { params: { query } })
+
+// ═══ ULTRA AI ═══
+export const fetchUltraHealth = (symbol) => api.get('/ultra/health', { params: { symbol } })
+
+// ═══ COINDCX MEGA ═══
+export const fetchCoindcxMegaScan = () => api.get('/coindcx/scan')
+
+// ═══ DEXTOOLS ═══
+export const fetchDextoolsHot = () => api.get('/dextools/hot')
+export const fetchDextoolsSearch = (q) => api.get('/dextools/search', { params: { q } })
+
+// ═══ GLOBAL ═══
+export const fetchGlobalIndiaPrediction = () => api.get('/global/india-impact')
+
+// ═══ LIVE INDEX ═══
+export const fetchLivePrice = (symbol) => api.get('/live/price', { params: { symbol } })
+export const fetchLive2minSignal = (symbol) => api.get('/live/2min-signal', { params: { symbol } })
+export const fetchLiveInvestment = (symbol, amount) => api.get('/live/investment', { params: { symbol, amount } })
+
+// ═══ MEMORY ═══
+export const rememberData = (userId, key, value) => api.post('/memory/remember', { user_id: userId, key, value })
+export const recallData = (userId, key) => api.get('/memory/recall', { params: { user_id: userId, key } })
+
+// ═══ ANGELONE ═══
+export const fetchAngeloneLtp = (symbol) => api.get('/angelone/ltp', { params: { symbol } })
+export const fetchAngelonePositions = () => api.get('/angelone/positions')
+
+// ═══ AI VERDICT ═══
+export const fetchAiVerdict = () => api.get('/india/ai-verdict')
 
 // ═══ VOICE AI ═══
-export const voiceGenerate = (text) => api.post('/chat', { message: text, context: 'voice' })
+export const voiceGenerate = (text) => api.post('/voice/generate', { text })
 export const voiceTranscribe = (audioData) => api.post('/chat', { message: audioData, context: 'transcribe' })
+
+// ═══ 🔥 MEGA AI TRADER — Nuclear Autonomous Trading ═══
+export const fetchMegaTraderStatus = (userId) => api.get('/mega-trader/status', { params: { user_id: userId } })
+export const createMegaWallet = (userId) => api.post('/mega-trader/create-wallet', { user_id: userId })
+export const enableMegaTrader = (userId) => api.post('/mega-trader/enable', { user_id: userId })
+export const disableMegaTrader = (userId) => api.post('/mega-trader/disable', { user_id: userId })
+export const fetchMegaPortfolio = (userId) => api.get('/mega-trader/portfolio', { params: { user_id: userId } })
+export const fetchMegaScan = () => api.get('/mega-trader/scan')
+export const megaBuy = (userId, mint, solAmount) => api.post('/mega-trader/buy', { user_id: userId, mint, sol_amount: solAmount })
+export const megaSell = (userId, mint, sellPct = 100) => api.post('/mega-trader/sell', { user_id: userId, mint, sell_pct: sellPct })
+export const megaTransfer = (userId, destination, solAmount) => api.post('/mega-trader/transfer', { user_id: userId, destination, sol_amount: solAmount })
+export const fetchMegaTransfers = (userId) => api.get('/mega-trader/transfers', { params: { user_id: userId } })
+export const megaRugCheck = (mint, chain = 'solana') => api.get('/mega-trader/rug-check', { params: { mint, chain } })

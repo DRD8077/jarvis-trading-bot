@@ -593,6 +593,24 @@ except ImportError as _rt_err:
     REAL_TRADER_SDK = False
     logger.warning(f"[IMPORT] jarvis_real_trader not loaded: {_rt_err}")
 
+# ─── CONQUEROR TRADER — Ultimate AI Auto-Trading Brain ───
+try:
+    from jarvis_conqueror_trader import (
+        start_conqueror, stop_conqueror,
+        get_conqueror_status, get_live_scan,
+        get_portfolio_inr as conqueror_portfolio_inr,
+        set_phantom_address, get_phantom_address,
+        transfer_to_phantom as conqueror_transfer,
+        auto_withdraw_profits,
+        start_deposit_watcher, stop_deposit_watcher,
+        MAX_POSITIONS as CONQUEROR_MAX_POS,
+    )
+    CONQUEROR_AVAILABLE = True
+except ImportError as _cq_err:
+    CONQUEROR_AVAILABLE = False
+    CONQUEROR_MAX_POS = 12
+    logger.warning(f"[IMPORT] jarvis_conqueror_trader not loaded: {_cq_err}")
+
 # ─── OI + TRAP BRAIN — NIFTY/SENSEX Options Intelligence ───
 try:
     from oi_trap_brain import (
@@ -6638,6 +6656,181 @@ def handle_update(update: dict):
             send_message(chat_id, "❌ Real Trader not available.", reply_markup=build_keyboard())
         return
 
+    # ═══════════════════════════════════════════════
+    #  🔥⚡ CONQUEROR AI TRADER COMMANDS
+    # ═══════════════════════════════════════════════
+
+    # --- Start Conqueror ---
+    if text in ("/conqueror", "/start_conqueror", "conqueror start", "🔥 Conqueror AI", "conqueror"):
+        if CONQUEROR_AVAILABLE:
+            try:
+                wallet = get_trading_wallet(chat_id)
+                if not wallet:
+                    send_message(chat_id,
+                        "❌ *Pehle wallet create karo!*\n\n"
+                        "Press '🚀 Real Trading Wallet' ya /create_wallet\n\n"
+                        "Phir wallet mein SOL bhejo, JARVIS khud trading shuru karega!",
+                        reply_markup=build_keyboard())
+                    return
+                sol_bal = trader_sol_balance(wallet["pubkey"])
+                if sol_bal < 0.005:
+                    send_message(chat_id,
+                        f"❌ *SOL daalo wallet mein!*\n\n"
+                        f"Balance: {sol_bal:.4f} SOL (kam hai)\n"
+                        f"Min: 0.005 SOL chahiye\n\n"
+                        f"Apni wallet address:\n`{wallet['pubkey']}`\n\n"
+                        f"📱 Phantom/Solflare se yahan SOL bhejo.\n"
+                        f"💡 JARVIS khud detect karega jab SOL aayega!",
+                        reply_markup=build_keyboard())
+                    return
+                enable_auto_trade(chat_id)
+                result = start_conqueror()
+                send_message(chat_id,
+                    f"🔥⚡💎 *CONQUEROR AI ACTIVATED!*\n\n"
+                    f"💰 Balance: {sol_bal:.4f} SOL\n\n"
+                    f"🤖 *JARVIS ab khud sab karega:*\n"
+                    f"  ⚡ 9+ sources scan — har 60 sec\n"
+                    f"  🧠 25-factor AI scoring\n"
+                    f"  🛡️ Triple rug check (GoPlus + Custom + DexScreener)\n"
+                    f"  🟢 Auto-buy safe gems via Jupiter DEX\n"
+                    f"  💰 Auto-sell: 2x→5x→10x→100x→1000x→10000x\n"
+                    f"  🔴 Stop-loss: -30%\n"
+                    f"  📊 Trailing stop: +50% activate, 18% trail\n"
+                    f"  💸 Auto-withdraw profits to Phantom\n"
+                    f"  👁️ Deposit watcher ON — SOL bhejo, auto-invest!\n\n"
+                    f"🎯 Target: ₹500 → ₹5 Crore\n"
+                    f"📊 Sab kuch ₹ INR mein dikhega\n\n"
+                    f"⚠️ REAL trading hai — DYOR!",
+                    reply_markup=build_keyboard())
+            except Exception as e:
+                send_message(chat_id, f"❌ Conqueror error: {str(e)[:200]}", reply_markup=build_keyboard())
+        else:
+            send_message(chat_id, "❌ Conqueror Trader module not available.", reply_markup=build_keyboard())
+        return
+
+    # --- Stop Conqueror ---
+    if text in ("/stop_conqueror", "conqueror stop", "stop conqueror"):
+        if CONQUEROR_AVAILABLE:
+            try:
+                disable_auto_trade(chat_id)
+                result = stop_conqueror()
+                send_message(chat_id, "⏹️ *Conqueror AI STOPPED*\n\nAuto-trading band hai. /conqueror se phir start karo.", reply_markup=build_keyboard())
+            except Exception as e:
+                send_message(chat_id, f"❌ {str(e)[:200]}", reply_markup=build_keyboard())
+        return
+
+    # --- Conqueror Status ---
+    if text in ("/conqueror_status", "conqueror status", "trading status"):
+        if CONQUEROR_AVAILABLE:
+            try:
+                status = get_conqueror_status(chat_id)
+                if status.get("has_wallet"):
+                    port = status.get("portfolio", {})
+                    msg = (
+                        f"🔥⚡ *CONQUEROR STATUS*\n\n"
+                        f"{'🟢 RUNNING' if status.get('conqueror_running') else '⏹️ STOPPED'}\n"
+                        f"👁️ Deposit Watcher: {'ON' if status.get('deposit_watcher') else 'OFF'}\n"
+                        f"📱 Phantom: {'✅ ' + status.get('phantom_address', '') if status.get('phantom_connected') else '❌ Not set'}\n\n"
+                        f"💰 *Portfolio:*\n"
+                        f"  📊 Total: {port.get('total_inr_display', '?')}\n"
+                        f"  ⚡ SOL: {port.get('sol_balance', 0):.4f} ({port.get('sol_inr_display', '?')})\n"
+                        f"  📈 Positions: {status.get('num_positions', 0)}/{CONQUEROR_MAX_POS}\n\n"
+                        f"💵 *Profit:*\n"
+                        f"  🟢 Total: {status.get('total_profit_inr', '₹0')}\n"
+                        f"  💸 Withdrawn: {status.get('total_withdrawn_sol', 0):.4f} SOL\n"
+                        f"  📊 Trades: {status.get('total_trades', 0)}\n\n"
+                    )
+                    stage = port.get("compound_stage", {})
+                    if stage:
+                        msg += (
+                            f"🎯 *Compound Stage:*\n"
+                            f"  {stage.get('name', '?')}\n"
+                            f"  Progress: {stage.get('progress', 0):.1f}%\n"
+                            f"  Current: {stage.get('current_display', '?')}\n"
+                            f"  Target: {stage.get('target_display', '?')}\n"
+                        )
+                    send_message(chat_id, msg, reply_markup=build_keyboard())
+                else:
+                    send_message(chat_id, "❌ Pehle wallet create karo: /create_wallet", reply_markup=build_keyboard())
+            except Exception as e:
+                send_message(chat_id, f"❌ {str(e)[:200]}", reply_markup=build_keyboard())
+        return
+
+    # --- Set Phantom Address for Auto-Withdrawal ---
+    if text.startswith("/set_phantom"):
+        if CONQUEROR_AVAILABLE:
+            parts = text.split()
+            if len(parts) >= 2:
+                addr = parts[1].strip()
+                try:
+                    result = set_phantom_address(chat_id, addr)
+                    if result.get("success"):
+                        send_message(chat_id,
+                            f"✅ *Phantom Wallet Connected!*\n\n"
+                            f"📱 Address: `{addr[:8]}...{addr[-6:]}`\n\n"
+                            f"💸 Auto-withdrawal ON — 30% profits yahan aayenge!\n"
+                            f"🔄 Har 4 ghante check hota hai.",
+                            reply_markup=build_keyboard())
+                    else:
+                        send_message(chat_id, f"❌ {result.get('error', 'Failed')}", reply_markup=build_keyboard())
+                except Exception as e:
+                    send_message(chat_id, f"❌ {str(e)[:200]}", reply_markup=build_keyboard())
+            else:
+                send_message(chat_id,
+                    "📱 *Phantom Address Set Karo:*\n\n"
+                    "/set\\_phantom <your\\_solana\\_address>\n\n"
+                    "Example:\n`/set_phantom 8F1PJhuJa45RMWMJwgDASXL6bm6GYd1MtReJSTcWugaR`",
+                    reply_markup=build_keyboard())
+        return
+
+    # --- Withdraw to Phantom ---
+    if text in ("/withdraw", "/withdraw_phantom", "withdraw profits"):
+        if CONQUEROR_AVAILABLE:
+            try:
+                result = auto_withdraw_profits(chat_id)
+                if result.get("success"):
+                    send_message(chat_id,
+                        f"💸✅ *Withdrawal Successful!*\n\n"
+                        f"📤 Sent: {result.get('sol_sent', 0):.4f} SOL\n"
+                        f"💵 Value: {result.get('inr_display', '?')}\n"
+                        f"🔗 [Verify on Solscan]({result.get('solscan', '')})",
+                        reply_markup=build_keyboard())
+                elif result.get("skipped"):
+                    send_message(chat_id, f"ℹ️ {result.get('reason', 'Nothing to withdraw')}", reply_markup=build_keyboard())
+                else:
+                    send_message(chat_id, f"❌ {result.get('error', 'Withdrawal failed')}", reply_markup=build_keyboard())
+            except Exception as e:
+                send_message(chat_id, f"❌ {str(e)[:200]}", reply_markup=build_keyboard())
+        return
+
+    # --- Live Conqueror Scan ---
+    if text in ("/scan_gems", "/live_scan", "scan gems", "gem scan"):
+        if CONQUEROR_AVAILABLE:
+            try:
+                send_message(chat_id, "🔍 *Scanning 9+ sources for gems...* ⏳")
+                import asyncio
+                loop = asyncio.new_event_loop()
+                scan = loop.run_until_complete(get_live_scan())
+                loop.close()
+
+                msg = f"🔍💎 *LIVE GEM SCAN*\n\n"
+                msg += f"📊 Scanned: {scan.get('total_scanned', 0)} tokens\n"
+                msg += f"✅ Passed AI: {scan.get('passed_ai', 0)}\n"
+                msg += f"📡 Sources: {', '.join(scan.get('sources', []))}\n\n"
+
+                for i, gem in enumerate(scan.get("top_gems", [])[:10], 1):
+                    msg += (
+                        f"{i}. *{gem.get('symbol', '?')}* — Score: {gem.get('ai_score', 0)}/100\n"
+                        f"   {gem.get('verdict', '')}\n"
+                        f"   💰 {gem.get('price_inr', '?')} | MCap: {gem.get('mcap_inr', '?')}\n"
+                        f"   📈 1h: {gem.get('change_1h', '?')} | Source: {gem.get('source', '?')}\n\n"
+                    )
+
+                send_message(chat_id, msg[:4000], reply_markup=build_keyboard())
+            except Exception as e:
+                send_message(chat_id, f"❌ Scan error: {str(e)[:200]}", reply_markup=build_keyboard())
+        return
+
     # --- Live Portfolio ---
     if text in ("📊 Live Portfolio 🔥", "/live_portfolio", "live portfolio", "real portfolio"):
         if REAL_TRADER_AVAILABLE:
@@ -10036,6 +10229,14 @@ if __name__ == "__main__":
             logger.info("[STARTUP] 🚀💰 REAL TRADER — Jupiter DEX Auto-Trade Engine LAUNCHED!")
         except Exception as e:
             logger.error(f"[STARTUP] Real Trader start failed: {e}")
+
+    # 🔥⚡ Start CONQUEROR AI Trader — Ultimate Auto-Trading Brain
+    if CONQUEROR_AVAILABLE:
+        try:
+            start_conqueror()
+            logger.info("[STARTUP] 🔥⚡💎 CONQUEROR AI TRADER LAUNCHED — 60s scans, 25-factor AI, triple rug check, auto buy/sell!")
+        except Exception as e:
+            logger.error(f"[STARTUP] Conqueror start failed: {e}")
 
     # 🤖 Start Personal Agent — Reminders Engine
     if AGENT_AVAILABLE:

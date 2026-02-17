@@ -262,7 +262,33 @@ const IndianStocks = () => {
             hapticFeedback?.('impact')
             try {
               const r = await fetchAiMarketVerdict()
-              setAiVerdict(r.data?.data?.verdict || r.data?.data || r.data || null)
+              const d = r.data?.data || r.data || {}
+              // Build formatted verdict from dashboard data
+              const pred = d.prediction || {}
+              const regime = d.regime || {}
+              const fii = d.fii_dii || {}
+              const vix = d.vix || {}
+              const pcr = d.pcr || {}
+              const nifty = d.nifty || {}
+              const banknifty = d.banknifty || {}
+              setAiVerdict({
+                direction: pred.direction || 'N/A',
+                action: pred.action || 'N/A',
+                confidence: pred.confidence || pred.calibrated_confidence || 0,
+                spot: pred.spot || nifty.ltp || 0,
+                regime: regime.regime_display || regime.regime || 'N/A',
+                regime_strategy: regime.strategy_hi || regime.strategy || '',
+                fii_net: fii.fii_net, dii_net: fii.dii_net, fii_signal: fii.signal || '',
+                vix_val: vix.vix, vix_trend: vix.trend || '', vix_fear: vix.fear_level || '',
+                vix_tip: vix.interpretation || '',
+                pcr_val: pcr.pcr_value || pcr.pcr, pcr_signal: pcr.signal || pcr.interpretation || '',
+                bull_score: pred.bull_score || regime.bull_score || 0,
+                bear_score: pred.bear_score || regime.bear_score || 0,
+                nifty_change: nifty.change_pct || nifty.pct_change || 0,
+                banknifty_ltp: banknifty.ltp || 0,
+                banknifty_change: banknifty.change_pct || banknifty.pct_change || 0,
+                _formatted: true
+              })
             } catch (e) { console.warn(e) }
             setLoadingVerdict(false)
           }}
@@ -277,12 +303,112 @@ const IndianStocks = () => {
             {loadingVerdict ? <RefreshCw size={16} className="animate-spin" /> : <ChevronRight size={16} />}
           </button>
           {aiVerdict && (
-            <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl p-4">
-              <div className="flex items-center space-x-2 mb-2">
+            <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl p-4 space-y-3">
+              <div className="flex items-center space-x-2 mb-1">
                 <Brain size={14} className="text-purple-400" />
                 <span className="text-xs font-bold text-purple-400">AI EXPERT VERDICT</span>
               </div>
-              <pre className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed">{typeof aiVerdict === 'string' ? aiVerdict : JSON.stringify(aiVerdict, null, 2)}</pre>
+
+              {aiVerdict._formatted ? (
+                <>
+                  {/* Direction & Action */}
+                  <div className={`rounded-lg p-3 text-center ${
+                    (aiVerdict.direction || '').toLowerCase().includes('bull') ? 'bg-emerald-500/15 border border-emerald-500/30' :
+                    (aiVerdict.direction || '').toLowerCase().includes('bear') ? 'bg-red-500/15 border border-red-500/30' :
+                    'bg-yellow-500/15 border border-yellow-500/30'
+                  }`}>
+                    <p className="text-lg font-black">{aiVerdict.direction}</p>
+                    <p className={`text-sm font-bold mt-1 ${
+                      (aiVerdict.action || '').includes('CE') ? 'text-emerald-400' :
+                      (aiVerdict.action || '').includes('PE') ? 'text-red-400' : 'text-yellow-400'
+                    }`}>📌 {aiVerdict.action}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Confidence: {Number(aiVerdict.confidence).toFixed(1)}%</p>
+                  </div>
+
+                  {/* Spot + Indices */}
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-slate-800 rounded-lg p-2 text-center">
+                      <p className="text-slate-400 text-[10px]">NIFTY</p>
+                      <p className="font-bold text-sm">{Number(aiVerdict.spot).toFixed(0)}</p>
+                      <p className={`text-[10px] font-medium ${aiVerdict.nifty_change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {aiVerdict.nifty_change >= 0 ? '+' : ''}{Number(aiVerdict.nifty_change).toFixed(2)}%
+                      </p>
+                    </div>
+                    <div className="bg-slate-800 rounded-lg p-2 text-center">
+                      <p className="text-slate-400 text-[10px]">BANKNIFTY</p>
+                      <p className="font-bold text-sm">{Number(aiVerdict.banknifty_ltp).toFixed(0)}</p>
+                      <p className={`text-[10px] font-medium ${aiVerdict.banknifty_change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {aiVerdict.banknifty_change >= 0 ? '+' : ''}{Number(aiVerdict.banknifty_change).toFixed(2)}%
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Market Regime */}
+                  <div className="bg-slate-800 rounded-lg p-2">
+                    <p className="text-[10px] text-slate-400 mb-1">MARKET REGIME</p>
+                    <p className="font-bold text-sm">{aiVerdict.regime}</p>
+                    {aiVerdict.regime_strategy && <p className="text-[10px] text-slate-400 mt-1">💡 {aiVerdict.regime_strategy}</p>}
+                  </div>
+
+                  {/* Bull vs Bear Score */}
+                  <div className="bg-slate-800 rounded-lg p-2">
+                    <p className="text-[10px] text-slate-400 mb-1">BULL vs BEAR</p>
+                    <div className="flex items-center space-x-2">
+                      <div className="flex-1 bg-slate-700 rounded-full h-3 overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full" 
+                          style={{ width: `${Math.min(100, Math.max(0, aiVerdict.bull_score))}%` }} />
+                      </div>
+                      <span className="text-[10px] text-emerald-400 font-bold w-12 text-right">{Number(aiVerdict.bull_score).toFixed(0)}%</span>
+                    </div>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <div className="flex-1 bg-slate-700 rounded-full h-3 overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-red-500 to-red-400 rounded-full" 
+                          style={{ width: `${Math.min(100, Math.max(0, aiVerdict.bear_score))}%` }} />
+                      </div>
+                      <span className="text-[10px] text-red-400 font-bold w-12 text-right">{Number(aiVerdict.bear_score).toFixed(0)}%</span>
+                    </div>
+                  </div>
+
+                  {/* FII/DII */}
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-slate-800 rounded-lg p-2 text-center">
+                      <p className="text-slate-400 text-[10px]">FII NET</p>
+                      <p className={`font-bold ${aiVerdict.fii_net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        ₹{Number(aiVerdict.fii_net || 0).toFixed(0)} Cr
+                      </p>
+                    </div>
+                    <div className="bg-slate-800 rounded-lg p-2 text-center">
+                      <p className="text-slate-400 text-[10px]">DII NET</p>
+                      <p className={`font-bold ${aiVerdict.dii_net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        ₹{Number(aiVerdict.dii_net || 0).toFixed(0)} Cr
+                      </p>
+                    </div>
+                  </div>
+                  {aiVerdict.fii_signal && <p className="text-[10px] text-center text-slate-400">{aiVerdict.fii_signal}</p>}
+
+                  {/* VIX */}
+                  <div className="bg-slate-800 rounded-lg p-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] text-slate-400">VIX (INDIA)</p>
+                      <span className="text-[10px]">{aiVerdict.vix_fear}</span>
+                    </div>
+                    <p className="font-bold text-sm">{Number(aiVerdict.vix_val || 0).toFixed(2)}</p>
+                    <p className="text-[10px] text-slate-400">{aiVerdict.vix_trend}</p>
+                    {aiVerdict.vix_tip && <p className="text-[10px] text-amber-400 mt-1">💡 {aiVerdict.vix_tip}</p>}
+                  </div>
+
+                  {/* PCR */}
+                  {aiVerdict.pcr_val && (
+                    <div className="bg-slate-800 rounded-lg p-2">
+                      <p className="text-[10px] text-slate-400">PUT-CALL RATIO (PCR)</p>
+                      <p className="font-bold text-sm">{Number(aiVerdict.pcr_val).toFixed(2)}</p>
+                      {aiVerdict.pcr_signal && <p className="text-[10px] text-slate-400">{aiVerdict.pcr_signal}</p>}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <pre className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed">{typeof aiVerdict === 'string' ? aiVerdict : JSON.stringify(aiVerdict, null, 2)}</pre>
+              )}
             </div>
           )}
 

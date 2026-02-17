@@ -4,7 +4,7 @@ import {
   Home, TrendingUp, Wallet, Bot, Zap, MoreHorizontal, X,
   Globe, Copy, Users, Activity, PieChart, Waves, FlaskConical,
   BarChart3, Settings, Search, Brain, Mic, Flame, Layers, LineChart, Gauge,
-  Crosshair, Puzzle, ShieldCheck, ScanLine
+  Crosshair, Puzzle, ShieldCheck, ScanLine, Rocket
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 
@@ -23,6 +23,7 @@ const Navigation = () => {
 
   const moreItems = [
     { path: '/phantom', icon: Globe, label: 'Phantom Wallet', color: 'from-purple-500 to-blue-500', desc: 'Solana wallet & auto-trade' },
+    { path: '/mega-trader', icon: Rocket, label: '🤖 MEGA AI Trader', color: 'from-red-600 to-yellow-500', desc: 'NUCLEAR autonomous AI trader' },
     { path: '/auto-trader', icon: Zap, label: 'Auto Trader', color: 'from-amber-500 to-orange-500', desc: 'AI trading bot' },
     { path: '/copy-trading', icon: Copy, label: 'Copy Trading', color: 'from-blue-500 to-cyan-500', desc: 'Copy top traders' },
     { path: '/options', icon: Activity, label: 'Options Chain', color: 'from-orange-500 to-red-500', desc: 'Nifty/BankNifty options' },

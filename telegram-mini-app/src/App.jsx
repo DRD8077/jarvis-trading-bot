@@ -29,6 +29,7 @@ const IntradayScanner = lazy(() => import('./pages/IntradayScanner'))
 const OptionsProLive = lazy(() => import('./pages/OptionsProLive'))
 const StrategyBuilder = lazy(() => import('./pages/StrategyBuilder'))
 const RiskManager = lazy(() => import('./pages/RiskManager'))
+const MegaTrader = lazy(() => import('./components/MegaTrader'))
 
 const PageLoader = () => (
   <div className="p-4 bg-slate-900 min-h-screen space-y-3 animate-pulse">
@@ -75,6 +76,7 @@ function App() {
                 <Route path="/options-pro" element={<OptionsProLive />} />
                 <Route path="/strategy-builder" element={<StrategyBuilder />} />
                 <Route path="/risk-manager" element={<RiskManager />} />
+                <Route path="/mega-trader" element={<MegaTrader />} />
               </Routes>
             </main>
           </Suspense>

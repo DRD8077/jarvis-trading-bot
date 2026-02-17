@@ -45,7 +45,7 @@ def _si(mod,names):
     return out
 
 _dex=_si("dex_engine",["dex_search","dex_trending","dex_get_token","dex_new_pairs","cg_prices","cg_trending","cg_market_data","cg_fear_greed","pumpfun_trending","pumpfun_new_coins","jupiter_price","get_nse_indices","get_india_vix","fetch_crypto_news","fetch_india_news","find_dip_gems","get_full_market_snapshot"])
-_brain=_si("jarvis_brain",["jarvis_chat","analyze_token","generate_briefing","clear_memory","get_conversation_history","stream_chat","get_available_models"])
+_brain=_si("jarvis_brain",["jarvis_chat","analyze_token","generate_briefing","clear_memory","get_conversation_history","stream_chat","get_available_models","get_memory_stats","get_user_facts","get_active_positions","get_prediction_accuracy","search_memory"])
 _sniper=_si("auto_sniper",["get_manager","get_all_strategies","scan_for_gems"])
 _sec=_si("security_middleware",["validate_telegram_init_data","is_admin","sanitize_input"])
 _crypto=_si("crypto_engine",["scan_pump_trending","scan_pump_newest","scan_trending_gems","scan_pump_top_mcap","get_top_boosted_tokens","get_latest_token_profiles","calculate_gem_score","get_sol_inr_price","usd_to_inr"])
@@ -73,6 +73,37 @@ _cross=_si("cross_asset_engine",["scan_all_correlations","get_correlation_insigh
 _intel=_si("crypto_intelligence",["analyze_token_full","get_top_crypto_picks","get_user_watchlist","add_to_watchlist"])
 _news_brain=_si("jarvis_news_brain",["get_latest_news","get_stock_news","get_breaking_news","get_news_sentiment_score"])
 _payment=_si("payment_system",["get_user_wallet","create_deposit_request","confirm_deposit","create_withdrawal_request","process_withdrawal","get_transaction_history","get_pending_transactions","update_user_payment_info","update_wallet_balance"])
+_code_engine=_si("jarvis_code_engine",["detect_code_request","extract_github_url","execute_code_autonomous","clone_and_run_github","execute_raw_code","format_execution_result","format_github_result"])
+
+# ═══ NEWLY CONNECTED ENGINES (Phase 9 — Full Integration) ═══
+_whale=_si("whale_alert",["detect_whale_activity_from_dex","scan_whale_activity_trending","format_whale_report","check_helius_transactions"])
+_web3=_si("web3_rocket_scanner",["fetch_dex_trending_pairs","fetch_dex_new_pairs","search_dex_token","fetch_pump_hot_tokens","fetch_coindcx_hot_tokens","scan_top_rockets","scan_new_launches","quick_gem_check"])
+_solana=_si("solana_engine",["get_sol_balance","get_all_token_balances","resolve_token_metadata","get_recent_transactions","get_transaction_detail","swap_token","get_token_price_jupiter"])
+_suncrypto=_si("suncrypto_engine",["get_coindcx_tickers","get_coindcx_markets","get_all_inr_prices","get_top_inr_gainers","get_top_inr_losers","get_inr_price","search_inr_token"])
+_sentiment=_si("sentiment_engine",["analyze_news_sentiment","score_headline_sentiment","fetch_news_headlines"])
+_voice=_si("voice_engine",["generate_voice_response","text_to_speech_ogg","clean_text_for_speech"])
+_tracker=_si("trade_tracker",["log_prediction","verify_predictions","get_accuracy_stats","get_prediction_history"])
+_pnl=_si("jarvis_pnl_journal",["log_trade","close_trade","get_daily_pnl","get_weekly_pnl","get_monthly_pnl","get_all_trades","get_trade_stats","format_pnl_report"])
+_screener=_si("jarvis_screener_pro",["run_full_screener","screen_rsi_oversold","screen_rsi_overbought","screen_volume_breakout","screen_gap_up","screen_52w_high","screen_bullish_crossover","screen_momentum"])
+_intraday=_si("jarvis_intraday_scanner",["run_intraday_scan","scan_breakouts","scan_volume_spikes","scan_momentum"])
+_chart=_si("jarvis_chart_engine",["generate_chart","generate_multi_indicator_chart","fetch_chart_data"])
+_futures=_si("jarvis_futures_brain",["get_pcr","get_max_pain","get_futures_basis","get_india_vix","get_straddle_premium","get_oi_distribution","get_complete_futures_dashboard"])
+_opts_pro=_si("jarvis_options_pro",["get_strike_price","get_nearby_options","get_full_chain_summary","parse_option_query"])
+_mkt_brain=_si("jarvis_market_brain",["detect_market_type","extract_token_from_message","analyze_indian_stock_deep","analyze_crypto_token_deep"])
+_super_brain=_si("jarvis_super_brain",["fetch_all_news","format_news_digest","get_market_intelligence","format_jarvis_briefing"])
+_ultra=_si("jarvis_ultra_ai",["ultra_predict","token_health_score","calculate_price_targets","smart_money_flow","liquidity_health","assess_rug_risk"])
+_hunter=_si("nifty_options_hunter",["get_user_prefs","set_user_pref"])
+_otm_atm=_si("otm_atm_engine",["get_live_spot","get_atm_options","get_otm_options","calculate_greeks","get_full_atm_otm_analysis"])
+_live_idx=_si("live_index_engine",["get_live_price","generate_index_option_chain","calculate_investment_options","analyze_2min_candle"])
+_cdcx_mega=_si("coindcx_mega_scanner",["mega_scan_all","scan_volume_breakout","scan_bullish_patterns","scan_momentum_plays"])
+_dextools=_si("dextools_engine",["get_token_info","get_token_price","get_hot_pairs","search_pairs","get_pair_info"])
+_global_mkt=_si("global_market_analyzer",["analyze_global_markets","get_global_summary","predict_india_from_global"])
+_angel=_si("angelone_engine",["login_angel","get_ltp","place_order","get_positions","get_holdings","get_order_book"])
+_ml_pipe=_si("ml_pipeline",["predict_for_symbol","train_model","get_model_accuracy"])
+_mem_pro=_si("jarvis_memory_pro",["remember","recall","get_all_memories","clear_memories","search_memories","get_memory_summary"])
+_mega=_si("jarvis_mega_trader",["start_mega_trader","stop_mega_trader","get_mega_trader_status","get_live_scan_results","get_portfolio_inr","scan_all_sources","score_gem","check_rug_safety","transfer_to_phantom","get_transfer_history"])
+_real_trader=_si("jarvis_real_trader",["create_trading_wallet","get_trading_wallet","buy_token","sell_token","enable_auto_trade","disable_auto_trade","get_live_portfolio","format_trading_wallet","format_live_portfolio","format_trade_history","SOLANA_SDK_AVAILABLE"])
+_conqueror=_si("jarvis_conqueror_trader",["start_conqueror","stop_conqueror","get_conqueror_status","get_live_scan","get_portfolio_inr","scan_all_gems","ai_score_gem","deep_rug_check","set_phantom_address","get_phantom_address","transfer_to_phantom","auto_withdraw_profits","start_deposit_watcher","stop_deposit_watcher"])
 
 def _f(d,n):return d.get(n)
 def _sani(s,mx=200):
@@ -283,20 +314,39 @@ async def signals(market:str="all"):
     return result
 
 @router.get("/gems")
-async def gems(source:str="all",min_score:int=40):
-    c=_cached(f"gems_{source}",30)
+async def gems(source:str="all",min_score:int=40,filter:str="all"):
+    ck=f"gems_{source}_{filter}"
+    c=_cached(ck,30)
     if c:return c
     tasks=[]
-    if source in("all","dip")and _f(_dex,"find_dip_gems"):tasks.append(_f(_dex,"find_dip_gems")())
-    if source in("all","trending")and _f(_dex,"dex_trending"):tasks.append(_f(_dex,"dex_trending")())
-    if source in("all","pumpfun")and _f(_dex,"pumpfun_trending"):tasks.append(_f(_dex,"pumpfun_trending")())
-    g=await asyncio.gather(*tasks,return_exceptions=True)
-    all_g=[]
-    for d in g:
-        if isinstance(d,list):all_g.extend(d)
-    all_g.sort(key=lambda x:x.get("gem_score",0),reverse=True)
-    r={"gems":all_g[:40],"count":len(all_g),"source":source,"ts":datetime.now(IST).isoformat()}
-    _set_cache(f"gems_{source}",r)
+    # Always fetch these for "all"
+    if source in("all","dip")and _f(_dex,"find_dip_gems"):tasks.append(("dip",_f(_dex,"find_dip_gems")()))
+    if source in("all","trending")and _f(_dex,"dex_trending"):tasks.append(("trending",_f(_dex,"dex_trending")()))
+    if source in("all","pumpfun")and _f(_dex,"pumpfun_trending"):tasks.append(("pumpfun",_f(_dex,"pumpfun_trending")()))
+    if source in("all","new")and _f(_dex,"dex_new_pairs"):tasks.append(("new",_f(_dex,"dex_new_pairs")("solana")))
+    if source in("all","pumpfun_new")and _f(_dex,"pumpfun_new_coins"):tasks.append(("pumpfun_new",_f(_dex,"pumpfun_new_coins")()))
+    if source in("all","cg")and _f(_dex,"cg_trending"):tasks.append(("cg_trending",_f(_dex,"cg_trending")()))
+    g=await asyncio.gather(*[t[1] for t in tasks],return_exceptions=True)
+    all_g,trending_g,new_g,dip_g=[],[],[],[]
+    for i,d in enumerate(g):
+        tag=tasks[i][0] if i<len(tasks) else "unknown"
+        if isinstance(d,list):
+            for item in d:
+                item["_tag"]=tag
+                if tag in("trending","pumpfun","cg_trending"):trending_g.append(item)
+                elif tag in("new","pumpfun_new"):new_g.append(item)
+                elif tag=="dip":dip_g.append(item)
+                all_g.append(item)
+    # Apply filter
+    if filter=="trending":filtered=trending_g
+    elif filter=="new":filtered=new_g
+    elif filter=="dips":filtered=dip_g
+    else:filtered=all_g
+    filtered.sort(key=lambda x:x.get("gem_score",x.get("volume_24h",0) or 0),reverse=True)
+    r={"gems":filtered[:50],"count":len(filtered),"source":source,"filter":filter,
+       "stats":{"total":len(all_g),"trending":len(trending_g),"new":len(new_g),"dips":len(dip_g)},
+       "ts":datetime.now(IST).isoformat()}
+    _set_cache(ck,r)
     return r
 
 @router.get("/search")
@@ -324,9 +374,38 @@ async def token_detail(address:str):
 @router.post("/chat")
 async def chat(request:Request):
     body=await request.json()
-    msg=_sani(body.get("message",""),2000)
+    msg=_sani(body.get("message",""),4000)
     uid=str(body.get("user_id","0"))
     if not msg:return{"reply":"Please type a message."}
+    # === CODE ENGINE INTEGRATION ===
+    detect_fn=_f(_code_engine,"detect_code_request")
+    if detect_fn:
+        req_type=detect_fn(msg)
+        if req_type=="github":
+            url_fn=_f(_code_engine,"extract_github_url")
+            gh_url=url_fn(msg) if url_fn else None
+            if gh_url:
+                run_fn=_f(_code_engine,"clone_and_run_github")
+                fmt_fn=_f(_code_engine,"format_github_result")
+                if run_fn:
+                    result=await _t(run_fn,gh_url,int(uid))
+                    reply=fmt_fn(result,gh_url) if fmt_fn else json.dumps(result,default=str)
+                    return{"reply":reply,"provider":"jarvis-code-engine","type":"github","ts":datetime.now(IST).isoformat()}
+        elif req_type=="generate":
+            exec_fn=_f(_code_engine,"execute_code_autonomous")
+            fmt_fn=_f(_code_engine,"format_execution_result")
+            if exec_fn:
+                result=await _t(exec_fn,msg,int(uid))
+                reply=fmt_fn(result,msg) if fmt_fn else json.dumps(result,default=str)
+                return{"reply":reply,"provider":"jarvis-code-engine","type":"code_gen","ts":datetime.now(IST).isoformat()}
+        elif req_type=="raw_code":
+            raw_fn=_f(_code_engine,"execute_raw_code")
+            fmt_fn=_f(_code_engine,"format_execution_result")
+            if raw_fn:
+                result=await _t(raw_fn,msg)
+                reply=fmt_fn(result,msg) if fmt_fn else json.dumps(result,default=str)
+                return{"reply":reply,"provider":"jarvis-code-engine","type":"raw_code","ts":datetime.now(IST).isoformat()}
+    # === NORMAL AI CHAT ===
     ctx=""
     try:
         t=await _get_ticker()
@@ -339,6 +418,47 @@ async def chat(request:Request):
     fn=_f(_brain,"jarvis_chat")
     reply=await fn(msg,uid,ctx)if fn else"AI loading..."
     return{"reply":reply,"provider":"jarvis-brain","ts":datetime.now(IST).isoformat()}
+
+@router.post("/code/execute")
+async def code_execute(request:Request):
+    """Execute code autonomously — generate, install, run, return output."""
+    body=await request.json()
+    prompt=body.get("prompt","")
+    uid=str(body.get("user_id","0"))
+    if not prompt:return{"error":"Kya code banana hai batao / Tell me what to code"}
+    exec_fn=_f(_code_engine,"execute_code_autonomous")
+    fmt_fn=_f(_code_engine,"format_execution_result")
+    if not exec_fn:return{"error":"Code engine not available"}
+    result=await _t(exec_fn,prompt,int(uid))
+    reply=fmt_fn(result,prompt) if fmt_fn else json.dumps(result,default=str)
+    return{"result":result,"formatted":reply,"ts":datetime.now(IST).isoformat()}
+
+@router.post("/code/github")
+async def code_github(request:Request):
+    """Clone a GitHub repo, install deps, run it, return output."""
+    body=await request.json()
+    url=body.get("url","")
+    uid=str(body.get("user_id","0"))
+    run_cmd=body.get("run_cmd","")
+    if not url:return{"error":"GitHub URL do / Give a GitHub URL"}
+    run_fn=_f(_code_engine,"clone_and_run_github")
+    fmt_fn=_f(_code_engine,"format_github_result")
+    if not run_fn:return{"error":"Code engine not available"}
+    result=await _t(run_fn,url,int(uid),run_cmd)
+    reply=fmt_fn(result,url) if fmt_fn else json.dumps(result,default=str)
+    return{"result":result,"formatted":reply,"ts":datetime.now(IST).isoformat()}
+
+@router.post("/code/run")
+async def code_run(request:Request):
+    """Run raw code directly."""
+    body=await request.json()
+    code=body.get("code","")
+    language=body.get("language","python")
+    if not code:return{"error":"Code paste karo / Paste the code"}
+    raw_fn=_f(_code_engine,"execute_raw_code")
+    if not raw_fn:return{"error":"Code engine not available"}
+    result=await _t(raw_fn,code,language)
+    return{"result":result,"ts":datetime.now(IST).isoformat()}
 
 @router.post("/chat/clear")
 async def chat_clear(request:Request):
@@ -358,6 +478,38 @@ async def chat_models():
     """Return available AI models for the model selector."""
     fn=_f(_brain,"get_available_models")
     return{"models":fn()if fn else[{"id":"jarvis-auto","name":"JARVIS Auto","desc":"Best available","available":True}]}
+
+@router.get("/memory/stats")
+async def memory_stats(user_id:str="0"):
+    """Get user's memory stats — conversations, facts, positions, accuracy."""
+    fn=_f(_brain,"get_memory_stats")
+    return{"stats":fn(user_id) if fn else {}}
+
+@router.get("/memory/facts")
+async def memory_facts(user_id:str="0"):
+    """Get stored facts about a user."""
+    fn=_f(_brain,"get_user_facts")
+    return{"facts":fn(user_id) if fn else {}}
+
+@router.get("/memory/positions")
+async def memory_positions(user_id:str="0"):
+    """Get user's active tracked positions."""
+    fn=_f(_brain,"get_active_positions")
+    positions=fn(user_id) if fn else []
+    return{"positions":positions,"count":len(positions)}
+
+@router.get("/memory/accuracy")
+async def memory_accuracy(user_id:str="0"):
+    """Get prediction accuracy stats."""
+    fn=_f(_brain,"get_prediction_accuracy")
+    return{"accuracy":fn(user_id) if fn else {}}
+
+@router.get("/memory/search")
+async def memory_search(user_id:str="0",q:str=Query("",min_length=1)):
+    """Search through user's conversation memory."""
+    fn=_f(_brain,"search_memory")
+    results=fn(user_id,q) if fn else []
+    return{"results":results,"count":len(results),"query":q}
 
 @router.post("/chat/stream")
 async def chat_stream(request:Request):
@@ -1059,3 +1211,795 @@ async def transactions(user_id:str="0",limit:int=50):
         try:return{"status":"ok","data":await _t(fn,user_id,limit)}
         except Exception as e:return{"status":"error","error":str(e)}
     return{"status":"ok","data":[]}
+
+# ═══════════════════════════════════════════════════════════════
+# 🔥 PHASE 9: ALL MISSING ENGINES — FULL INTEGRATION
+# ═══════════════════════════════════════════════════════════════
+
+# ── WHALE ALERTS ──
+@router.get("/whale/scan")
+async def whale_scan():
+    fn=_f(_whale,"scan_whale_activity_trending")
+    if fn:
+        try:return{"whales":await _t(fn,10),"ts":datetime.now(IST).isoformat()}
+        except:pass
+    return{"whales":[],"ts":datetime.now(IST).isoformat()}
+
+@router.get("/whale/token")
+async def whale_token(address:str=Query(...)):
+    fn=_f(_whale,"detect_whale_activity_from_dex")
+    if fn:
+        try:return{"data":await _t(fn,address),"ts":datetime.now(IST).isoformat()}
+        except:pass
+    return{"data":{},"error":"N/A"}
+
+@router.get("/whale/onchain")
+async def whale_onchain(mint:str=Query(...)):
+    fn=_f(_whale,"check_helius_transactions")
+    if fn:
+        try:return{"txns":await _t(fn,mint,20),"ts":datetime.now(IST).isoformat()}
+        except:pass
+    return{"txns":[]}
+
+# ── WEB3 ROCKET SCANNER ──
+@router.get("/web3/rockets")
+async def web3_rockets():
+    c=_cached("w3rockets",30)
+    if c:return c
+    fn=_f(_web3,"scan_top_rockets")
+    fn2=_f(_web3,"fetch_dex_trending_pairs")
+    data=[]
+    if fn:
+        try:data=await _t(fn)
+        except:pass
+    elif fn2:
+        try:data=await _t(fn2)
+        except:pass
+    r={"rockets":data[:30]if data else[],"count":len(data)if data else 0,"ts":datetime.now(IST).isoformat()}
+    _set_cache("w3rockets",r)
+    return r
+
+@router.get("/web3/new-launches")
+async def web3_launches():
+    fn=_f(_web3,"scan_new_launches")
+    fn2=_f(_web3,"fetch_dex_new_pairs")
+    data=[]
+    if fn:
+        try:data=await _t(fn)
+        except:pass
+    elif fn2:
+        try:data=await _t(fn2)
+        except:pass
+    return{"launches":data[:20]if data else[],"count":len(data)if data else 0}
+
+# ── SOLANA ENGINE ──
+@router.get("/solana/balance")
+async def sol_balance(wallet:str=""):
+    fn=_f(_solana,"get_sol_balance")
+    if fn:
+        try:return{"balance":await _t(fn,wallet)if wallet else await _t(fn)}
+        except:pass
+    return{"balance":0}
+
+@router.get("/solana/tokens")
+async def sol_tokens(wallet:str=""):
+    fn=_f(_solana,"get_all_token_balances")
+    if fn:
+        try:
+            tokens=await _t(fn,wallet)if wallet else await _t(fn)
+            rfn=_f(_solana,"resolve_token_metadata")
+            if rfn and tokens:tokens=await _t(rfn,tokens)
+            return{"tokens":tokens,"count":len(tokens)}
+        except:pass
+    return{"tokens":[],"count":0}
+
+@router.get("/solana/transactions")
+async def sol_txns(wallet:str="",limit:int=10):
+    fn=_f(_solana,"get_recent_transactions")
+    if fn:
+        try:return{"txns":await _t(fn,wallet,limit)if wallet else await _t(fn)}
+        except:pass
+    return{"txns":[]}
+
+# ── SUNCRYPTO / INR PRICES ──
+@router.get("/inr/prices")
+async def inr_prices():
+    c=_cached("inr_prices",30)
+    if c:return c
+    fn=_f(_suncrypto,"get_all_inr_prices")
+    if fn:
+        try:
+            d=await fn()
+            r={"prices":d[:50]if d else[],"count":len(d)if d else 0,"ts":datetime.now(IST).isoformat()}
+            _set_cache("inr_prices",r)
+            return r
+        except:pass
+    return{"prices":[],"count":0}
+
+@router.get("/inr/gainers")
+async def inr_gainers():
+    fn=_f(_suncrypto,"get_top_inr_gainers")
+    if fn:
+        try:return{"gainers":await fn(15),"ts":datetime.now(IST).isoformat()}
+        except:pass
+    return{"gainers":[]}
+
+@router.get("/inr/losers")
+async def inr_losers():
+    fn=_f(_suncrypto,"get_top_inr_losers")
+    if fn:
+        try:return{"losers":await fn(15),"ts":datetime.now(IST).isoformat()}
+        except:pass
+    return{"losers":[]}
+
+# ── SENTIMENT ENGINE ──
+@router.get("/sentiment/analysis")
+async def sentiment_analysis():
+    c=_cached("sentiment",60)
+    if c:return c
+    fn=_f(_sentiment,"analyze_news_sentiment")
+    if fn:
+        try:
+            r=await _t(fn)
+            _set_cache("sentiment",r)
+            return r
+        except:pass
+    return{"overall":"neutral","score":0}
+
+# ── TRADE TRACKER / PNL ──
+@router.get("/pnl/daily")
+async def pnl_daily(user_id:str="0"):
+    fn=_f(_pnl,"get_daily_pnl")
+    if fn:
+        try:return await _t(fn,int(user_id))
+        except:pass
+    return{"trades":[],"total_pnl":0}
+
+@router.get("/pnl/weekly")
+async def pnl_weekly(user_id:str="0"):
+    fn=_f(_pnl,"get_weekly_pnl")
+    if fn:
+        try:return await _t(fn,int(user_id))
+        except:pass
+    return{"trades":[],"total_pnl":0}
+
+@router.get("/pnl/monthly")
+async def pnl_monthly(user_id:str="0"):
+    fn=_f(_pnl,"get_monthly_pnl")
+    if fn:
+        try:return await _t(fn,int(user_id))
+        except:pass
+    return{"trades":[],"total_pnl":0}
+
+@router.post("/pnl/log")
+async def pnl_log(request:Request):
+    body=await request.json()
+    fn=_f(_pnl,"log_trade")
+    if fn:
+        try:return{"status":"ok","data":await _t(fn,**body)}
+        except Exception as e:return{"status":"error","error":str(e)}
+    return{"status":"error","error":"N/A"}
+
+@router.post("/pnl/close")
+async def pnl_close(request:Request):
+    body=await request.json()
+    fn=_f(_pnl,"close_trade")
+    if fn:
+        try:return{"status":"ok","data":await _t(fn,int(body.get("user_id",0)),int(body.get("trade_id",0)),float(body.get("exit_price",0)))}
+        except Exception as e:return{"status":"error","error":str(e)}
+    return{"status":"error","error":"N/A"}
+
+# ── SCREENER PRO ──
+@router.get("/screener/full")
+async def screener_full():
+    c=_cached("screener_full",60)
+    if c:return c
+    fn=_f(_screener,"run_full_screener")
+    if fn:
+        try:
+            r=await _t(fn)
+            _set_cache("screener_full",r)
+            return r
+        except:pass
+    return{"results":[]}
+
+@router.get("/screener/filter")
+async def screener_filter(type:str="oversold"):
+    fn_map={"oversold":"screen_rsi_oversold","overbought":"screen_rsi_overbought","volume":"screen_volume_breakout","gap_up":"screen_gap_up","52w_high":"screen_52w_high","bullish":"screen_bullish_crossover","momentum":"screen_momentum"}
+    fn=_f(_screener,fn_map.get(type,"screen_rsi_oversold"))
+    if fn:
+        try:return{"results":await _t(fn),"filter":type}
+        except:pass
+    return{"results":[],"filter":type}
+
+# ── INTRADAY SCANNER ──
+@router.get("/intraday/scan")
+async def intraday_scan():
+    c=_cached("intra_scan",30)
+    if c:return c
+    fn=_f(_intraday,"run_intraday_scan")
+    if fn:
+        try:
+            r=await _t(fn)
+            result={"scan":r,"ts":datetime.now(IST).isoformat()}
+            _set_cache("intra_scan",result)
+            return result
+        except:pass
+    return{"scan":"No data","ts":datetime.now(IST).isoformat()}
+
+@router.get("/intraday/breakouts")
+async def intraday_breakouts():
+    fn=_f(_intraday,"scan_breakouts")
+    if fn:
+        try:return{"data":await _t(fn),"ts":datetime.now(IST).isoformat()}
+        except:pass
+    return{"data":"No data"}
+
+@router.get("/intraday/volume")
+async def intraday_volume():
+    fn=_f(_intraday,"scan_volume_spikes")
+    if fn:
+        try:return{"data":await _t(fn),"ts":datetime.now(IST).isoformat()}
+        except:pass
+    return{"data":"No data"}
+
+@router.get("/intraday/momentum")
+async def intraday_momentum():
+    fn=_f(_intraday,"scan_momentum")
+    if fn:
+        try:return{"data":await _t(fn),"ts":datetime.now(IST).isoformat()}
+        except:pass
+    return{"data":"No data"}
+
+# ── CHARTS ──
+@router.get("/chart")
+async def chart(symbol:str=Query(...),timeframe:str="1d"):
+    fn=_f(_chart,"generate_chart")
+    fn2=_f(_chart,"generate_multi_indicator_chart")
+    target=fn2 or fn
+    if target:
+        try:return{"chart":await _t(target,symbol,timeframe)}
+        except:pass
+    return{"error":"Charts N/A"}
+
+# ── FUTURES BRAIN ──
+@router.get("/futures/dashboard")
+async def futures_dash():
+    c=_cached("futures_dash",30)
+    if c:return c
+    r={}
+    tasks=[]
+    fn_map={"pcr":"get_pcr","max_pain":"get_max_pain","basis":"get_futures_basis","vix":"get_india_vix","straddle":"get_straddle_premium","oi_dist":"get_oi_distribution"}
+    for k,n in fn_map.items():
+        fn=_f(_futures,n)
+        if fn:tasks.append((k,fn))
+    results=await asyncio.gather(*[_t(f) for _,f in tasks],return_exceptions=True)
+    for i,(k,_) in enumerate(tasks):
+        if not isinstance(results[i],Exception):r[k]=results[i]
+    _set_cache("futures_dash",r)
+    return r
+
+# ── OPTIONS PRO ──
+@router.get("/options/strike")
+async def options_strike(symbol:str="NIFTY",strike:int=0,type:str="CE"):
+    fn=_f(_opts_pro,"get_strike_price")
+    if fn:
+        try:return await _t(fn,symbol,strike,type)
+        except:pass
+    return{"error":"N/A"}
+
+@router.get("/options/nearby")
+async def options_nearby(symbol:str="NIFTY"):
+    fn=_f(_opts_pro,"get_nearby_options")
+    if fn:
+        try:return await _t(fn,symbol)
+        except:pass
+    return{"error":"N/A"}
+
+@router.get("/options/chain-summary")
+async def options_chain_summary(symbol:str="NIFTY"):
+    fn=_f(_opts_pro,"get_full_chain_summary")
+    if fn:
+        try:return await _t(fn,symbol)
+        except:pass
+    return{"error":"N/A"}
+
+# ── ULTRA AI ANALYSIS ──
+@router.get("/ultra/predict")
+async def ultra_predict(symbol:str=Query(...)):
+    fn=_f(_ultra,"ultra_predict")
+    if fn:
+        try:
+            # Get token data first
+            sfn=_f(_dex,"dex_search")
+            pairs=await sfn(symbol,3)if sfn else[]
+            token=pairs[0]if pairs else{"symbol":symbol}
+            return{"prediction":await _t(fn,token),"ts":datetime.now(IST).isoformat()}
+        except:pass
+    return{"prediction":{},"error":"N/A"}
+
+@router.get("/ultra/health")
+async def ultra_health(symbol:str=Query(...)):
+    fn=_f(_ultra,"token_health_score")
+    if fn:
+        try:
+            sfn=_f(_dex,"dex_search")
+            pairs=await sfn(symbol,3)if sfn else[]
+            token=pairs[0]if pairs else{"symbol":symbol}
+            return{"health":await _t(fn,token),"ts":datetime.now(IST).isoformat()}
+        except:pass
+    return{"health":{},"error":"N/A"}
+
+# ── MARKET BRAIN ──
+@router.get("/market-brain/analyze")
+async def mkt_brain_analyze(query:str=Query(...)):
+    fn=_f(_mkt_brain,"analyze_indian_stock_deep")
+    fn2=_f(_mkt_brain,"analyze_crypto_token_deep")
+    mtype=_f(_mkt_brain,"detect_market_type")
+    if mtype:
+        try:
+            t=await _t(mtype,query)
+            if t=="indian"and fn:return{"data":await _t(fn,query),"type":"indian"}
+            elif fn2:return{"data":await _t(fn2,query),"type":"crypto"}
+        except:pass
+    return{"data":{},"error":"N/A"}
+
+# ── SUPER BRAIN NEWS ──
+@router.get("/briefing")
+async def briefing():
+    c=_cached("briefing",120)
+    if c:return c
+    fn=_f(_super_brain,"format_jarvis_briefing")
+    if fn:
+        try:
+            r={"briefing":await _t(fn),"ts":datetime.now(IST).isoformat()}
+            _set_cache("briefing",r)
+            return r
+        except:pass
+    return{"briefing":"No briefing available"}
+
+@router.get("/market-intel")
+async def market_intel():
+    c=_cached("mkt_intel",60)
+    if c:return c
+    fn=_f(_super_brain,"get_market_intelligence")
+    if fn:
+        try:
+            r=await _t(fn)
+            _set_cache("mkt_intel",r)
+            return r
+        except:pass
+    return{"error":"N/A"}
+
+# ── ATM/OTM ENGINE ──
+@router.get("/options/atm-otm")
+async def atm_otm(symbol:str="NIFTY"):
+    fn=_f(_otm_atm,"get_full_atm_otm_analysis")
+    if fn:
+        try:return await _t(fn,symbol)
+        except:pass
+    return{"error":"N/A"}
+
+@router.get("/options/greeks")
+async def options_greeks(symbol:str="NIFTY",strike:int=0,type:str="CE"):
+    fn=_f(_otm_atm,"calculate_greeks")
+    if fn:
+        try:return await _t(fn,symbol,strike,type)
+        except:pass
+    return{"error":"N/A"}
+
+# ── LIVE INDEX ENGINE ──
+@router.get("/live/price")
+async def live_price(symbol:str="NIFTY"):
+    fn=_f(_live_idx,"get_live_price")
+    if fn:
+        try:return await _t(fn,symbol)
+        except:pass
+    return{"error":"N/A"}
+
+@router.get("/live/2min-signal")
+async def live_2min(symbol:str="NIFTY"):
+    fn=_f(_live_idx,"analyze_2min_candle")
+    if fn:
+        try:return await _t(fn,symbol,symbol)
+        except:pass
+    return{"error":"N/A"}
+
+@router.get("/live/investment")
+async def live_invest(symbol:str="NIFTY",amount:float=2000):
+    fn_chain=_f(_live_idx,"generate_index_option_chain")
+    fn_invest=_f(_live_idx,"calculate_investment_options")
+    if fn_chain and fn_invest:
+        try:
+            chain=await _t(fn_chain,symbol+"50"if"NIFTY"in symbol else symbol,symbol)
+            return await _t(fn_invest,chain,amount)
+        except:pass
+    return{"error":"N/A"}
+
+# ── COINDCX MEGA SCANNER ──
+@router.get("/coindcx/scan")
+async def cdcx_scan():
+    c=_cached("cdcx_scan",60)
+    if c:return c
+    fn=_f(_cdcx_mega,"mega_scan_all")
+    if fn:
+        try:
+            r=await _t(fn)
+            _set_cache("cdcx_scan",r)
+            return r
+        except:pass
+    return{"results":[]}
+
+# ── DEXTOOLS ──
+@router.get("/dextools/hot")
+async def dextools_hot():
+    fn=_f(_dextools,"get_hot_pairs")
+    if fn:
+        try:return{"pairs":await _t(fn),"ts":datetime.now(IST).isoformat()}
+        except:pass
+    return{"pairs":[]}
+
+@router.get("/dextools/search")
+async def dextools_search(q:str=Query(...)):
+    fn=_f(_dextools,"search_pairs")
+    if fn:
+        try:return{"results":await _t(fn,q),"query":q}
+        except:pass
+    return{"results":[],"query":q}
+
+# ── GLOBAL MARKET ANALYZER ──
+@router.get("/global/analysis")
+async def global_analysis():
+    c=_cached("global_analysis",120)
+    if c:return c
+    fn=_f(_global_mkt,"analyze_global_markets")
+    fn2=_f(_global_mkt,"get_global_summary")
+    if fn:
+        try:
+            r=await _t(fn)
+            _set_cache("global_analysis",r)
+            return r
+        except:pass
+    if fn2:
+        try:
+            r=await _t(fn2)
+            _set_cache("global_analysis",r)
+            return r
+        except:pass
+    return{"error":"N/A"}
+
+@router.get("/global/india-impact")
+async def global_india():
+    fn=_f(_global_mkt,"predict_india_from_global")
+    if fn:
+        try:return await _t(fn)
+        except:pass
+    return{"error":"N/A"}
+
+# ── MEMORY PRO ──
+@router.post("/memory/remember")
+async def memory_remember(request:Request):
+    body=await request.json()
+    fn=_f(_mem_pro,"remember")
+    if fn:
+        try:return await _t(fn,int(body.get("user_id",0)),body.get("key",""),body.get("value",""))
+        except:pass
+    return{"status":"ok"}
+
+@router.get("/memory/recall")
+async def memory_recall(user_id:str="0",key:str=""):
+    fn=_f(_mem_pro,"recall")
+    if fn:
+        try:return{"data":await _t(fn,int(user_id),key)}
+        except:pass
+    return{"data":None}
+
+# ── ML PIPELINE ──
+@router.get("/ml/predict")
+async def ml_predict_ep(symbol:str="NIFTY"):
+    fn=_f(_ml_pipe,"predict_for_symbol")
+    if fn:
+        try:return{"prediction":await _t(fn,symbol),"ts":datetime.now(IST).isoformat()}
+        except:pass
+    return{"prediction":{},"error":"N/A"}
+
+# ── ANGELONE ──
+@router.get("/angelone/ltp")
+async def angel_ltp(symbol:str=Query(...)):
+    fn=_f(_angel,"get_ltp")
+    if fn:
+        try:return{"ltp":await _t(fn,symbol),"ts":datetime.now(IST).isoformat()}
+        except:pass
+    return{"ltp":0,"error":"N/A"}
+
+@router.get("/angelone/positions")
+async def angel_positions():
+    fn=_f(_angel,"get_positions")
+    if fn:
+        try:return{"positions":await _t(fn),"ts":datetime.now(IST).isoformat()}
+        except:pass
+    return{"positions":[]}
+
+# ── AI MARKET VERDICT (dedicated endpoint) ──
+@router.get("/india/ai-verdict")
+async def ai_verdict():
+    c=_cached("ai_verdict",60)
+    if c:return c
+    fn=_f(_nifty,"get_ai_market_verdict")
+    if fn:
+        try:
+            r={"verdict":await _t(fn),"ts":datetime.now(IST).isoformat()}
+            _set_cache("ai_verdict",r)
+            return r
+        except:pass
+    return{"verdict":"AI Verdict not available","ts":datetime.now(IST).isoformat()}
+
+# ── VOICE ENGINE ──
+@router.post("/voice/generate")
+async def voice_generate(request:Request):
+    body=await request.json()
+    fn=_f(_voice,"generate_voice")
+    fn2=_f(_voice,"text_to_speech")
+    target=fn or fn2
+    if target:
+        try:return{"audio":await _t(target,body.get("text","")),"ts":datetime.now(IST).isoformat()}
+        except:pass
+    return{"audio":None,"error":"Voice N/A"}
+
+# ═══════════════════════════════════════════════════════════════
+# 🔥🚀 MEGA AI TRADER — Nuclear Autonomous Crypto Conqueror
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/mega-trader/status")
+async def mega_trader_status(user_id:str="0"):
+    fn=_f(_mega,"get_mega_trader_status")
+    if fn:
+        try:return await _t(fn,int(user_id))
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Mega trader not available"}
+
+@router.post("/mega-trader/create-wallet")
+async def mega_create_wallet(request:Request):
+    body=await request.json()
+    uid=int(body.get("user_id",0))
+    fn=_f(_real_trader,"create_trading_wallet")
+    if fn:
+        try:return await _t(fn,uid)
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Wallet creation not available"}
+
+@router.post("/mega-trader/enable")
+async def mega_enable(request:Request):
+    body=await request.json()
+    uid=int(body.get("user_id",0))
+    fn=_f(_real_trader,"enable_auto_trade")
+    if fn:
+        try:
+            result=await _t(fn,uid)
+            fn2=_f(_mega,"start_mega_trader")
+            if fn2:await _t(fn2)
+            return result
+        except Exception as e:return{"error":str(e)}
+    return{"error":"N/A"}
+
+@router.post("/mega-trader/disable")
+async def mega_disable(request:Request):
+    body=await request.json()
+    uid=int(body.get("user_id",0))
+    fn=_f(_real_trader,"disable_auto_trade")
+    if fn:
+        try:return await _t(fn,uid)
+        except Exception as e:return{"error":str(e)}
+    return{"error":"N/A"}
+
+@router.get("/mega-trader/portfolio")
+async def mega_portfolio(user_id:str="0"):
+    fn=_f(_mega,"get_portfolio_inr")
+    if fn:
+        try:return await _t(fn,int(user_id))
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Portfolio not available"}
+
+@router.get("/mega-trader/scan")
+async def mega_scan():
+    c=_cached("mega_scan",30)
+    if c:return c
+    fn=_f(_mega,"get_live_scan_results")
+    if fn:
+        try:
+            r=await fn()
+            _set_cache("mega_scan",r)
+            return r
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Scan not available"}
+
+@router.post("/mega-trader/buy")
+async def mega_buy(request:Request):
+    body=await request.json()
+    uid=int(body.get("user_id",0))
+    mint=body.get("mint","")
+    sol_amount=float(body.get("sol_amount",0.01))
+    fn=_f(_real_trader,"buy_token")
+    if fn:
+        try:return await _t(fn,uid,mint,sol_amount)
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Buy not available"}
+
+@router.post("/mega-trader/sell")
+async def mega_sell(request:Request):
+    body=await request.json()
+    uid=int(body.get("user_id",0))
+    mint=body.get("mint","")
+    sell_pct=float(body.get("sell_pct",100))
+    fn=_f(_real_trader,"sell_token")
+    if fn:
+        try:return await _t(fn,uid,mint,sell_pct)
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Sell not available"}
+
+@router.post("/mega-trader/transfer")
+async def mega_transfer(request:Request):
+    body=await request.json()
+    uid=int(body.get("user_id",0))
+    destination=body.get("destination","")
+    sol_amount=float(body.get("sol_amount",0))
+    fn=_f(_mega,"transfer_to_phantom")
+    if fn:
+        try:return await _t(fn,uid,destination,sol_amount)
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Transfer not available"}
+
+@router.get("/mega-trader/transfers")
+async def mega_transfers(user_id:str="0"):
+    fn=_f(_mega,"get_transfer_history")
+    if fn:
+        try:return{"transfers":await _t(fn,int(user_id))}
+        except:pass
+    return{"transfers":[]}
+
+@router.get("/mega-trader/rug-check")
+async def mega_rug_check(mint:str=Query(...),chain:str="solana"):
+    fn=_f(_mega,"check_rug_safety")
+    if fn:
+        try:return await fn(mint,chain)
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Rug check not available"}
+
+# ═══════════════════════════════════════════════════════════════
+# 🔥⚡💎 CONQUEROR AI TRADER — Ultimate Autonomous Crypto Brain
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/conqueror/status")
+async def conqueror_status(user_id:str="0"):
+    fn=_f(_conqueror,"get_conqueror_status")
+    if fn:
+        try:return await _t(fn,int(user_id))
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Conqueror not available"}
+
+@router.post("/conqueror/start")
+async def conqueror_start(request:Request):
+    body=await request.json()
+    uid=int(body.get("user_id",0))
+    # Enable auto trade for user
+    fn_enable=_f(_real_trader,"enable_auto_trade")
+    if fn_enable:
+        try:await _t(fn_enable,uid)
+        except:pass
+    # Start conqueror engine
+    fn=_f(_conqueror,"start_conqueror")
+    if fn:
+        try:return await _t(fn)
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Conqueror not available"}
+
+@router.post("/conqueror/stop")
+async def conqueror_stop(request:Request):
+    body=await request.json()
+    uid=int(body.get("user_id",0))
+    fn_disable=_f(_real_trader,"disable_auto_trade")
+    if fn_disable:
+        try:await _t(fn_disable,uid)
+        except:pass
+    fn=_f(_conqueror,"stop_conqueror")
+    if fn:
+        try:return await _t(fn)
+        except Exception as e:return{"error":str(e)}
+    return{"error":"N/A"}
+
+@router.post("/conqueror/create-wallet")
+async def conqueror_create_wallet(request:Request):
+    body=await request.json()
+    uid=int(body.get("user_id",0))
+    fn=_f(_real_trader,"create_trading_wallet")
+    if fn:
+        try:return await _t(fn,uid)
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Wallet creation not available"}
+
+@router.get("/conqueror/portfolio")
+async def conqueror_portfolio(user_id:str="0"):
+    fn=_f(_conqueror,"get_portfolio_inr")
+    if fn:
+        try:return await _t(fn,int(user_id))
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Portfolio not available"}
+
+@router.get("/conqueror/scan")
+async def conqueror_scan():
+    c=_cached("conqueror_scan",20)
+    if c:return c
+    fn=_f(_conqueror,"get_live_scan")
+    if fn:
+        try:
+            r=await fn()
+            _set_cache("conqueror_scan",r)
+            return r
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Scan not available"}
+
+@router.post("/conqueror/set-phantom")
+async def conqueror_set_phantom(request:Request):
+    body=await request.json()
+    uid=int(body.get("user_id",0))
+    address=body.get("phantom_address","")
+    fn=_f(_conqueror,"set_phantom_address")
+    if fn:
+        try:return await _t(fn,uid,address)
+        except Exception as e:return{"error":str(e)}
+    return{"error":"N/A"}
+
+@router.post("/conqueror/transfer")
+async def conqueror_transfer(request:Request):
+    body=await request.json()
+    uid=int(body.get("user_id",0))
+    sol=float(body.get("sol_amount",0))
+    dst=body.get("destination","")
+    fn=_f(_conqueror,"transfer_to_phantom")
+    if fn:
+        try:return await _t(fn,uid,sol,dst)
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Transfer not available"}
+
+@router.post("/conqueror/withdraw-profits")
+async def conqueror_withdraw(request:Request):
+    body=await request.json()
+    uid=int(body.get("user_id",0))
+    fn=_f(_conqueror,"auto_withdraw_profits")
+    if fn:
+        try:return await _t(fn,uid)
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Withdraw not available"}
+
+@router.get("/conqueror/rug-check")
+async def conqueror_rug_check(mint:str=Query(...),chain:str="solana"):
+    fn=_f(_conqueror,"deep_rug_check")
+    if fn:
+        try:return await fn(mint,chain)
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Rug check not available"}
+
+@router.post("/conqueror/buy")
+async def conqueror_buy(request:Request):
+    body=await request.json()
+    uid=int(body.get("user_id",0))
+    mint=body.get("mint","")
+    sol=float(body.get("sol_amount",0.01))
+    fn=_f(_real_trader,"buy_token")
+    if fn:
+        try:return await _t(fn,uid,mint,sol)
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Buy not available"}
+
+@router.post("/conqueror/sell")
+async def conqueror_sell(request:Request):
+    body=await request.json()
+    uid=int(body.get("user_id",0))
+    mint=body.get("mint","")
+    pct=float(body.get("sell_pct",100))
+    fn=_f(_real_trader,"sell_token")
+    if fn:
+        try:return await _t(fn,uid,mint,pct)
+        except Exception as e:return{"error":str(e)}
+    return{"error":"Sell not available"}
+

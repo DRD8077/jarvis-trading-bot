@@ -1,16 +1,10 @@
 {
-  "name": "JARVIS Bot",
-  "forwardPorts": [8000, 5173],
+  "forwardPorts": [8000],
   "portsAttributes": {
     "8000": {
-      "label": "JARVIS Backend",
-      "onAutoForward": "notify",
-      "visibility": "public"
-    },
-    "5173": {
-      "label": "Vite Dev",
-      "onAutoForward": "silent",
-      "visibility": "private"
+      "label": "JARVIS App",
+      "visibility": "public",
+      "onAutoForward": "openBrowser"
     }
   }
 }

@@ -1,0 +1,28 @@
+{
+  "12345": {
+    "chat_id": 12345,
+    "pubkey": "6qMbf47GNUy9ZcdTgeCHddvRg5ZBNQ3jxpbYvJyHwGCD",
+    "encrypted_key": "UrLZIbpge6tBHvTq1be95f48EJ9shYcxZChsjCRaR3zrGaPzuByBWPVe3ic3b6YVyZGhaPSiNpRVyWFlHDpjF4MP86kzwzKmONDd5/812Kmh//eRSRv1D+dTwoRl13h4c/5MREakmdxLmEbimZnQiHOGct1TkrrLzuka1btLxUi474xMlcqs",
+    "created": "2026-02-16T22:11:34.919850",
+    "trades": [],
+    "active_positions": [],
+    "total_invested_sol": 0.0,
+    "total_profit_sol": 0.0,
+    "total_profit_inr": 0.0,
+    "compound_stage": 0,
+    "auto_trade_enabled": false
+  },
+  "0": {
+    "chat_id": 0,
+    "pubkey": "7mXbny3BFe18DDgUjYTL6qnfSMPETKadDAFo3S3TUu4Z",
+    "encrypted_key": "8kYUNLjz3lJij+RWm1mDdoLCZOlHKGPM9Ou5oE/u0vkYCU0kjiTxjWoAtRie01fzgt11wPCu5TKEQYQiAn8auHfYLLJd5EtfpZeKtfXEWA5jIZJpTKYlDte8S+ioJEL4cL79a5107NEZVAn/Wpa3Wxu+vgl8mLu3UnSQn+FgELXbDhwdHr2DEQ==",
+    "created": "2026-02-16T22:20:35.061547",
+    "trades": [],
+    "active_positions": [],
+    "total_invested_sol": 0.0,
+    "total_profit_sol": 0.0,
+    "total_profit_inr": 0.0,
+    "compound_stage": 0,
+    "auto_trade_enabled": false
+  }
+}
