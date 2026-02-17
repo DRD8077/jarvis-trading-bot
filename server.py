@@ -18,6 +18,17 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+# Admin panel imports
+try:
+    from admin_panel import (
+        init_admin_db, get_all_users, get_user_stats, is_admin as admin_is_admin,
+        get_features_status, toggle_feature, block_user, unblock_user,
+    )
+    ADMIN_PANEL_OK = True
+except Exception as e:
+    ADMIN_PANEL_OK = False
+    logging.getLogger('jarvis-server').warning(f'Admin panel import failed: {e}')
+
 # ═══════════════════════════════════════════════════════════
 #  LOGGING
 # ═══════════════════════════════════════════════════════════
@@ -67,6 +78,14 @@ async def lifespan(app: FastAPI):
     logger.info("  🔒 Security: Rate limiting + HMAC + Telegram Auth")
     logger.info("  🎯 Auto-Sniper: 5 strategies loaded")
     logger.info("═══════════════════════════════════════")
+    # Init admin DB
+    if ADMIN_PANEL_OK:
+        try:
+            init_admin_db()
+            logger.info("  🔐 Admin Panel: initialized")
+        except Exception as e:
+            logger.warning(f"  ⚠️ Admin Panel init error: {e}")
+    
     logger.info("  ✅ Server ready!")
     logger.info("═══════════════════════════════════════")
     
@@ -158,6 +177,57 @@ async def serve_miniapp_alt2(request: Request):
     return templates.TemplateResponse("miniapp.html", {"request": request})
 
 
+# ═══════════════════════════════════════════════════════════
+#  ADMIN PANEL
+# ═══════════════════════════════════════════════════════════
+@app.get("/admin", response_class=HTMLResponse)
+async def serve_admin(request: Request):
+    """Serve the admin panel."""
+    stats = {"total_users": 0, "active_today": 0, "premium_users": 0,
+             "pending_approvals": 0, "last_update": "--"}
+    users = []
+    pending_approvals = []
+    if ADMIN_PANEL_OK:
+        try:
+            all_users = get_all_users()
+            users = all_users
+            stats["total_users"] = len(all_users)
+            stats["active_today"] = sum(1 for u in all_users if u.get("last_active", "")[:10] == datetime.now().strftime("%Y-%m-%d"))
+            stats["premium_users"] = sum(1 for u in all_users if u.get("tier") == "premium")
+            stats["last_update"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        except Exception as e:
+            logger.warning(f"Admin data error: {e}")
+    return templates.TemplateResponse("admin.html", {
+        "request": request,
+        "stats": stats,
+        "users": users,
+        "pending_approvals": pending_approvals,
+        "payment_stats": {"total_deposits": 0, "total_withdrawals": 0, "pending_withdrawals": 0, "active_wallets": 0},
+        "wallets": [],
+        "transactions": [],
+        "pending_withdrawals": [],
+        "admin_chat_id": os.getenv("ADMIN_CHAT_ID", "Not Set"),
+        "admin_name": "JARVIS Admin",
+    })
+
+
+@app.get("/api/admin/overview")
+async def admin_overview():
+    """Admin API — system overview."""
+    data = {"total_users": 0, "active_today": 0, "premium": 0, "features": ""}
+    if ADMIN_PANEL_OK:
+        try:
+            all_users = get_all_users()
+            data["total_users"] = len(all_users)
+            data["features"] = get_features_status()
+        except Exception:
+            pass
+    return data
+
+
+from datetime import datetime
+
+
 @app.get("/health")
 async def root_health():
     """Root health check."""
@@ -209,7 +279,7 @@ if __name__ == "__main__":
         "server:app",
         host=host,
         port=port,
-        reload=os.getenv("ENV", "development") == "development",
+        reload=False,
         log_level="info",
         ws_max_size=16 * 1024 * 1024,
         timeout_keep_alive=30,

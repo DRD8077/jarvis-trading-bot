@@ -161,18 +161,19 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         
         # Add security headers
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["X-Frame-Options"] = "ALLOWALL"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self' https:; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://unpkg.com https://cdn.jsdelivr.net; "
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
-            "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; "
+            "style-src 'self' 'unsafe-inline' https:; "
+            "font-src 'self' https: data:; "
             "img-src 'self' data: https: blob:; "
-            "connect-src 'self' https: wss:; "
-            "frame-src 'self' https://telegram.org;"
+            "connect-src 'self' https: wss: http:; "
+            "frame-src 'self' https:; "
+            "frame-ancestors 'self' https: http:;"
         )
         
         return response
