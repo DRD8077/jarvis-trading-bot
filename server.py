@@ -109,22 +109,41 @@ async def lifespan(app: FastAPI):
         import httpx
         await asyncio.sleep(5)  # Wait for server to fully start
         base = f"http://127.0.0.1:{os.getenv('PORT', '8000')}"
-        endpoints = [
+        # Fast endpoints — refresh every cycle
+        fast_endpoints = [
             "/api/miniapp/india/dashboard",
             "/api/miniapp/dashboard",
             "/api/miniapp/markets",
+            "/api/miniapp/options/chain?symbol=NIFTY",
         ]
+        # Slow endpoints — refresh less frequently
+        slow_endpoints = [
+            "/api/miniapp/india/prediction?index=NIFTY",
+            "/api/miniapp/india/ml-prediction?symbol=NIFTY",
+            "/api/miniapp/regime?symbol=^NSEI",
+            "/api/miniapp/global/analysis",
+            "/api/miniapp/global/india-impact",
+        ]
+        cycle = 0
         while True:
             try:
-                async with httpx.AsyncClient(timeout=30) as client:
-                    for ep in endpoints:
+                async with httpx.AsyncClient(timeout=45) as client:
+                    for ep in fast_endpoints:
                         try:
                             await client.get(f"{base}{ep}")
                         except Exception:
                             pass
+                    # Slow endpoints every 3rd cycle (~4.5 min)
+                    if cycle % 3 == 0:
+                        for ep in slow_endpoints:
+                            try:
+                                await client.get(f"{base}{ep}")
+                            except Exception:
+                                pass
                 logger.debug("🔄 Background data refresh completed")
             except Exception:
                 pass
+            cycle += 1
             await asyncio.sleep(90)  # Refresh every 90 seconds
     
     prefetch_task = asyncio.create_task(_prefetch_loop())
@@ -212,6 +231,20 @@ if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 # ═══════════════════════════════════════════════════════════
+#  APK DOWNLOAD ENDPOINT
+# ═══════════════════════════════════════════════════════════
+@app.get("/download-apk")
+async def download_apk():
+    from fastapi.responses import FileResponse
+    apk_path = BASE_DIR / "JARVIS-Nuclear-AI-v3.0.apk"
+    if apk_path.exists():
+        return FileResponse(
+            str(apk_path),
+            media_type="application/vnd.android.package-archive",
+            filename="JARVIS-Nuclear-AI-v3.0.apk"
+        )
+    return {"error": "APK not found"}
+
 #  REACT MINI APP — Serve built React SPA from dist/
 # ═══════════════════════════════════════════════════════════
 MINIAPP_DIST = BASE_DIR / "telegram-mini-app" / "dist"
@@ -220,6 +253,8 @@ MINIAPP_INDEX = MINIAPP_DIST / "index.html"
 # Serve React app assets (JS, CSS bundles)
 if (MINIAPP_DIST / "assets").exists():
     app.mount("/miniapp/assets", StaticFiles(directory=str(MINIAPP_DIST / "assets")), name="miniapp-assets")
+    # Also serve at /assets/ so SPA works when loaded from root /
+    app.mount("/assets", StaticFiles(directory=str(MINIAPP_DIST / "assets")), name="root-assets")
 
 # Serve PWA icons
 if (MINIAPP_DIST / "icons").exists():
@@ -322,6 +357,61 @@ async def miniapp_spa_catchall(request: Request, path: str):
 # ═══════════════════════════════════════════════════════════
 #  ADMIN PANEL
 # ═══════════════════════════════════════════════════════════
+
+# APK Download — serves the latest APK from a permanent URL
+APK_PATH = BASE_DIR / "jarvis-trading.apk"
+
+@app.get("/download", response_class=HTMLResponse)
+async def download_page():
+    """Beautiful APK download page."""
+    apk_size = f"{APK_PATH.stat().st_size / (1024*1024):.1f} MB" if APK_PATH.exists() else "N/A"
+    return HTMLResponse(f"""<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JARVIS Trading - Download</title>
+<style>
+*{{margin:0;padding:0;box-sizing:border-box}}
+body{{background:#0a0e1a;color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'SF Pro',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center}}
+.card{{background:linear-gradient(135deg,#1a1f3a,#0f1225);border:1px solid rgba(59,130,246,.3);border-radius:24px;padding:48px 36px;text-align:center;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.5)}}
+.logo{{font-size:3rem;font-weight:900;background:linear-gradient(135deg,#3b82f6,#8b5cf6,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}}
+.subtitle{{color:#94a3b8;font-size:.9rem;margin-bottom:32px}}
+.features{{text-align:left;margin:24px 0;padding:0 12px}}
+.features div{{padding:8px 0;color:#cbd5e1;font-size:.85rem;border-bottom:1px solid rgba(255,255,255,.05)}}
+.features span{{margin-right:8px}}
+.btn{{display:inline-block;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;text-decoration:none;padding:16px 48px;border-radius:16px;font-size:1.1rem;font-weight:700;transition:all .2s;box-shadow:0 8px 24px rgba(59,130,246,.4)}}
+.btn:hover{{transform:translateY(-2px);box-shadow:0 12px 32px rgba(59,130,246,.5)}}
+.size{{color:#64748b;font-size:.75rem;margin-top:12px}}
+.badge{{display:inline-block;background:rgba(34,197,94,.15);color:#4ade80;padding:4px 12px;border-radius:8px;font-size:.75rem;margin-bottom:24px}}
+</style></head><body>
+<div class="card">
+<div class="logo">JARVIS</div>
+<p class="subtitle">AI-Powered Trading Intelligence</p>
+<div class="badge">✅ 24/7 Always Online</div>
+<div class="features">
+<div><span>📊</span> Real-time NIFTY, SENSEX, BANKNIFTY</div>
+<div><span>🤖</span> AI Trading Signals & Predictions</div>
+<div><span>💎</span> Crypto DeFi Scanner</div>
+<div><span>🗣️</span> Hindi Voice Assistant</div>
+<div><span>🧠</span> Gemini + GPT Super Intelligence</div>
+<div><span>📈</span> FII/DII, PCR, VIX, Options Chain</div>
+</div>
+<a href="/download/apk" class="btn">⬇️ Download APK</a>
+<p class="size">{apk_size} • Android 7.0+</p>
+</div></body></html>""")
+
+@app.get("/download/apk")
+async def download_apk():
+    """Direct APK download."""
+    if APK_PATH.exists():
+        return FileResponse(
+            str(APK_PATH),
+            media_type="application/vnd.android.package-archive",
+            filename="jarvis-trading.apk",
+            headers={"Content-Disposition": "attachment; filename=jarvis-trading.apk"}
+        )
+    return JSONResponse({"error": "APK not found"}, status_code=404)
+
+
 @app.get("/admin", response_class=HTMLResponse)
 async def serve_admin(request: Request):
     """Serve the admin panel."""
