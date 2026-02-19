@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import gmailAuth from '../services/gmailAuth'
 
 const AppContext = createContext(null)
 
@@ -6,31 +7,40 @@ export const useApp = () => useContext(AppContext)
 
 export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(null)
-  const [theme, setTheme] = useState('light')
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [theme, setTheme] = useState('dark')
   const [notifications, setNotifications] = useState([])
   const [isOnline, setIsOnline] = useState(true)
 
-  const tg = window.Telegram?.WebApp
-
   useEffect(() => {
-    // Initialize Telegram WebApp
-    if (tg) {
-      tg.ready()
-      tg.expand()
-      if (tg.initDataUnsafe?.user) {
-        setUser(tg.initDataUnsafe.user)
-      }
-      tg.setHeaderColor('#0a0e1a')
-      tg.setBackgroundColor('#0a0e1a')
-    } else {
-      // APK / Browser fallback — generate a persistent device ID
-      let deviceId = localStorage.getItem('jarvis_device_id')
-      if (!deviceId) {
-        deviceId = String(Math.floor(100000000 + Math.random() * 900000000))
-        localStorage.setItem('jarvis_device_id', deviceId)
-      }
-      setUser({ id: Number(deviceId), first_name: 'JARVIS User', last_name: '', username: 'jarvis_user' })
+    // Check for saved Gmail/manual login (defensive: fallback if method missing)
+    const savedUser = typeof gmailAuth.getCurrentUser === 'function'
+      ? gmailAuth.getCurrentUser()
+      : gmailAuth.getUser?.() || gmailAuth.user || null
+
+    if (savedUser) {
+      setUser(savedUser)
+      setIsLoggedIn(true)
+      setIsAdmin(savedUser.isAdmin || false)
     }
+    // else: not logged in, show LoginScreen
+
+    setAuthLoading(false)
+
+    // Listen for auth changes (login/logout from gmailAuth)
+    const unsubscribe = gmailAuth.onAuthChange((authUser) => {
+      if (authUser) {
+        setUser(authUser)
+        setIsLoggedIn(true)
+        setIsAdmin(authUser.isAdmin || false)
+      } else {
+        setUser(null)
+        setIsLoggedIn(false)
+        setIsAdmin(false)
+      }
+    })
 
     // Online/offline detection
     const handleOnline = () => setIsOnline(true)
@@ -38,9 +48,23 @@ export const AppProvider = ({ children }) => {
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
     return () => {
+      unsubscribe()
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
     }
+  }, [])
+
+  const handleLogin = useCallback((loggedInUser) => {
+    setUser(loggedInUser)
+    setIsLoggedIn(true)
+    setIsAdmin(loggedInUser.isAdmin || false)
+  }, [])
+
+  const handleLogout = useCallback(() => {
+    gmailAuth.logout()
+    setUser(null)
+    setIsLoggedIn(false)
+    setIsAdmin(false)
   }, [])
 
   const addNotification = useCallback((msg, type = 'info') => {
@@ -50,17 +74,20 @@ export const AppProvider = ({ children }) => {
   }, [])
 
   const hapticFeedback = useCallback((type = 'impact') => {
-    if (tg?.HapticFeedback) {
-      if (type === 'impact') tg.HapticFeedback.impactOccurred('medium')
-      else if (type === 'success') tg.HapticFeedback.notificationOccurred('success')
-      else if (type === 'error') tg.HapticFeedback.notificationOccurred('error')
+    // Native vibration for haptic feedback
+    if (window.navigator?.vibrate) {
+      if (type === 'impact') window.navigator.vibrate(20)
+      else if (type === 'success') window.navigator.vibrate([10, 30, 10])
+      else if (type === 'error') window.navigator.vibrate([50, 20, 50])
     }
   }, [])
 
   return (
     <AppContext.Provider value={{
-      user, theme, setTheme, notifications, addNotification,
-      isOnline, hapticFeedback, tg
+      user, isLoggedIn, isAdmin, authLoading,
+      handleLogin, handleLogout,
+      theme, setTheme, notifications, addNotification,
+      isOnline, hapticFeedback
     }}>
       {children}
       {/* Toast Notifications */}
