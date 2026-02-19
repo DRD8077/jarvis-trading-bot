@@ -26,14 +26,18 @@ fi
 
 # Start Telegram bot in background
 echo "  📱 Starting Telegram bot..."
-cd telegram-ai-app && node bot/bot.js &
-BOT_PID=$!
-cd ..
-echo "  📱 Bot PID: $BOT_PID"
+if [ -d "telegram-ai-app" ]; then
+    (cd telegram-ai-app && node bot/bot.js) &
+    BOT_PID=$!
+    echo "  📱 Bot PID: $BOT_PID"
+else
+    echo "  ⚠️ telegram-ai-app not found, skipping bot"
+    BOT_PID=""
+fi
 
 # Start FastAPI server (foreground)
 echo "  🌐 Starting server on port ${PORT:-8000}..."
-python3 server.py
+python3 /app/server.py
 
 # Cleanup
-kill $BOT_PID 2>/dev/null
+[ -n "$BOT_PID" ] && kill $BOT_PID 2>/dev/null
