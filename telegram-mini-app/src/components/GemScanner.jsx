@@ -140,7 +140,7 @@ const GemScanner = () => {
             <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">LIVE</span>
           </h1>
           <p className="text-slate-400 text-xs mt-0.5">
-            DexScreener + PumpFun + CoinGecko {lastUpdate && <span>• {lastUpdate}</span>}
+            DexScreener + PumpFun {lastUpdate && <span>• {lastUpdate}</span>}
           </p>
         </div>
         <button onClick={() => loadGems(filter)} disabled={loading}

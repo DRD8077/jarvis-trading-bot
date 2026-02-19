@@ -21,9 +21,9 @@ WITHDRAWALS_FILE = os.path.join(DATA_DIR, "withdrawals.json")
 
 OWNER_UPI = os.getenv("OWNER_UPI_ID", "")
 OWNER_WALLET = os.getenv("OWNER_SOLANA_WALLET", "")
-MIN_DEPOSIT = 100  # INR
-MAX_DEPOSIT = 100000  # INR
-MIN_WITHDRAWAL = 50  # INR
+MIN_DEPOSIT = 1  # ₹1 minimum — no upper limit
+MAX_DEPOSIT = 999999999  # Unlimited
+MIN_WITHDRAWAL = 1  # ₹1 minimum
 WITHDRAWAL_FEE_PCT = 1.0  # 1%
 
 
@@ -148,7 +148,7 @@ def create_deposit_request(user_id: str, amount: float, method: str = "upi") -> 
 
 
 def confirm_deposit(tx_id: str, admin_id: str = "") -> Dict:
-    """Admin confirms a deposit (or auto-verify)."""
+    """Admin confirms a deposit (or auto-verify). Auto-triggers trading."""
     transactions = _load_json(TRANSACTIONS_FILE, [])
     if not isinstance(transactions, list):
         return {"success": False, "error": "No transactions"}
@@ -166,12 +166,22 @@ def confirm_deposit(tx_id: str, admin_id: str = "") -> Dict:
             result = update_wallet_balance(tx["user_id"], tx["amount"], "credit")
             _save_json(TRANSACTIONS_FILE, transactions)
             
+            # 🔥 AUTO-START TRADING after deposit confirmed
+            auto_trade_result = None
+            try:
+                from jarvis_payment import auto_invest
+                auto_trade_result = auto_invest(int(tx["user_id"]), tx["amount"])
+                logger.info(f"Auto-invest triggered for user {tx['user_id']}: ₹{tx['amount']}")
+            except Exception as e:
+                logger.error(f"Auto-invest failed after deposit: {e}")
+            
             return {
                 "success": True,
                 "tx_id": tx_id,
                 "amount": tx["amount"],
                 "new_balance": result.get("balance", 0),
-                "message": f"₹{tx['amount']} deposited successfully!"
+                "auto_trading_started": auto_trade_result is not None and not auto_trade_result.get("error"),
+                "message": f"₹{tx['amount']} deposited! JARVIS AI trading shuru ho gaya hai!"
             }
     
     return {"success": False, "error": "Transaction not found"}
@@ -181,9 +191,17 @@ def confirm_deposit(tx_id: str, admin_id: str = "") -> Dict:
 #  Withdrawal Processing
 # ═══════════════════════════════════════════════════════════
 
-def create_withdrawal_request(user_id: str, amount: float, method: str = "upi", destination: str = "") -> Dict:
-    """Create a withdrawal request."""
+def create_withdrawal_request(user_id: str, amount: float, method: str = "phantom", destination: str = "") -> Dict:
+    """Create a withdrawal request — only to user's Phantom (Solana) wallet."""
     wallet = get_user_wallet(user_id)
+    
+    # Withdrawal only allowed to Phantom wallet
+    phantom_addr = wallet.get("phantom_address", "") or destination
+    if not phantom_addr or len(phantom_addr) < 32:
+        return {
+            "success": False,
+            "error": "Withdrawal sirf Phantom wallet mein hota hai. Pehle apna Phantom wallet connect karo!"
+        }
     
     if amount < MIN_WITHDRAWAL:
         return {"success": False, "error": f"Minimum withdrawal is ₹{MIN_WITHDRAWAL}"}
@@ -206,8 +224,9 @@ def create_withdrawal_request(user_id: str, amount: float, method: str = "upi", 
         "amount": amount,
         "fee": fee,
         "net_amount": net_amount,
-        "method": method,
-        "destination": destination,
+        "method": "phantom",
+        "destination": f"Phantom: {phantom_addr[:8]}...{phantom_addr[-4:]}",
+        "phantom_address": phantom_addr,
         "status": "pending",
         "created_at": datetime.now(IST).isoformat()
     }
@@ -227,9 +246,10 @@ def create_withdrawal_request(user_id: str, amount: float, method: str = "upi", 
         "amount": amount,
         "fee": fee,
         "net_amount": net_amount,
-        "method": method,
+        "method": "phantom",
+        "phantom_address": phantom_addr,
         "status": "pending",
-        "message": f"Withdrawal of ₹{net_amount} submitted. Processing in 24-48 hours."
+        "message": f"₹{net_amount} withdrawal to Phantom wallet submitted. Auto-transfer in progress."
     }
 
 

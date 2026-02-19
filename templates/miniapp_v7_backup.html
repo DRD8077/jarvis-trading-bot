@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>JARVIS — AI Trading Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<style>
+:root{--bg:#080c14;--bg2:#0f1729;--bg3:#1a2332;--card:#111b2e;--border:#1e3050;--primary:#3b82f6;--accent:#10b981;--accent2:#8b5cf6;--danger:#ef4444;--warn:#f59e0b;--text:#f1f5f9;--text2:#94a3b8;--text3:#64748b;--gold:#fbbf24;--cyan:#06b6d4;--pink:#ec4899;--gradient:linear-gradient(135deg,#3b82f6,#8b5cf6)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:radial-gradient(ellipse at 30% 0%,#1e3a5f18 0%,transparent 60%),radial-gradient(ellipse at 70% 100%,#8b5cf608 0%,transparent 60%);pointer-events:none;z-index:0}
+
+/* TOP HEADER */
+.top-bar{position:sticky;top:0;z-index:100;background:rgba(8,12,20,.92);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--border);padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:36px;height:36px;background:var(--gradient);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;animation:glow 2s ease-in-out infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 15px #3b82f630}50%{box-shadow:0 0 30px #3b82f660,0 0 60px #8b5cf620}}
+.brand h1{font-size:17px;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.brand sub{font-size:9px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;font-weight:600}
+.top-right{display:flex;align-items:center;gap:8px}
+.top-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:6px 10px;border-radius:8px;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:5px;transition:all .2s;font-family:Inter;text-decoration:none}
+.top-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+.status-live{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 #10b98140}50%{opacity:.7;box-shadow:0 0 0 6px #10b98100}}
+
+/* TAB BAR */
+.tab-bar{display:flex;gap:2px;padding:6px 12px;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab{padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text3);display:flex;align-items:center;gap:6px;transition:all .2s;white-space:nowrap;border:1px solid transparent}
+.tab:hover{color:var(--text2);background:var(--bg3)}
+.tab.active{background:linear-gradient(135deg,#3b82f618,#8b5cf618);color:var(--primary);border-color:#3b82f630}
+.tab i{font-size:13px}
+
+/* MAIN */
+.main{padding:16px;position:relative;z-index:1;max-width:1400px;margin:0 auto}
+.section{display:none}.section.active{display:block}
+.section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.section-hdr h2{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.section-hdr h2 i{color:var(--primary)}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;transition:all .3s;position:relative;overflow:hidden}
+.stat::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gradient);opacity:0;transition:opacity .3s}
+.stat:hover{transform:translateY(-2px);box-shadow:0 12px 30px #00000040}.stat:hover::after{opacity:1}
+.stat-label{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.stat-val{font-size:22px;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat-sub{font-size:10px;color:var(--text3);margin-top:2px;display:flex;align-items:center;gap:4px}
+.green{color:var(--accent)!important}.red{color:var(--danger)!important}
+
+/* CARDS */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;transition:all .3s}
+.card:hover{border-color:var(--primary);box-shadow:0 0 20px #3b82f615}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.card-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+.card-title i{font-size:16px}
+.badge{background:var(--accent);color:#fff;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700}
+.badge.warn{background:var(--warn)}.badge.danger{background:var(--danger)}.badge.purple{background:var(--accent2)}.badge.blue{background:var(--primary)}
+
+/* TOKEN LIST */
+.token-list{display:flex;flex-direction:column;gap:6px;max-height:400px;overflow-y:auto}
+.token-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border-radius:10px;border:1px solid transparent;transition:all .2s;cursor:pointer}
+.token-row:hover{border-color:var(--border);transform:translateX(3px)}
+.token-icon{width:32px;height:32px;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.token-info{flex:1;min-width:0}
+.token-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.token-pair{font-size:10px;color:var(--text3)}
+.token-price{text-align:right}
+.token-price .price{font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.token-price .change{font-size:11px;font-weight:600}
+
+/* TABLE */
+table{width:100%;border-collapse:separate;border-spacing:0}
+th{text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);background:var(--bg2)}
+td{padding:10px 12px;font-size:12px;border-bottom:1px solid #ffffff06;color:var(--text2)}
+tr:hover td{background:#ffffff04;color:var(--text)}
+
+/* CHAT */
+.chat-box{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.chat-msgs{padding:16px;min-height:300px;max-height:500px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.chat-msg{max-width:85%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5;word-wrap:break-word}
+.chat-msg.user{background:var(--primary);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.chat-msg.bot{background:var(--bg3);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:4px}
+.chat-msg.bot pre{background:var(--bg);padding:8px;border-radius:6px;overflow-x:auto;font-size:11px;margin-top:6px;font-family:'JetBrains Mono',monospace}
+.chat-input-row{display:flex;border-top:1px solid var(--border)}
+.chat-input{flex:1;background:transparent;border:none;padding:14px 16px;color:var(--text);font-size:13px;font-family:Inter;outline:none}
+.chat-input::placeholder{color:var(--text3)}
+.chat-send{background:var(--primary);border:none;color:#fff;padding:0 20px;cursor:pointer;font-size:16px;transition:background .2s}
+.chat-send:hover{background:#2563eb}
+
+/* BUTTONS */
+.btn{padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:all .2s;font-family:Inter}
+.btn:hover{transform:translateY(-1px)}.btn.primary{background:var(--primary);border-color:var(--primary)}.btn.success{background:var(--accent);border-color:var(--accent)}.btn.danger{background:var(--danger);border-color:var(--danger)}
+
+/* LOADER */
+.loader{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.shimmer{background:linear-gradient(90deg,var(--bg3) 25%,var(--border) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* TOAST */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 18px;font-size:12px;box-shadow:0 10px 40px #000a;animation:toastUp .3s ease}
+@keyframes toastUp{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(8,12,20,.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:6px 0 env(safe-area-inset-bottom,6px)}
+.bottom-nav .nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 12px;cursor:pointer;color:var(--text3);font-size:10px;font-weight:600;transition:all .2s;border-radius:8px}
+.bottom-nav .nav-item:hover,.bottom-nav .nav-item.active{color:var(--primary)}
+.bottom-nav .nav-item i{font-size:18px}
+
+/* RESPONSIVE */
+@media(max-width:768px){.stats{grid-template-columns:1fr 1fr}.cards{grid-template-columns:1fr}.main{padding:12px;padding-bottom:80px}}
+@media(min-width:769px){.bottom-nav{display:none}.main{padding-bottom:16px}}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:2px}
+</style>
+</head>
+<body>
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="brand"><div class="brand-icon">🤖</div><div><h1>JARVIS</h1><sub>AI Trading Platform v5</sub></div></div>
+  <div class="top-right"><div class="top-btn"><div class="status-live"></div> Live</div><a class="top-btn" href="/admin"><i class="fas fa-shield-halved"></i> Admin</a></div>
+</div>
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <div class="tab active" onclick="showTab('dashboard',this)"><i class="fas fa-th-large"></i> Dashboard</div>
+  <div class="tab" onclick="showTab('markets',this)"><i class="fas fa-chart-line"></i> Markets</div>
+  <div class="tab" onclick="showTab('gems',this)"><i class="fas fa-gem"></i> Gems</div>
+  <div class="tab" onclick="showTab('signals',this)"><i class="fas fa-bolt"></i> Signals</div>
+  <div class="tab" onclick="showTab('india',this)"><i class="fas fa-flag"></i> India</div>
+  <div class="tab" onclick="showTab('options',this)"><i class="fas fa-layer-group"></i> Options</div>
+  <div class="tab" onclick="showTab('sniper',this)"><i class="fas fa-crosshairs"></i> Sniper</div>
+  <div class="tab" onclick="showTab('whale',this)"><i class="fas fa-water"></i> Whale</div>
+  <div class="tab" onclick="showTab('news',this)"><i class="fas fa-newspaper"></i> News</div>
+  <div class="tab" onclick="showTab('airdrops',this)"><i class="fas fa-parachute-box"></i> Airdrops</div>
+  <div class="tab" onclick="showTab('ai',this)"><i class="fas fa-brain"></i> AI Chat</div>
+  <div class="tab" onclick="showTab('portfolio',this)"><i class="fas fa-wallet"></i> Portfolio</div>
+</div>
+
+<div class="main">
+  <!-- DASHBOARD -->
+  <div id="sec-dashboard" class="section active">
+    <div class="section-hdr"><h2><i class="fas fa-th-large"></i> Dashboard</h2><button class="btn primary" onclick="loadDashboard()"><i class="fas fa-sync-alt"></i> Refresh</button></div>
+    <div class="stats" id="dash-stats">
+      <div class="stat"><div class="stat-label">Loading...</div><div class="stat-val"><div class="loader"></div></div></div>
+    </div>
+    <div class="cards" id="dash-cards">
+      <div class="card"><div class="card-hdr"><div class="card-title"><i class="fas fa-fire" style="color:var(--warn)"></i> Trending</div><span class="badge">Live</span></div><div class="token-list" id="dash-trending"><div style="text-align:center;padding:30px;color:var(--text3)"><div class="loader"></div><br>Loading trending...</div></div></div>
+      <div class="card"><div class="card-hdr"><div class="card-title"><i class="fas fa-rocket" style="color:var(--accent)"></i> Top Gainers</div><span class="badge green" style="background:var(--accent)">24H</span></div><div class="token-list" id="dash-gainers"><div style="text-align:center;padding:30px;color:var(--text3)"><div class="loader"></div><br>Loading...</div></div></div>
+    </div>
+  </div>
+
+  <!-- MARKETS -->
+  <div id="sec-markets" class="section">
+    <div class="section-hdr"><h2><i class="fas fa-chart-line"></i> Markets</h2><button class="btn primary" onclick="loadMarkets()"><i class="fas fa-sync-alt"></i></button></div>
+    <div class="stats" id="market-stats"></div>
+    <div class="card"><div class="card-hdr"><div class="card-title"><i class="fas fa-coins" style="color:var(--gold)"></i> Market Data</div></div><div id="market-data"><div style="text-align:center;padding:30px;color:var(--text3)"><div class="loader"></div><br>Loading markets...</div></div></div>
+  </div>
+
+  <!-- GEMS -->
+  <div id="sec-gems" class="section">
+    <div class="section-hdr"><h2><i class="fas fa-gem"></i> Crypto Gems</h2><button class="btn primary" onclick="loadGems()"><i class="fas fa-sync-alt"></i></button></div>
+    <div class="card"><div class="card-hdr"><div class="card-title"><i class="fas fa-diamond" style="color:var(--cyan)"></i> Latest Gems</div><span class="badge purple">AI Scored</span></div><div class="token-list" id="gems-list"><div style="text-align:center;padding:30px;color:var(--text3)"><div class="loader"></div><br>Scanning gems...</div></div></div>
+  </div>
+
+  <!-- SIGNALS -->
+  <div id="sec-signals" class="section">
+    <div class="section-hdr"><h2><i class="fas fa-bolt"></i> Trading Signals</h2><button class="btn primary" onclick="loadSignals()"><i class="fas fa-sync-alt"></i></button></div>
+    <div class="card"><div class="card-hdr"><div class="card-title"><i class="fas fa-signal" style="color:var(--accent)"></i> AI Signals</div><span class="badge blue">Real-time</span></div><div id="signals-list"><div style="text-align:center;padding:30px;color:var(--text3)"><div class="loader"></div><br>Loading signals...</div></div></div>
+  </div>
+
+  <!-- INDIA -->
+  <div id="sec-india" class="section">
+    <div class="section-hdr"><h2><i class="fas fa-flag"></i> Indian Markets</h2><button class="btn primary" onclick="loadIndia()"><i class="fas fa-sync-alt"></i></button></div>
+    <div class="stats" id="india-stats"></div>
+    <div class="cards">
+      <div class="card"><div class="card-hdr"><div class="card-title"><i class="fas fa-chart-area" style="color:var(--primary)"></i> NIFTY/SENSEX</div></div><div id="india-indices"><div style="text-align:center;padding:20px;color:var(--text3)"><div class="loader"></div></div></div></div>
+      <div class="card"><div class="card-hdr"><div class="card-title"><i class="fas fa-landmark" style="color:var(--gold)"></i> FII/DII & PCR</div></div><div id="india-fii"><div style="text-align:center;padding:20px;color:var(--text3)"><div class="loader"></div></div></div></div>
+    </div>
+  </div>
+
+  <!-- OPTIONS -->
+  <div id="sec-options" class="section">
+    <div class="section-hdr"><h2><i class="fas fa-layer-group"></i> Options Chain</h2><button class="btn primary" onclick="loadOptions()"><i class="fas fa-sync-alt"></i></button></div>
+    <div class="card"><div class="card-hdr"><div class="card-title"><i class="fas fa-table" style="color:var(--accent2)"></i> NIFTY Options</div></div><div id="options-data"><div style="text-align:center;padding:30px;color:var(--text3)"><div class="loader"></div><br>Loading options...</div></div></div>
+  </div>
+
+  <!-- SNIPER -->
+  <div id="sec-sniper" class="section">
+    <div class="section-hdr"><h2><i class="fas fa-crosshairs"></i> Auto Sniper</h2></div>
+    <div class="stats" id="sniper-stats"></div>
+    <div class="cards">
+      <div class="card"><div class="card-hdr"><div class="card-title"><i class="fas fa-play" style="color:var(--accent)"></i> Strategies</div></div><div id="sniper-strategies"><div style="text-align:center;padding:20px;color:var(--text3)"><div class="loader"></div></div></div></div>
+      <div class="card"><div class="card-hdr"><div class="card-title"><i class="fas fa-chart-bar" style="color:var(--primary)"></i> Performance</div></div><div id="sniper-perf"><div style="text-align:center;padding:20px;color:var(--text3)"><div class="loader"></div></div></div></div>
+    </div>
+  </div>
+
+  <!-- WHALE -->
+  <div id="sec-whale" class="section">
+    <div class="section-hdr"><h2><i class="fas fa-water"></i> Whale Monitor</h2><button class="btn primary" onclick="loadGlobal()"><i class="fas fa-sync-alt"></i></button></div>
+    <div class="card"><div class="card-hdr"><div class="card-title"><i class="fas fa-globe" style="color:var(--cyan)"></i> Global Markets</div></div><div id="global-data"><div style="text-align:center;padding:30px;color:var(--text3)"><div class="loader"></div><br>Loading global data...</div></div></div>
+  </div>
+
+  <!-- NEWS -->
+  <div id="sec-news" class="section">
+    <div class="section-hdr"><h2><i class="fas fa-newspaper"></i> News Feed</h2><button class="btn primary" onclick="loadNews()"><i class="fas fa-sync-alt"></i></button></div>
+    <div class="card"><div class="card-hdr"><div class="card-title"><i class="fas fa-rss" style="color:var(--warn)"></i> Latest</div><span class="badge">Live</span></div><div id="news-list" class="token-list"><div style="text-align:center;padding:30px;color:var(--text3)"><div class="loader"></div><br>Loading news...</div></div></div>
+  </div>
+
+  <!-- AIRDROPS -->
+  <div id="sec-airdrops" class="section">
+    <div class="section-hdr"><h2><i class="fas fa-parachute-box"></i> Airdrops</h2><button class="btn primary" onclick="loadAirdrops()"><i class="fas fa-sync-alt"></i></button></div>
+    <div class="card"><div class="card-hdr"><div class="card-title"><i class="fas fa-gift" style="color:var(--pink)"></i> Active Airdrops</div></div><div id="airdrops-list"><div style="text-align:center;padding:30px;color:var(--text3)"><div class="loader"></div><br>Scanning airdrops...</div></div></div>
+  </div>
+
+  <!-- AI CHAT -->
+  <div id="sec-ai" class="section">
+    <div class="section-hdr"><h2><i class="fas fa-brain"></i> JARVIS AI Chat</h2><button class="btn danger" onclick="clearChat()"><i class="fas fa-trash"></i> Clear</button></div>
+    <div class="chat-box">
+      <div class="chat-msgs" id="chat-msgs">
+        <div class="chat-msg bot">🤖 JARVIS AI v5 here! Ask me about stocks, crypto, trading, analysis — anything. I have access to 30+ real-time engines. Try:<br><br>• "Analyze NIFTY"<br>• "Best crypto gems today"<br>• "BTC price prediction"<br>• "RELIANCE technical analysis"<br>• "Market sentiment"<br>• "Summarize latest news"</div>
+      </div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="chat-input" type="text" placeholder="Ask JARVIS anything..." onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="chat-send" onclick="sendChat()"><i class="fas fa-paper-plane"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PORTFOLIO -->
+  <div id="sec-portfolio" class="section">
+    <div class="section-hdr"><h2><i class="fas fa-wallet"></i> Portfolio</h2><button class="btn primary" onclick="loadPortfolio()"><i class="fas fa-sync-alt"></i></button></div>
+    <div class="stats" id="portfolio-stats"></div>
+    <div class="card"><div class="card-hdr"><div class="card-title"><i class="fas fa-coins" style="color:var(--gold)"></i> Holdings</div></div><div id="portfolio-data"><div style="text-align:center;padding:30px;color:var(--text3)">Connect wallet or add holdings to track</div></div></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV (MOBILE) -->
+<div class="bottom-nav">
+  <div class="nav-item active" onclick="showTab('dashboard',null,this)"><i class="fas fa-th-large"></i>Home</div>
+  <div class="nav-item" onclick="showTab('markets',null,this)"><i class="fas fa-chart-line"></i>Markets</div>
+  <div class="nav-item" onclick="showTab('gems',null,this)"><i class="fas fa-gem"></i>Gems</div>
+  <div class="nav-item" onclick="showTab('ai',null,this)"><i class="fas fa-brain"></i>AI</div>
+  <div class="nav-item" onclick="showTab('india',null,this)"><i class="fas fa-flag"></i>India</div>
+</div>
+
+<script>
+const API='/api/miniapp';
+const _cache={};
+
+function showTab(name,tabEl,navEl){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+name).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.bottom-nav .nav-item').forEach(n=>n.classList.remove('active'));
+  if(tabEl)tabEl.classList.add('active');
+  else document.querySelectorAll('.tab').forEach(t=>{if(t.textContent.trim().toLowerCase().includes(name))t.classList.add('active')});
+  if(navEl)navEl.classList.add('active');
+  const loaders={dashboard:loadDashboard,markets:loadMarkets,gems:loadGems,signals:loadSignals,india:loadIndia,options:loadOptions,sniper:loadSniper,whale:loadGlobal,news:loadNews,airdrops:loadAirdrops,portfolio:loadPortfolio};
+  if(loaders[name]&&!_cache[name])loaders[name]();
+}
+
+async function api(path){
+  try{const r=await fetch(API+path);if(!r.ok)throw new Error(r.statusText);return await r.json()}catch(e){console.error('API:',path,e);return null}
+}
+
+function toast(m){const e=document.querySelector('.toast');if(e)e.remove();const t=document.createElement('div');t.className='toast';t.innerHTML=m;document.body.appendChild(t);setTimeout(()=>t.remove(),3000)}
+
+function fmtPrice(p){if(!p||isNaN(p))return '$0.00';p=parseFloat(p);if(p>=1)return '$'+p.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});if(p>=0.01)return '$'+p.toFixed(4);return '$'+p.toFixed(8)}
+function fmtChange(c){if(!c||isNaN(c))return'<span class="green">0%</span>';c=parseFloat(c);const cl=c>=0?'green':'red';return`<span class="${cl}">${c>=0?'+':''}${c.toFixed(2)}%</span>`}
+function fmtNum(n){if(!n)return'0';n=parseFloat(n);if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n.toFixed(0)}
+function truncAddr(a){if(!a)return'';return a.slice(0,6)+'...'+a.slice(-4)}
+
+function tokenRow(t){
+  const name=t.name||t.baseToken?.name||t.symbol||'Unknown';
+  const sym=t.symbol||t.baseToken?.symbol||'';
+  const price=t.priceUsd||t.price_usd||t.price||0;
+  const change=t.priceChange?.h24||t.change_24h||t.change||0;
+  const icon=name.charAt(0).toUpperCase();
+  return`<div class="token-row"><div class="token-icon">${icon}</div><div class="token-info"><div class="token-name">${name}</div><div class="token-pair">${sym}</div></div><div class="token-price"><div class="price">${fmtPrice(price)}</div><div class="change">${fmtChange(change)}</div></div></div>`;
+}
+
+async function loadDashboard(){
+  _cache.dashboard=true;
+  const d=await api('/dashboard');
+  if(!d){document.getElementById('dash-stats').innerHTML='<div class="stat"><div class="stat-label">Error</div><div class="stat-val" style="font-size:14px">Could not load</div></div>';return}
+  const s=document.getElementById('dash-stats');
+  const fg=d.fear_greed||d.fear_greed_index||{};
+  s.innerHTML=`
+    <div class="stat"><div class="stat-label">BTC</div><div class="stat-val">${fmtPrice(d.btc_price||d.prices?.BTC)}</div><div class="stat-sub">${fmtChange(d.btc_change)}</div></div>
+    <div class="stat"><div class="stat-label">ETH</div><div class="stat-val">${fmtPrice(d.eth_price||d.prices?.ETH)}</div><div class="stat-sub">${fmtChange(d.eth_change)}</div></div>
+    <div class="stat"><div class="stat-label">SOL</div><div class="stat-val">${fmtPrice(d.sol_price||d.prices?.SOL)}</div><div class="stat-sub">${fmtChange(d.sol_change)}</div></div>
+    <div class="stat"><div class="stat-label">Fear & Greed</div><div class="stat-val">${fg.value||d.fear_greed||'--'}</div><div class="stat-sub">${fg.classification||''}</div></div>
+    <div class="stat"><div class="stat-label">Market Cap</div><div class="stat-val">${fmtNum(d.total_market_cap||0)}</div><div class="stat-sub">Total Crypto</div></div>
+    <div class="stat"><div class="stat-label">Engines</div><div class="stat-val">${d.engines_connected||d.total_engines||'30+'}</div><div class="stat-sub green">All Active</div></div>`;
+  const trending=d.trending||d.trending_tokens||[];
+  const gainers=d.gainers||d.top_gainers||[];
+  document.getElementById('dash-trending').innerHTML=trending.length?trending.slice(0,8).map(t=>tokenRow(t)).join(''):'<div style="padding:20px;color:var(--text3);text-align:center">No trending data</div>';
+  document.getElementById('dash-gainers').innerHTML=gainers.length?gainers.slice(0,8).map(t=>tokenRow(t)).join(''):'<div style="padding:20px;color:var(--text3);text-align:center">No gainer data</div>';
+  toast('✅ Dashboard loaded');
+}
+
+async function loadMarkets(){
+  _cache.markets=true;
+  const d=await api('/markets');
+  if(!d){document.getElementById('market-data').innerHTML='<div style="padding:20px;color:var(--text3)">Could not load markets</div>';return}
+  const tokens=d.tokens||d.pairs||d.data||d.markets||[];
+  if(Array.isArray(tokens)&&tokens.length){
+    document.getElementById('market-data').innerHTML='<div class="token-list">'+tokens.slice(0,20).map(t=>tokenRow(t)).join('')+'</div>';
+  }else{
+    document.getElementById('market-data').innerHTML='<div style="padding:20px;color:var(--text3)">'+JSON.stringify(d).slice(0,500)+'</div>';
+  }
+  toast('✅ Markets loaded');
+}
+
+async function loadGems(){
+  _cache.gems=true;
+  const d=await api('/gems');
+  const el=document.getElementById('gems-list');
+  if(!d){el.innerHTML='<div style="padding:20px;color:var(--text3)">Could not load gems</div>';return}
+  const gems=d.gems||d.tokens||d.data||[];
+  if(Array.isArray(gems)&&gems.length){
+    el.innerHTML=gems.slice(0,15).map(g=>{
+      const name=g.name||g.baseToken?.name||'Gem';
+      const score=g.gem_score||g.score||'--';
+      const price=g.priceUsd||g.price||0;
+      return`<div class="token-row"><div class="token-icon">💎</div><div class="token-info"><div class="token-name">${name}</div><div class="token-pair">Score: ${score}</div></div><div class="token-price"><div class="price">${fmtPrice(price)}</div></div></div>`
+    }).join('');
+  }else{el.innerHTML='<div style="padding:20px;color:var(--text3)">No gems found — scanner will find them</div>'}
+  toast('✅ Gems loaded');
+}
+
+async function loadSignals(){
+  _cache.signals=true;
+  const d=await api('/signals');
+  const el=document.getElementById('signals-list');
+  if(!d){el.innerHTML='<div style="padding:20px;color:var(--text3)">Could not load signals</div>';return}
+  const sigs=d.signals||d.data||[];
+  if(Array.isArray(sigs)&&sigs.length){
+    el.innerHTML='<table><thead><tr><th>Token</th><th>Signal</th><th>Strength</th><th>Price</th></tr></thead><tbody>'+
+      sigs.slice(0,15).map(s=>`<tr><td>${s.symbol||s.token||s.name||'--'}</td><td style="color:${s.signal==='BUY'||s.action==='BUY'?'var(--accent)':'var(--danger)'}">${s.signal||s.action||'--'}</td><td>${s.strength||s.confidence||'--'}</td><td>${fmtPrice(s.price||0)}</td></tr>`).join('')+
+      '</tbody></table>';
+  }else{el.innerHTML='<div style="padding:20px;color:var(--text3)">'+JSON.stringify(d).slice(0,500)+'</div>'}
+  toast('✅ Signals loaded');
+}
+
+async function loadIndia(){
+  _cache.india=true;
+  const d=await api('/india/dashboard');
+  const el=document.getElementById('india-stats');
+  if(!d){el.innerHTML='<div class="stat"><div class="stat-label">Error</div><div class="stat-val" style="font-size:14px">N/A</div></div>';return}
+  el.innerHTML=`
+    <div class="stat"><div class="stat-label">NIFTY 50</div><div class="stat-val">${d.nifty_50||d.nifty||d.indices?.nifty||'--'}</div></div>
+    <div class="stat"><div class="stat-label">SENSEX</div><div class="stat-val">${d.sensex||d.indices?.sensex||'--'}</div></div>
+    <div class="stat"><div class="stat-label">BANK NIFTY</div><div class="stat-val">${d.bank_nifty||d.indices?.bank_nifty||'--'}</div></div>
+    <div class="stat"><div class="stat-label">INDIA VIX</div><div class="stat-val">${d.vix||d.india_vix||'--'}</div></div>
+    <div class="stat"><div class="stat-label">PCR</div><div class="stat-val">${d.pcr||'--'}</div></div>
+    <div class="stat"><div class="stat-label">GIFT NIFTY</div><div class="stat-val">${d.gift_nifty||'--'}</div></div>`;
+  const idx=document.getElementById('india-indices');
+  if(d.sectors||d.sector_heatmap){
+    const sec=d.sectors||d.sector_heatmap||{};
+    idx.innerHTML='<table><thead><tr><th>Sector</th><th>Value</th></tr></thead><tbody>'+
+      Object.entries(sec).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')+'</tbody></table>';
+  }else{idx.innerHTML='<div style="padding:10px;color:var(--text3)">Market data loaded above</div>'}
+  const fii=document.getElementById('india-fii');
+  if(d.fii_dii){
+    fii.innerHTML='<pre style="font-size:11px;color:var(--text2);white-space:pre-wrap">'+JSON.stringify(d.fii_dii,null,2)+'</pre>';
+  }else{fii.innerHTML='<div style="padding:10px;color:var(--text3)">FII/DII data from NSE</div>'}
+  toast('✅ India data loaded');
+}
+
+async function loadOptions(){
+  _cache.options=true;
+  const d=await api('/options/signal?symbol=NIFTY');
+  const el=document.getElementById('options-data');
+  if(!d){el.innerHTML='<div style="padding:20px;color:var(--text3)">Could not load options</div>';return}
+  el.innerHTML='<pre style="font-size:11px;color:var(--text2);white-space:pre-wrap;max-height:400px;overflow:auto">'+JSON.stringify(d,null,2)+'</pre>';
+  toast('✅ Options loaded');
+}
+
+async function loadSniper(){
+  _cache.sniper=true;
+  const [status,strats]=await Promise.all([api('/auto-trader/status'),api('/auto-trader/strategies')]);
+  const el=document.getElementById('sniper-strategies');
+  if(strats){
+    const s=strats.strategies||strats||[];
+    if(Array.isArray(s)&&s.length){
+      el.innerHTML=s.map(st=>`<div class="token-row"><div class="token-icon">🎯</div><div class="token-info"><div class="token-name">${st.name||st}</div><div class="token-pair">${st.description||''}</div></div></div>`).join('');
+    }else{el.innerHTML='<div style="padding:10px;color:var(--text3)">'+JSON.stringify(strats).slice(0,300)+'</div>'}
+  }else{el.innerHTML='<div style="padding:10px;color:var(--text3)">Sniper strategies not available</div>'}
+  const perf=document.getElementById('sniper-perf');
+  if(status){perf.innerHTML='<pre style="font-size:11px;color:var(--text2);white-space:pre-wrap">'+JSON.stringify(status,null,2)+'</pre>'}
+  else{perf.innerHTML='<div style="padding:10px;color:var(--text3)">Start auto-trader from bot</div>'}
+}
+
+async function loadGlobal(){
+  _cache.whale=true;
+  const d=await api('/global/markets');
+  const el=document.getElementById('global-data');
+  if(!d){el.innerHTML='<div style="padding:20px;color:var(--text3)">Could not load global markets</div>';return}
+  el.innerHTML='<pre style="font-size:11px;color:var(--text2);white-space:pre-wrap;max-height:500px;overflow:auto">'+JSON.stringify(d,null,2)+'</pre>';
+  toast('✅ Global data loaded');
+}
+
+async function loadNews(){
+  _cache.news=true;
+  const d=await api('/news');
+  const el=document.getElementById('news-list');
+  if(!d){el.innerHTML='<div style="padding:20px;color:var(--text3)">Could not load news</div>';return}
+  const items=d.news||d.articles||d.data||d.headlines||[];
+  if(Array.isArray(items)&&items.length){
+    el.innerHTML=items.slice(0,15).map(n=>`<div class="token-row" onclick="if('${n.url}')window.open('${n.url}','_blank')"><div class="token-icon">📰</div><div class="token-info"><div class="token-name">${n.title||n.headline||'News'}</div><div class="token-pair">${n.source||''} • ${n.time||n.published||''}</div></div></div>`).join('');
+  }else{el.innerHTML='<div style="padding:20px;color:var(--text3)">'+JSON.stringify(d).slice(0,500)+'</div>'}
+  toast('✅ News loaded');
+}
+
+async function loadAirdrops(){
+  _cache.airdrops=true;
+  const d=await api('/airdrops');
+  const el=document.getElementById('airdrops-list');
+  if(!d){el.innerHTML='<div style="padding:20px;color:var(--text3)">Could not load airdrops</div>';return}
+  const items=d.airdrops||d.data||[];
+  if(Array.isArray(items)&&items.length){
+    el.innerHTML='<div class="token-list">'+items.slice(0,15).map(a=>`<div class="token-row"><div class="token-icon">🎁</div><div class="token-info"><div class="token-name">${a.name||a.title||'Airdrop'}</div><div class="token-pair">${a.chain||a.platform||''} • ${a.reward||a.estimated_value||''}</div></div></div>`).join('')+'</div>';
+  }else{el.innerHTML='<div style="padding:20px;color:var(--text3)">'+JSON.stringify(d).slice(0,500)+'</div>'}
+  toast('✅ Airdrops loaded');
+}
+
+async function loadPortfolio(){
+  _cache.portfolio=true;
+  const el=document.getElementById('portfolio-data');
+  el.innerHTML='<div style="padding:20px;color:var(--text3);text-align:center">Use the Telegram bot to add holdings. Portfolio tracking is connected to @David_crew_bot.</div>';
+}
+
+// AI Chat
+async function sendChat(){
+  const inp=document.getElementById('chat-input');const msg=inp.value.trim();
+  if(!msg)return;
+  const msgs=document.getElementById('chat-msgs');
+  msgs.innerHTML+=`<div class="chat-msg user">${msg}</div>`;
+  inp.value='';
+  msgs.innerHTML+=`<div class="chat-msg bot" id="typing"><div class="loader"></div> Thinking...</div>`;
+  msgs.scrollTop=msgs.scrollHeight;
+  try{
+    const r=await fetch(API+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,user_id:'web_user'})});
+    const d=await r.json();
+    const reply=d.reply||d.response||d.message||d.text||JSON.stringify(d);
+    document.getElementById('typing').outerHTML=`<div class="chat-msg bot">${reply.replace(/\n/g,'<br>')}</div>`;
+  }catch(e){
+    document.getElementById('typing').outerHTML=`<div class="chat-msg bot" style="border-color:var(--danger)">⚠️ Error: ${e.message}</div>`;
+  }
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+async function clearChat(){
+  document.getElementById('chat-msgs').innerHTML='<div class="chat-msg bot">🤖 Chat cleared. Ask me anything!</div>';
+  await fetch(API+'/chat/clear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:'web_user'})}).catch(()=>{});
+  toast('Chat cleared');
+}
+
+// Initial load
+loadDashboard();
+</script>
+</body>
+</html>

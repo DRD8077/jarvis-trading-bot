@@ -1,0 +1,18 @@
+{
+  "123": {
+    "user_id": "123",
+    "balance_inr": 0.0,
+    "balance_sol": 0.0,
+    "balance_usdt": 0.0,
+    "total_deposited": 0.0,
+    "total_withdrawn": 0.0,
+    "total_earned": 0.0,
+    "phantom_address": "",
+    "upi_id": "",
+    "bank_account": "",
+    "ifsc_code": "",
+    "kyc_verified": false,
+    "created_at": "2026-02-19T00:51:08.994088+05:30",
+    "updated_at": "2026-02-19T00:51:08.994105+05:30"
+  }
+}

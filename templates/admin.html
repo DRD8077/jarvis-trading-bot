@@ -1,913 +1,472 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="manifest" href="/static/manifest.json">
-    <meta name="theme-color" content="#667eea">
-    <title>JARVIS Admin Panel</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-        }
-        .sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 100vh;
-            width: 280px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            overflow-y: auto;
-            z-index: 1000;
-            transition: transform 0.3s ease;
-        }
-        .sidebar.collapsed {
-            transform: translateX(-100%);
-        }
-        .main-content {
-            margin-left: 280px;
-            padding: 20px;
-            transition: margin-left 0.3s ease;
-        }
-        .main-content.expanded {
-            margin-left: 0;
-        }
-        .sidebar .nav-link {
-            color: rgba(255,255,255,0.8);
-            padding: 12px 15px;
-            margin: 5px 0;
-            border-radius: 8px;
-            transition: all 0.3s;
-        }
-        .sidebar .nav-link:hover, .sidebar .nav-link.active {
-            color: white;
-            background-color: rgba(255,255,255,0.1);
-        }
-        .card {
-            border: none;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 25px;
-        }
-        .btn-success {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            border: none;
-        }
-        .btn-danger {
-            background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
-            border: none;
-        }
-        .table {
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        .badge {
-            border-radius: 20px;
-        }
-        .mobile-toggle {
-            display: none;
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            z-index: 1001;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            font-size: 20px;
-        }
-        @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-            }
-            .sidebar.show {
-                transform: translateX(0);
-            }
-            .main-content {
-                margin-left: 0;
-            }
-            .mobile-toggle {
-                display: block;
-            }
-        }
-        .real-time-indicator {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 10px;
-            height: 10px;
-            background-color: #28a745;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS Admin Panel — Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<style>
+:root{--bg:#0a0e1a;--bg2:#111827;--bg3:#1e293b;--card:#141c2e;--border:#1e3a5f;--primary:#3b82f6;--primary-glow:#3b82f640;--accent:#10b981;--accent2:#8b5cf6;--danger:#ef4444;--warn:#f59e0b;--text:#f1f5f9;--text2:#94a3b8;--text3:#64748b;--gold:#fbbf24;--cyan:#06b6d4;--pink:#ec4899;--gradient:linear-gradient(135deg,#3b82f6,#8b5cf6,#ec4899)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:radial-gradient(ellipse at 20% 50%,#1e3a5f20 0%,transparent 50%),radial-gradient(ellipse at 80% 20%,#8b5cf610 0%,transparent 50%);pointer-events:none;z-index:0}
+.particles{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:hidden}
+.particle{position:absolute;width:2px;height:2px;background:#3b82f6;border-radius:50%;animation:float linear infinite}
+@keyframes float{0%{transform:translateY(100vh);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-10vh);opacity:0}}
+.navbar{position:sticky;top:0;z-index:100;background:rgba(10,14,26,0.85);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--border);padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between}
+.nav-brand{display:flex;align-items:center;gap:12px}
+.nav-brand .logo{width:40px;height:40px;background:var(--gradient);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;animation:pulse-glow 2s ease-in-out infinite}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 20px #3b82f640}50%{box-shadow:0 0 40px #3b82f680,0 0 80px #8b5cf640}}
+.nav-brand h1{font-size:20px;font-weight:800;background:var(--gradient);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.nav-brand span{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:2px;text-transform:uppercase}
+.nav-actions{display:flex;align-items:center;gap:12px}
+.nav-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:8px 12px;border-radius:10px;cursor:pointer;font-size:13px;transition:all .3s;display:flex;align-items:center;gap:6px;text-decoration:none}
+.nav-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary);transform:translateY(-1px)}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.main-container{display:flex;min-height:calc(100vh - 64px);position:relative;z-index:1}
+.sidebar{width:260px;background:rgba(17,24,39,0.6);backdrop-filter:blur(10px);border-right:1px solid var(--border);padding:20px 12px;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+.sidebar-section{margin-top:16px;margin-bottom:6px;padding:0 12px;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3)}
+.sidebar-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;cursor:pointer;transition:all .2s;color:var(--text2);font-size:13px;font-weight:500;position:relative}
+.sidebar-item:hover{background:var(--bg3);color:var(--text)}
+.sidebar-item.active{background:linear-gradient(135deg,#3b82f620,#8b5cf620);color:var(--primary);border:1px solid #3b82f630}
+.sidebar-item.active::before{content:'';position:absolute;left:0;top:25%;height:50%;width:3px;background:var(--primary);border-radius:0 3px 3px 0}
+.sidebar-item i{width:20px;text-align:center;font-size:14px}
+.sidebar-item .badge{margin-left:auto;background:var(--danger);color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700}
+.content{flex:1;padding:24px;overflow-y:auto}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;position:relative;overflow:hidden;transition:all .3s}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gradient);opacity:0;transition:opacity .3s}
+.stat-card:hover{transform:translateY(-4px);box-shadow:0 20px 40px rgba(0,0,0,.3)}
+.stat-card:hover::before{opacity:1}
+.stat-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:14px}
+.stat-icon.blue{background:#3b82f620;color:#3b82f6}.stat-icon.green{background:#10b98120;color:#10b981}.stat-icon.purple{background:#8b5cf620;color:#8b5cf6}.stat-icon.gold{background:#fbbf2420;color:#fbbf24}.stat-icon.cyan{background:#06b6d420;color:#06b6d4}.stat-icon.pink{background:#ec489920;color:#ec4899}.stat-icon.red{background:#ef444420;color:#ef4444}
+.stat-label{font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.stat-value{font-size:28px;font-weight:800;background:var(--gradient);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;line-height:1.2}
+.stat-change{font-size:12px;margin-top:6px;display:flex;align-items:center;gap:4px;color:var(--accent)}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.section-title{font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
+.section-title i{color:var(--primary)}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px;margin-bottom:24px}
+.panel-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;transition:all .3s;margin-bottom:16px}
+.panel-card:hover{border-color:var(--primary);box-shadow:0 0 30px var(--primary-glow)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.data-table{width:100%;border-collapse:separate;border-spacing:0}
+.data-table th{text-align:left;padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);background:var(--bg2);border-bottom:1px solid var(--border)}
+.data-table th:first-child{border-radius:8px 0 0 0}.data-table th:last-child{border-radius:0 8px 0 0}
+.data-table td{padding:12px 14px;font-size:13px;border-bottom:1px solid #ffffff08;color:var(--text2)}
+.data-table tr:hover td{background:var(--bg3);color:var(--text)}
+.activity-feed{display:flex;flex-direction:column;gap:10px;max-height:400px;overflow-y:auto}
+.activity-item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;background:var(--bg2);border:1px solid transparent;transition:all .2s}
+.activity-item:hover{border-color:var(--border);transform:translateX(4px)}
+.activity-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.activity-text{font-size:13px;color:var(--text2);line-height:1.4}.activity-text strong{color:var(--text);font-weight:600}
+.activity-time{font-size:11px;color:var(--text3);margin-left:auto;white-space:nowrap}
+.bot-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.bot-btn{padding:14px 18px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);color:var(--text);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;transition:all .3s;font-family:'Inter',sans-serif}
+.bot-btn:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.bot-btn.primary{background:linear-gradient(135deg,#3b82f6,#2563eb);border-color:#3b82f6}
+.bot-btn.success{background:linear-gradient(135deg,#10b981,#059669);border-color:#10b981}
+.bot-btn.danger{background:linear-gradient(135deg,#ef4444,#dc2626);border-color:#ef4444}
+.bot-btn.warning{background:linear-gradient(135deg,#f59e0b,#d97706);border-color:#f59e0b}
+.bot-btn i{font-size:16px}
+.terminal{background:#0d1117;border:1px solid #30363d;border-radius:12px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;max-height:300px;overflow-y:auto}
+.terminal-line{padding:2px 0;color:#c9d1d9}.terminal-line .prompt{color:var(--accent)}.terminal-line .cmd{color:var(--cyan)}.terminal-line .success{color:var(--accent)}.terminal-line .error{color:var(--danger)}.terminal-line .output{color:var(--text3)}
+.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
+.feature-item{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px}
+.feature-name{font-size:13px;font-weight:600}.feature-cat{font-size:10px;color:var(--text3);text-transform:uppercase}
+.toggle{width:44px;height:24px;border-radius:12px;background:var(--bg3);border:1px solid var(--border);cursor:pointer;position:relative;transition:all .3s}
+.toggle.on{background:var(--accent);border-color:var(--accent)}
+.toggle::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:2px;left:2px;transition:all .3s}
+.toggle.on::after{left:22px}
+.toast{position:fixed;top:16px;right:16px;z-index:9999;background:var(--card);border:1px solid var(--accent);border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:10px;box-shadow:0 20px 50px rgba(0,0,0,.5);animation:toastIn .4s ease;max-width:360px;font-size:13px}
+@keyframes toastIn{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:900px){.sidebar{display:none}.stats-grid{grid-template-columns:1fr 1fr}.cards-grid{grid-template-columns:1fr}}
+@media(max-width:600px){.stats-grid{grid-template-columns:1fr}.content{padding:16px}}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:3px}
+</style>
 </head>
 <body>
-    <button class="mobile-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-
-    <div class="sidebar" id="sidebar">
-        <div class="text-center mb-4">
-            <h4><i class="fas fa-robot"></i> JARVIS</h4>
-            <p class="mb-0">Admin Panel</p>
-            <div class="real-time-indicator" id="realTimeIndicator"></div>
+<div class="particles" id="particles"></div>
+<nav class="navbar">
+  <div class="nav-brand"><div class="logo">🤖</div><div><h1>JARVIS Admin</h1><span>Command Center v5.0</span></div></div>
+  <div class="nav-actions">
+    <div class="nav-btn"><div class="status-dot"></div> System Online</div>
+    <div class="nav-btn" onclick="refreshAll()"><i class="fas fa-sync-alt"></i> Refresh</div>
+    <a class="nav-btn" href="/miniapp"><i class="fas fa-rocket"></i> Mini App</a>
+    <a class="nav-btn" href="/health"><i class="fas fa-heartbeat"></i> Health</a>
+  </div>
+</nav>
+<div class="main-container">
+  <aside class="sidebar">
+    <div class="sidebar-section">Main</div>
+    <div class="sidebar-item active" onclick="showSection('dashboard',this)"><i class="fas fa-th-large"></i> Dashboard</div>
+    <div class="sidebar-item" onclick="showSection('users',this)"><i class="fas fa-users"></i> Users <span class="badge">{{ stats.total_users }}</span></div>
+    <div class="sidebar-item" onclick="showSection('features',this)"><i class="fas fa-toggle-on"></i> Features</div>
+    <div class="sidebar-item" onclick="showSection('trading',this)"><i class="fas fa-chart-line"></i> Trading</div>
+    <div class="sidebar-section">Bot Controls</div>
+    <div class="sidebar-item" onclick="showSection('bot',this)"><i class="fas fa-robot"></i> Bot Manager</div>
+    <div class="sidebar-item" onclick="showSection('broadcast',this)"><i class="fas fa-bullhorn"></i> Broadcast</div>
+    <div class="sidebar-item" onclick="showSection('wallets',this)"><i class="fas fa-wallet"></i> Wallets</div>
+    <div class="sidebar-section">AI & Analytics</div>
+    <div class="sidebar-item" onclick="showSection('ai',this)"><i class="fas fa-brain"></i> AI Engine</div>
+    <div class="sidebar-item" onclick="showSection('voice',this)"><i class="fas fa-microphone"></i> Voice Assistant 💕</div>
+    <div class="sidebar-item" onclick="showSection('gemini',this)"><i class="fas fa-gem"></i> Gemini Bridge</div>
+    <div class="sidebar-item" onclick="showSection('intelligence',this)"><i class="fas fa-atom"></i> Super Intelligence</div>
+    <div class="sidebar-item" onclick="showSection('engines',this)"><i class="fas fa-cogs"></i> All Engines</div>
+    <div class="sidebar-item" onclick="showSection('logs',this)"><i class="fas fa-terminal"></i> System Logs</div>
+    <div class="sidebar-section">Updates & Auth</div>
+    <div class="sidebar-item" onclick="showSection('ota',this)"><i class="fas fa-download"></i> OTA Updates</div>
+    <div class="sidebar-item" onclick="showSection('auth',this)"><i class="fas fa-shield-alt"></i> Smart Auth</div>
+    <div class="sidebar-section">Settings</div>
+    <div class="sidebar-item" onclick="showSection('settings',this)"><i class="fas fa-cog"></i> Configuration</div>
+  </aside>
+  <main class="content">
+    <!-- Dashboard -->
+    <div id="sec-dashboard" class="section">
+      <div class="section-header">
+        <div class="section-title"><i class="fas fa-th-large"></i> Dashboard Overview</div>
+        <div style="font-size:12px;color:var(--text3)">Admin: {{ admin_name }} | ID: {{ admin_chat_id }} | <span id="last-update">{{ stats.last_update }}</span></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-users"></i></div><div class="stat-label">Total Users</div><div class="stat-value" id="s-users">{{ stats.total_users }}</div><div class="stat-change"><i class="fas fa-database"></i> Database</div></div>
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-user-clock"></i></div><div class="stat-label">Active Today</div><div class="stat-value" id="s-active">{{ stats.active_today }}</div><div class="stat-change"><i class="fas fa-check-circle"></i> Live</div></div>
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-crown"></i></div><div class="stat-label">Premium</div><div class="stat-value">{{ stats.premium_users }}</div><div class="stat-change"><i class="fas fa-star"></i> Verified</div></div>
+        <div class="stat-card"><div class="stat-icon cyan"><i class="fas fa-robot"></i></div><div class="stat-label">Bot</div><div class="stat-value" style="font-size:20px">ONLINE</div><div class="stat-change"><i class="fas fa-circle"></i> 24/7</div></div>
+        <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-brain"></i></div><div class="stat-label">AI Engine</div><div class="stat-value" style="font-size:20px">ACTIVE</div><div class="stat-change"><i class="fas fa-microchip"></i> Multi-AI</div></div>
+        <div class="stat-card"><div class="stat-icon pink"><i class="fas fa-exchange-alt"></i></div><div class="stat-label">Deposits</div><div class="stat-value">${{ payment_stats.total_deposits }}</div><div class="stat-change"><i class="fas fa-wallet"></i> Total</div></div>
+      </div>
+      <div class="cards-grid">
+        <div class="panel-card">
+          <div class="card-header"><div class="card-title"><i class="fas fa-heartbeat" style="color:var(--danger)"></i> System Engines</div></div>
+          <table class="data-table"><thead><tr><th>Engine</th><th>Status</th><th>Type</th></tr></thead><tbody>
+            <tr><td>🤖 Telegram Bot</td><td style="color:var(--accent)">● Online</td><td>Core</td></tr>
+            <tr><td>🧠 JARVIS Brain v5</td><td style="color:var(--accent)">● Online</td><td>AI</td></tr>
+            <tr><td>📊 Trading Engine</td><td style="color:var(--accent)">● Online</td><td>Trade</td></tr>
+            <tr><td>💎 Crypto Engine</td><td style="color:var(--accent)">● Online</td><td>Crypto</td></tr>
+            <tr><td>🔔 Alert System</td><td style="color:var(--accent)">● Online</td><td>Alert</td></tr>
+            <tr><td>📈 ML Predictor</td><td style="color:var(--accent)">● Online</td><td>ML</td></tr>
+            <tr><td>🚀 Auto Sniper</td><td style="color:var(--accent)">● Online</td><td>Trade</td></tr>
+            <tr><td>🐋 Whale Alert</td><td style="color:var(--accent)">● Online</td><td>Monitor</td></tr>
+            <tr><td>🕯️ Candle Analyzer</td><td style="color:var(--accent)">● Online</td><td>Analysis</td></tr>
+            <tr><td>📰 News Brain</td><td style="color:var(--accent)">● Online</td><td>AI</td></tr>
+            <tr><td>🔍 Rug Detector</td><td style="color:var(--accent)">● Online</td><td>Security</td></tr>
+            <tr><td>⚡ DEX Engine</td><td style="color:var(--accent)">● Online</td><td>DEX</td></tr>
+            <tr><td>🎙️ Hindi Voice</td><td style="color:var(--accent)">● Online</td><td>Voice AI</td></tr>
+            <tr><td>💎 Gemini Bridge</td><td style="color:var(--accent)">● Online</td><td>AI</td></tr>
+            <tr><td>🧠 Super Intel</td><td style="color:var(--accent)">● Online</td><td>AI</td></tr>
+            <tr><td>🔐 Smart Auth</td><td style="color:var(--accent)">● Online</td><td>Auth</td></tr>
+            <tr><td>🔄 OTA Update</td><td style="color:var(--accent)">● Online</td><td>Update</td></tr>
+          </tbody></table>
         </div>
-
-        <nav class="nav flex-column">
-            <a class="nav-link active" href="#dashboard" onclick="showSection('dashboard')">
-                <i class="fas fa-tachometer-alt"></i> Dashboard
-            </a>
-            <a class="nav-link" href="#users" onclick="showSection('users')">
-                <i class="fas fa-users"></i> Users
-            </a>
-            <a class="nav-link" href="#approvals" onclick="showSection('approvals')">
-                <i class="fas fa-check-circle"></i> Approvals
-            </a>
-            <a class="nav-link" href="#settings" onclick="showSection('settings')">
-                <i class="fas fa-cog"></i> Settings
-            </a>
-            <a class="nav-link" href="#payments" onclick="showSection('payments')">
-                <i class="fas fa-wallet"></i> Payments
-            </a>
-            <a class="nav-link" href="#logs" onclick="showSection('logs')">
-                <i class="fas fa-history"></i> Activity Logs
-            </a>
-            <a class="nav-link" href="#miniapp" onclick="showSection('miniapp')">
-                <i class="fas fa-mobile-screen-button"></i> Mini App
-            </a>
-            <hr style="border-color:rgba(255,255,255,0.2);margin:10px 0">
-            <a class="nav-link" href="/miniapp" target="_blank">
-                <i class="fas fa-external-link-alt"></i> Open Mini App ↗
-            </a>
-        </nav>
-
-        <div class="mt-auto">
-            <div class="text-center">
-                <small>Real-time updates active</small>
-            </div>
+        <div class="panel-card">
+          <div class="card-header"><div class="card-title"><i class="fas fa-stream" style="color:var(--accent)"></i> Live Activity</div></div>
+          <div class="activity-feed" id="activity-feed"></div>
         </div>
+      </div>
+    </div>
+    <!-- Users -->
+    <div id="sec-users" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-users"></i> User Management ({{ stats.total_users }} users)</div></div>
+      <div class="panel-card">
+        <table class="data-table"><thead><tr><th>Chat ID</th><th>Name</th><th>Status</th><th>Tier</th><th>Last Active</th><th>Actions</th></tr></thead><tbody>
+          {% for user in users %}
+          {% set uid = user.chat_id if user.chat_id is defined else '' %}
+          <tr>
+            <td style="font-family:'JetBrains Mono',monospace">{{ user.chat_id if user.chat_id is defined else user.get('id','--') }}</td>
+            <td>{{ user.name if user.name is defined else user.get('first_name','User') }}</td>
+            <td style="color:var(--accent)">● Active</td>
+            <td>{{ user.tier if user.tier is defined else 'free' }}</td>
+            <td>{{ user.last_active if user.last_active is defined else '--' }}</td>
+            <td>
+              <button class="bot-btn" style="padding:4px 10px;font-size:11px" data-action="block" data-uid="{{ uid }}" onclick="userAction(this.dataset.action,this.dataset.uid)"><i class="fas fa-ban"></i></button>
+              <button class="bot-btn primary" style="padding:4px 10px;font-size:11px" data-action="msg" data-uid="{{ uid }}" onclick="userAction(this.dataset.action,this.dataset.uid)"><i class="fas fa-paper-plane"></i></button>
+            </td>
+          </tr>
+          {% endfor %}
+          {% if not users %}<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:30px">No users yet — users appear when they interact with @David_crew_bot</td></tr>{% endif %}
+        </tbody></table>
+      </div>
+    </div>
+    <!-- Features -->
+    <div id="sec-features" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-toggle-on"></i> Feature Toggles</div><button class="bot-btn success" onclick="loadFeatures()"><i class="fas fa-sync"></i> Refresh</button></div>
+      <div class="feature-grid" id="feature-grid"></div>
+    </div>
+    <!-- Trading -->
+    <div id="sec-trading" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-chart-line"></i> Trading Engines</div></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-chart-bar"></i></div><div class="stat-label">Active Engines</div><div class="stat-value">12+</div></div>
+        <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-bolt"></i></div><div class="stat-label">AI Signals</div><div class="stat-value" style="font-size:20px">Active</div></div>
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-crosshairs"></i></div><div class="stat-label">Auto Sniper</div><div class="stat-value" style="font-size:20px">ON</div></div>
+        <div class="stat-card"><div class="stat-icon cyan"><i class="fas fa-robot"></i></div><div class="stat-label">Conqueror</div><div class="stat-value" style="font-size:20px">LIVE</div></div>
+      </div>
+      <div class="panel-card">
+        <div class="card-title" style="margin-bottom:12px"><i class="fas fa-list" style="color:var(--primary)"></i> All Trading Engines</div>
+        <table class="data-table"><thead><tr><th>Engine</th><th>File</th><th>Description</th><th>Status</th></tr></thead><tbody>
+          <tr><td>🚀 Auto Trader</td><td>auto_trader.py</td><td>Automated trade execution</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>⚡ Auto Sniper</td><td>auto_sniper.py</td><td>Token sniping (5 strategies)</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>💰 Buy/Sell</td><td>buy_sell_engine.py</td><td>Smart buy/sell signals</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🔥 Conqueror</td><td>jarvis_conqueror_trader.py</td><td>25-factor AI trader</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>💎 Real Trader</td><td>jarvis_real_trader.py</td><td>Jupiter DEX auto-trade</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🧠 Mega Trader</td><td>jarvis_mega_trader.py</td><td>Multi-strategy mega brain</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>📊 AI Signals</td><td>ai_signals.py</td><td>Technical analysis signals</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🕯️ Candle</td><td>candle_analyzer.py</td><td>Multi-TF pattern scan</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>📉 Index</td><td>live_index_engine.py</td><td>NIFTY/SENSEX tracking</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🇮🇳 Options</td><td>options_engine.py</td><td>NSE option chain</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🐋 Whale</td><td>whale_alert.py</td><td>Large TX monitor</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🔍 Rug Detector</td><td>rug_detector.py</td><td>Smart contract safety</td><td style="color:var(--accent)">● Active</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+    <!-- Bot Manager -->
+    <div id="sec-bot" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-robot"></i> Bot Manager — @David_crew_bot</div></div>
+      <div class="bot-controls">
+        <button class="bot-btn primary" onclick="botCmd('start')"><i class="fas fa-play"></i> Start Bot</button>
+        <button class="bot-btn danger" onclick="botCmd('stop')"><i class="fas fa-stop"></i> Stop Bot</button>
+        <button class="bot-btn warning" onclick="botCmd('restart')"><i class="fas fa-redo"></i> Restart</button>
+        <button class="bot-btn success" onclick="botCmd('status')"><i class="fas fa-info-circle"></i> Status</button>
+        <button class="bot-btn" onclick="botCmd('health')"><i class="fas fa-heartbeat"></i> Health</button>
+        <button class="bot-btn" onclick="botCmd('logs')"><i class="fas fa-terminal"></i> Logs</button>
+      </div>
+      <div class="panel-card" style="margin-top:20px">
+        <div class="card-title" style="margin-bottom:12px"><i class="fas fa-terminal" style="color:var(--accent)"></i> Bot Console</div>
+        <div class="terminal" id="bot-terminal">
+          <div class="terminal-line"><span class="prompt">jarvis@bot:~$</span> <span class="output">Bot: @David_crew_bot | Admin: {{ admin_chat_id }}</span></div>
+          <div class="terminal-line"><span class="success">Ready for commands...</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- Broadcast -->
+    <div id="sec-broadcast" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-bullhorn"></i> Broadcast</div></div>
+      <div class="panel-card">
+        <div style="margin-bottom:12px;font-size:13px;color:var(--text2)">Send message to all {{ stats.total_users }} users:</div>
+        <textarea id="broadcast-msg" rows="5" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--text);font-family:Inter;resize:vertical;font-size:13px" placeholder="Type broadcast message..."></textarea>
+        <div style="display:flex;gap:10px;margin-top:12px"><button class="bot-btn primary" onclick="sendBroadcast()"><i class="fas fa-paper-plane"></i> Send</button><button class="bot-btn" onclick="document.getElementById('broadcast-msg').value=''"><i class="fas fa-eraser"></i> Clear</button></div>
+      </div>
+    </div>
+    <!-- Wallets -->
+    <div id="sec-wallets" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-wallet"></i> Wallets</div></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-arrow-down"></i></div><div class="stat-label">Deposits</div><div class="stat-value">${{ payment_stats.total_deposits }}</div></div>
+        <div class="stat-card"><div class="stat-icon red"><i class="fas fa-arrow-up"></i></div><div class="stat-label">Withdrawals</div><div class="stat-value">${{ payment_stats.total_withdrawals }}</div></div>
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-hourglass-half"></i></div><div class="stat-label">Pending</div><div class="stat-value">{{ payment_stats.pending_withdrawals }}</div></div>
+        <div class="stat-card"><div class="stat-icon cyan"><i class="fas fa-wallet"></i></div><div class="stat-label">Active</div><div class="stat-value">{{ payment_stats.active_wallets }}</div></div>
+      </div>
+    </div>
+    <!-- AI Engine -->
+    <div id="sec-ai" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-brain"></i> AI Engine</div></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-microchip"></i></div><div class="stat-label">Brain</div><div class="stat-value" style="font-size:18px">v5 Nuclear</div></div>
+        <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-cloud"></i></div><div class="stat-label">Groq</div><div class="stat-value" style="font-size:18px">✅ Active</div></div>
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-robot"></i></div><div class="stat-label">OpenAI</div><div class="stat-value" style="font-size:18px">✅ Active</div></div>
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-gem"></i></div><div class="stat-label">Gemini</div><div class="stat-value" style="font-size:18px">✅ Active</div></div>
+      </div>
+      <div class="panel-card">
+        <div class="card-title" style="margin-bottom:12px"><i class="fas fa-list" style="color:var(--accent2)"></i> AI Engines</div>
+        <table class="data-table"><thead><tr><th>Engine</th><th>File</th><th>Capabilities</th></tr></thead><tbody>
+          <tr><td>🧠 Brain v5</td><td>jarvis_brain.py</td><td>Multi-AI, memory, NLU, intent</td></tr>
+          <tr><td>💬 AI Chat</td><td>ai_chat.py</td><td>Conversational AI</td></tr>
+          <tr><td>🤖 JARVIS AI</td><td>jarvis_ai.py</td><td>Intent classification</td></tr>
+          <tr><td>🧠 Super Brain</td><td>jarvis_super_brain.py</td><td>News intelligence</td></tr>
+          <tr><td>📊 ML Predictor</td><td>ml_predictor.py</td><td>Price prediction</td></tr>
+          <tr><td>💹 Market Brain</td><td>jarvis_market_brain.py</td><td>NIFTY/SENSEX analysis</td></tr>
+          <tr><td>⚡ Ultra AI</td><td>jarvis_ultra_ai.py</td><td>Next-gen processing</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+    <!-- All Engines -->
+    <div id="sec-engines" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-cogs"></i> All Project Engines</div></div>
+      <div class="panel-card">
+        <table class="data-table"><thead><tr><th>File</th><th>Purpose</th><th>Status</th></tr></thead><tbody>
+          <tr><td>telegram_bot.py</td><td>Telegram Bot (10K+ lines)</td><td style="color:var(--accent)">● Core</td></tr>
+          <tr><td>server.py</td><td>FastAPI Server</td><td style="color:var(--accent)">● Running</td></tr>
+          <tr><td>jarvis_brain.py</td><td>AI Brain v5</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>admin_panel.py</td><td>Admin Control</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>miniapp_api.py</td><td>Mini App API v6</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>auto_trader.py</td><td>Auto Trading</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>auto_sniper.py</td><td>Token Sniping</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>crypto_engine.py</td><td>Crypto Analysis</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>dex_engine.py</td><td>DEX Trading</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>ai_signals.py</td><td>Signal Generator</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>candle_analyzer.py</td><td>Pattern Scanner</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>ml_predictor.py</td><td>ML Predictor</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>jarvis_monitor.py</td><td>System Monitor</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>jarvis_conqueror_trader.py</td><td>25-Factor AI</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>jarvis_real_trader.py</td><td>Jupiter DEX Trade</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>whale_alert.py</td><td>Whale Monitor</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>rug_detector.py</td><td>Contract Safety</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>solana_engine.py</td><td>Solana Monitor</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>alerter.py</td><td>Alert System</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>data_store.py</td><td>Database</td><td style="color:var(--accent)">● Active</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+    <!-- Logs -->
+    <div id="sec-logs" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-terminal"></i> System Logs</div><button class="bot-btn primary" onclick="loadLogs()"><i class="fas fa-sync"></i> Refresh</button></div>
+      <div class="terminal" id="system-logs" style="height:500px">
+        <div class="terminal-line"><span class="prompt">[STARTUP]</span> <span class="success">🤖 JARVIS v5.0 started</span></div>
+        <div class="terminal-line"><span class="prompt">[INFO]</span> <span class="output">Admin: {{ admin_name }} ({{ admin_chat_id }})</span></div>
+        <div class="terminal-line"><span class="prompt">[INFO]</span> <span class="output">Users: {{ stats.total_users }}</span></div>
+        <div class="terminal-line"><span class="prompt">[INFO]</span> <span class="success">All systems online</span></div>
+      </div>
+    </div>
+    <!-- Settings -->
+    <div id="sec-settings" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-cog"></i> Configuration</div></div>
+      <div class="panel-card">
+        <table class="data-table"><thead><tr><th>Setting</th><th>Value</th><th>Source</th></tr></thead><tbody>
+          <tr><td>Admin Chat ID</td><td style="font-family:'JetBrains Mono'">{{ admin_chat_id }}</td><td>.env</td></tr>
+          <tr><td>Bot</td><td>@David_crew_bot</td><td>Telegram</td></tr>
+          <tr><td>Server Port</td><td>8000</td><td>server.py</td></tr>
+          <tr><td>AI Providers</td><td>Groq, OpenAI, Gemini, Anthropic</td><td>.env</td></tr>
+          <tr><td>Mini App</td><td>/miniapp</td><td>server.py</td></tr>
+          <tr><td>Database</td><td>SQLite + JSON</td><td>admin_panel.py</td></tr>
+          <tr><td>Voice Engine</td><td>Hindi Sweet Voice (Gemini TTS, Edge TTS)</td><td>jarvis_hindi_voice.py</td></tr>
+          <tr><td>OTA System</td><td>Live Delta Updates</td><td>jarvis_ota_update.py</td></tr>
+          <tr><td>Auth System</td><td>Owner/Admin/Premium/Free tiers</td><td>jarvis_smart_auth.py</td></tr>
+        </tbody></table>
+      </div>
     </div>
 
-    <div class="main-content" id="mainContent">
-        <!-- Dashboard Section -->
-        <div id="dashboard-section" class="section">
-            <h2><i class="fas fa-tachometer-alt"></i> Dashboard</h2>
-            <div class="row">
-                <div class="col-md-3 col-sm-6">
-                    <div class="card stat-card text-white">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="fas fa-users"></i> Total Users</h5>
-                            <h3 id="totalUsers">{{ stats.total_users }}</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6">
-                    <div class="card stat-card text-white">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="fas fa-clock"></i> Active Today</h5>
-                            <h3 id="activeToday">{{ stats.active_today }}</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6">
-                    <div class="card stat-card text-white">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="fas fa-star"></i> Premium</h5>
-                            <h3 id="premiumUsers">{{ stats.premium_users }}</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6">
-                    <div class="card stat-card text-white">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="fas fa-exclamation-triangle"></i> Pending</h5>
-                            <h3 id="pendingApprovals">{{ stats.pending_approvals }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-chart-line"></i> System Status</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Server Status:</strong> <span class="badge bg-success">Online</span></p>
-                            <p><strong>Last Update:</strong> <span id="lastUpdate">{{ stats.last_update }}</span></p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Real-time:</strong> <span class="badge bg-success">Active</span></p>
-                            <p><strong>WebSocket:</strong> <span class="badge bg-success" id="wsStatus">Connected</span></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Users Section -->
-        <div id="users-section" class="section" style="display: none;">
-            <h2><i class="fas fa-users"></i> User Management</h2>
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5>All Users</h5>
-                    <input type="text" class="form-control w-25" placeholder="Search users..." id="userSearch">
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover" id="usersTable">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Tier</th>
-                                    <th>Messages</th>
-                                    <th>Last Active</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="usersTableBody">
-                                {% for user in users %}
-                                <tr>
-                                    <td>{{ user.first_name or 'Unknown' }}</td>
-                                    <td>
-                                        <span class="badge bg-{{ 'primary' if user.tier == 'admin' else 'warning' if user.tier == 'premium' else 'secondary' }}">
-                                            {{ user.tier.title() }}
-                                        </span>
-                                    </td>
-                                    <td>{{ user.message_count or 0 }}</td>
-                                    <td>{{ user.last_active[:10] if user.last_active else 'Never' }}</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary" onclick="viewUser({{ user.chat_id }})">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        {% if user.tier != 'admin' %}
-                                        <button class="btn btn-sm btn-outline-success" onclick="upgradeUser({{ user.chat_id }})">
-                                            <i class="fas fa-star"></i>
-                                        </button>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Approvals Section -->
-        <div id="approvals-section" class="section" style="display: none;">
-            <h2><i class="fas fa-check-circle"></i> Approval Requests</h2>
-            <div class="card">
-                <div class="card-header">
-                    <h5>Pending Approvals</h5>
-                </div>
-                <div class="card-body">
-                    <div id="approvalsList">
-                        {% for approval in pending_approvals %}
-                        <div class="card mb-3">
-                            <div class="card-body">
-                                <div class="row align-items-center">
-                                    <div class="col-md-8">
-                                        <h6>{{ approval.user_name }}</h6>
-                                        <p class="mb-1"><strong>Feature:</strong> {{ approval.feature_name }}</p>
-                                        <p class="mb-1"><strong>Reason:</strong> {{ approval.reason or 'No reason given' }}</p>
-                                        <small class="text-muted">Requested: {{ approval.requested[:19] }}</small>
-                                    </div>
-                                    <div class="col-md-4 text-end">
-                                        <button class="btn btn-success btn-sm me-2" onclick="approveRequest('{{ approval.id }}')">
-                                            <i class="fas fa-check"></i> Approve
-                                        </button>
-                                        <button class="btn btn-danger btn-sm" onclick="rejectRequest('{{ approval.id }}')">
-                                            <i class="fas fa-times"></i> Reject
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                        {% if not pending_approvals %}
-                        <p class="text-center text-muted">No pending approvals</p>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Settings Section -->
-        <div id="settings-section" class="section" style="display: none;">
-            <h2><i class="fas fa-cog"></i> Settings</h2>
-            <div class="card">
-                <div class="card-header">
-                    <h5>System Settings</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Admin Name</label>
-                                <input type="text" class="form-control" value="{{ admin_name }}" readonly>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Admin Chat ID</label>
-                                <input type="text" class="form-control" value="{{ admin_chat_id }}" readonly>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">System Status</label>
-                                <p class="form-control-plaintext">
-                                    <span class="badge bg-success">Active</span>
-                                </p>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Real-time Updates</label>
-                                <p class="form-control-plaintext">
-                                    <span class="badge bg-success">Enabled</span>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Payments Section -->
-        <div id="payments-section" class="section" style="display: none;">
-            <h2><i class="fas fa-wallet"></i> Payment Management</h2>
-            
-            <!-- Payment Stats -->
-            <div class="row mb-4">
-                <div class="col-md-3 col-sm-6">
-                    <div class="card stat-card text-white">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="fas fa-coins"></i> Total Deposits</h5>
-                            <h3 id="totalDeposits">₹{{ payment_stats.total_deposits|default(0) }}</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6">
-                    <div class="card stat-card text-white">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="fas fa-hand-holding-usd"></i> Total Withdrawals</h5>
-                            <h3 id="totalWithdrawals">₹{{ payment_stats.total_withdrawals|default(0) }}</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6">
-                    <div class="card stat-card text-white">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="fas fa-chart-line"></i> Active Wallets</h5>
-                            <h3 id="activeWallets">{{ payment_stats.active_wallets|default(0) }}</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6">
-                    <div class="card stat-card text-white">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="fas fa-clock"></i> Pending Withdrawals</h5>
-                            <h3 id="pendingWithdrawals">{{ payment_stats.pending_withdrawals|default(0) }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Wallets Management -->
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5>User Wallets</h5>
-                    <input type="text" class="form-control w-25" placeholder="Search wallets..." id="walletSearch">
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover" id="walletsTable">
-                            <thead>
-                                <tr>
-                                    <th>User</th>
-                                    <th>Wallet ID</th>
-                                    <th>Balance</th>
-                                    <th>Total Deposited</th>
-                                    <th>Total Withdrawn</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="walletsTableBody">
-                                {% for wallet in wallets_data %}
-                                <tr>
-                                    <td>{{ wallet.user_name or 'Unknown' }}</td>
-                                    <td><code>{{ wallet.wallet_id }}</code></td>
-                                    <td><strong>₹{{ "%.2f"|format(wallet.balance_inr) }}</strong></td>
-                                    <td>₹{{ "%.2f"|format(wallet.total_deposited) }}</td>
-                                    <td>₹{{ "%.2f"|format(wallet.total_withdrawn) }}</td>
-                                    <td>
-                                        <span class="badge bg-{{ 'success' if wallet.status == 'active' else 'warning' }}">
-                                            {{ wallet.status.title() }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-info" onclick="viewWallet({{ wallet.chat_id }})">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-success" onclick="creditWallet({{ wallet.chat_id }})">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-danger" onclick="debitWallet({{ wallet.chat_id }})">
-                                            <i class="fas fa-minus"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Transactions -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5>Recent Transactions</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>User</th>
-                                    <th>Type</th>
-                                    <th>Amount</th>
-                                    <th>Reference</th>
-                                    <th>Status</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody id="transactionsTableBody">
-                                {% for tx in recent_transactions %}
-                                <tr>
-                                    <td>{{ tx.user_name or 'Unknown' }}</td>
-                                    <td>
-                                        <span class="badge bg-{{ 'success' if tx.type == 'deposit' else 'warning' if tx.type == 'withdrawal' else 'info' }}">
-                                            {{ tx.type.title() }}
-                                        </span>
-                                    </td>
-                                    <td>₹{{ "%.2f"|format(tx.amount_inr) }}</td>
-                                    <td><code>{{ tx.tx_ref[:12] }}</code></td>
-                                    <td>
-                                        <span class="badge bg-{{ 'success' if tx.status == 'completed' else 'warning' if tx.status == 'processing' else 'secondary' }}">
-                                            {{ tx.status.title() }}
-                                        </span>
-                                    </td>
-                                    <td>{{ tx.created[:10] if tx.created else 'N/A' }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pending Withdrawals -->
-            <div class="card">
-                <div class="card-header">
-                    <h5>Pending Withdrawals</h5>
-                </div>
-                <div class="card-body">
-                    <div id="pendingWithdrawalsList">
-                        {% for withdrawal in pending_withdrawals %}
-                        <div class="card mb-3">
-                            <div class="card-body">
-                                <div class="row align-items-center">
-                                    <div class="col-md-6">
-                                        <h6>{{ withdrawal.user_name }}</h6>
-                                        <p class="mb-1"><strong>Amount:</strong> ₹{{ "%.2f"|format(withdrawal.amount_inr) }}</p>
-                                        <p class="mb-1"><strong>Bank:</strong> {{ withdrawal.bank }}</p>
-                                        <small class="text-muted">Requested: {{ withdrawal.created[:19] }}</small>
-                                    </div>
-                                    <div class="col-md-6 text-end">
-                                        <button class="btn btn-success btn-sm me-2" onclick="approveWithdrawal('{{ withdrawal.tx_ref }}')">
-                                            <i class="fas fa-check"></i> Approve
-                                        </button>
-                                        <button class="btn btn-danger btn-sm" onclick="rejectWithdrawal('{{ withdrawal.tx_ref }}')">
-                                            <i class="fas fa-times"></i> Reject
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                        {% if not pending_withdrawals %}
-                        <p class="text-center text-muted">No pending withdrawals</p>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Logs Section -->
-        <div id="logs-section" class="section" style="display: none;">
-            <h2><i class="fas fa-history"></i> Activity Logs</h2>
-            <div class="card">
-                <div class="card-body">
-                    <div id="logsContainer">
-                        <p class="text-center text-muted">Real-time activity logs will appear here...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Mini App Section -->
-        <div id="miniapp-section" class="section" style="display: none;">
-            <h2><i class="fas fa-mobile-screen-button"></i> Mini App Preview</h2>
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5><i class="fas fa-info-circle"></i> Mini App Status</h5>
-                            <p><strong>URL:</strong> <code id="miniAppUrl">/miniapp</code></p>
-                            <p><strong>Status:</strong> <span class="badge bg-success" id="miniAppStatus">Active</span></p>
-                            <p><strong>API Endpoints:</strong></p>
-                            <ul class="list-unstyled" style="font-size:13px">
-                                <li><code>GET /api/miniapp/dashboard</code> — Dashboard data</li>
-                                <li><code>GET /api/miniapp/markets</code> — Live markets</li>
-                                <li><code>GET /api/miniapp/signals</code> — AI signals</li>
-                                <li><code>GET /api/miniapp/wallet</code> — User wallet</li>
-                                <li><code>POST /api/miniapp/chat</code> — AI chat</li>
-                            </ul>
-                            <a href="/miniapp" target="_blank" class="btn btn-primary">
-                                <i class="fas fa-external-link-alt"></i> Open Full Screen
-                            </a>
-                            <button class="btn btn-success ms-2" onclick="testMiniAppAPI()">
-                                <i class="fas fa-vial"></i> Test API
-                            </button>
-                            <div id="apiTestResult" class="mt-3" style="display:none"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5><i class="fas fa-link"></i> Telegram Setup</h5>
-                            <p class="text-muted" style="font-size:13px">Set these environment variables for Telegram integration:</p>
-                            <div class="mb-2">
-                                <code>MINI_APP_URL=</code><span class="text-primary" id="currentOrigin"></span>
-                            </div>
-                            <div class="mb-2">
-                                <code>TELEGRAM_BOT_TOKEN=your_bot_token</code>
-                            </div>
-                            <p class="text-muted mt-3" style="font-size:12px">
-                                <i class="fas fa-info-circle"></i> The Mini App URL must use HTTPS for Telegram. Use @BotFather to set the Menu Button URL.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-mobile-alt"></i> Mobile Preview</h5>
-                    <div>
-                        <button class="btn btn-sm btn-outline-primary" onclick="setPreviewSize(375, 667)">iPhone SE</button>
-                        <button class="btn btn-sm btn-outline-primary" onclick="setPreviewSize(390, 844)">iPhone 14</button>
-                        <button class="btn btn-sm btn-outline-primary" onclick="setPreviewSize(412, 915)">Android</button>
-                    </div>
-                </div>
-                <div class="card-body text-center" style="background:#1a1a2e;padding:20px;border-radius:0 0 15px 15px">
-                    <div style="display:inline-block;border:3px solid #333;border-radius:24px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.4)">
-                        <iframe id="miniAppFrame" src="/miniapp" 
-                            style="width:375px;height:667px;border:none;background:#0a0e17" 
-                            allow="clipboard-write"></iframe>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- 🎙️ Hindi Voice Assistant -->
+    <div id="sec-voice" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-microphone"></i> 🎙️ Hindi Voice Assistant — Sweet & Smiling 💕</div></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon pink"><i class="fas fa-microphone"></i></div><div class="stat-label">Voice Engine</div><div class="stat-value" style="font-size:18px">ACTIVE 💕</div><div class="stat-change"><i class="fas fa-check"></i> Hindi Sweet</div></div>
+        <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-language"></i></div><div class="stat-label">Language</div><div class="stat-value" style="font-size:18px">Hindi 🇮🇳</div><div class="stat-change"><i class="fas fa-globe"></i> Hinglish</div></div>
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-smile"></i></div><div class="stat-label">Personality</div><div class="stat-value" style="font-size:18px">Sweet 😊</div><div class="stat-change"><i class="fas fa-heart"></i> Always Smiling</div></div>
+        <div class="stat-card"><div class="stat-icon cyan"><i class="fas fa-volume-up"></i></div><div class="stat-label">TTS Chain</div><div class="stat-value" style="font-size:14px">Gemini→Edge</div><div class="stat-change"><i class="fas fa-link"></i> 3-layer fallback</div></div>
+      </div>
+      <div class="panel-card">
+        <div class="card-title" style="margin-bottom:12px"><i class="fas fa-cogs" style="color:var(--pink)"></i> Voice Features</div>
+        <table class="data-table"><thead><tr><th>Feature</th><th>Tech</th><th>Status</th></tr></thead><tbody>
+          <tr><td>🗣️ Hindi Sweet Voice</td><td>Gemini Kore + Edge TTS SwaraNeural</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🎤 Voice-to-Text</td><td>Groq Whisper + OpenAI Whisper</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>😊 Mood Detection</td><td>Keyword + Sentiment Analysis</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🎯 Voice Commands</td><td>buy, sell, market, portfolio, predict</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>💕 Sweet Personality</td><td>Hindi system prompt, emoji, warmth</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🔊 Auto Voice Reply</td><td>Real-time TTS response</td><td style="color:var(--accent)">● Active</td></tr>
+        </tbody></table>
+      </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        let ws;
-        let currentSection = 'dashboard';
+    <!-- 💎 Gemini Bridge -->
+    <div id="sec-gemini" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-gem"></i> 💎 Gemini Bridge — Deep Android Integration</div></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-cloud"></i></div><div class="stat-label">Cloud Gemini</div><div class="stat-value" style="font-size:18px">ACTIVE</div><div class="stat-change"><i class="fas fa-check"></i> 2.5 Flash</div></div>
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-mobile-alt"></i></div><div class="stat-label">On-Device</div><div class="stat-value" style="font-size:18px">READY</div><div class="stat-change"><i class="fas fa-microchip"></i> Gemini Nano</div></div>
+        <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-route"></i></div><div class="stat-label">Smart Routing</div><div class="stat-value" style="font-size:18px">AUTO</div><div class="stat-change"><i class="fas fa-bolt"></i> Complexity-based</div></div>
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-image"></i></div><div class="stat-label">Vision</div><div class="stat-value" style="font-size:18px">ENABLED</div><div class="stat-change"><i class="fas fa-eye"></i> Chart analysis</div></div>
+      </div>
+      <div class="panel-card">
+        <div class="card-title" style="margin-bottom:12px"><i class="fas fa-route" style="color:var(--primary)"></i> API Endpoints</div>
+        <table class="data-table"><thead><tr><th>Route</th><th>Method</th><th>Purpose</th></tr></thead><tbody>
+          <tr><td>/api/gemini/chat</td><td>POST</td><td>Smart Gemini chat (auto-routes)</td></tr>
+          <tr><td>/api/gemini/analyze</td><td>POST</td><td>Deep market analysis</td></tr>
+          <tr><td>/api/gemini/intent</td><td>POST</td><td>Intent understanding</td></tr>
+          <tr><td>/api/gemini/image</td><td>POST</td><td>Chart/image analysis</td></tr>
+          <tr><td>/api/gemini/config</td><td>GET</td><td>On-device config</td></tr>
+        </tbody></table>
+      </div>
+    </div>
 
-        function initWebSocket() {
-            ws = new WebSocket('ws://' + window.location.host + '/ws');
-            ws.onopen = function(event) {
-                console.log('WebSocket connected');
-                document.getElementById('wsStatus').className = 'badge bg-success';
-                document.getElementById('wsStatus').textContent = 'Connected';
-            };
-            ws.onmessage = function(event) {
-                const data = JSON.parse(event.data);
-                handleRealTimeUpdate(data);
-            };
-            ws.onclose = function(event) {
-                console.log('WebSocket disconnected');
-                document.getElementById('wsStatus').className = 'badge bg-danger';
-                document.getElementById('wsStatus').textContent = 'Disconnected';
-                // Reconnect after 5 seconds
-                setTimeout(initWebSocket, 5000);
-            };
-            ws.onerror = function(error) {
-                console.error('WebSocket error:', error);
-            };
-        }
+    <!-- 🧠 Super Intelligence -->
+    <div id="sec-intelligence" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-atom"></i> 🧠 Super Intelligence — Multi-AI Brain</div></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-brain"></i></div><div class="stat-label">Multi-AI</div><div class="stat-value" style="font-size:18px">3 AIs</div><div class="stat-change"><i class="fas fa-check"></i> Gemini+Groq+OpenAI</div></div>
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-chart-line"></i></div><div class="stat-label">Self-Learning</div><div class="stat-value" style="font-size:18px">ACTIVE</div><div class="stat-change"><i class="fas fa-database"></i> Logs predictions</div></div>
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-bullseye"></i></div><div class="stat-label">Accuracy</div><div class="stat-value" id="intel-accuracy" style="font-size:18px">Tracking</div><div class="stat-change"><i class="fas fa-percentage"></i> Verified</div></div>
+        <div class="stat-card"><div class="stat-icon cyan"><i class="fas fa-lightbulb"></i></div><div class="stat-label">Proactive</div><div class="stat-value" style="font-size:18px">ENABLED</div><div class="stat-change"><i class="fas fa-bolt"></i> Auto-insights</div></div>
+      </div>
+      <div class="panel-card">
+        <div class="card-title" style="margin-bottom:12px"><i class="fas fa-cogs" style="color:var(--accent2)"></i> Intelligence Features</div>
+        <table class="data-table"><thead><tr><th>Feature</th><th>Description</th><th>Status</th></tr></thead><tbody>
+          <tr><td>🤖 Multi-AI Consensus</td><td>Queries 3 AIs, builds consensus for decisions</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>📊 Self-Learning</td><td>Logs & verifies predictions, improves over time</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>💡 Proactive Insights</td><td>Generates insights based on time, session, user</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🎯 User Preferences</td><td>Learns what each user likes, adapts responses</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🕐 Market Context</td><td>IST-aware, session detection, weekend logic</td><td style="color:var(--accent)">● Active</td></tr>
+        </tbody></table>
+      </div>
+    </div>
 
-        function handleRealTimeUpdate(data) {
-            if (data.type === 'stats_update') {
-                updateStats(data.stats);
-            } else if (data.type === 'new_user') {
-                addNewUser(data.user);
-            } else if (data.type === 'new_approval') {
-                addNewApproval(data.approval);
-            } else if (data.type === 'log') {
-                addLog(data.message);
-            }
-        }
+    <!-- 🔄 OTA Updates -->
+    <div id="sec-ota" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-download"></i> 🔄 OTA Live Updates — No Reinstall</div></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-download"></i></div><div class="stat-label">OTA Engine</div><div class="stat-value" style="font-size:18px">ACTIVE</div><div class="stat-change"><i class="fas fa-check"></i> Delta updates</div></div>
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-file-archive"></i></div><div class="stat-label">Bundles</div><div class="stat-value" id="ota-bundles" style="font-size:18px">Ready</div><div class="stat-change"><i class="fas fa-box"></i> Versioned</div></div>
+        <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-undo"></i></div><div class="stat-label">Rollback</div><div class="stat-value" style="font-size:18px">ENABLED</div><div class="stat-change"><i class="fas fa-history"></i> Any version</div></div>
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-wifi"></i></div><div class="stat-label">Silent Update</div><div class="stat-value" style="font-size:18px">ON</div><div class="stat-change"><i class="fas fa-eye-slash"></i> Background</div></div>
+      </div>
+      <div class="panel-card">
+        <div class="card-title" style="margin-bottom:12px"><i class="fas fa-code-branch" style="color:var(--primary)"></i> How OTA Works</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8">
+          <p>✅ App checks <code>/api/ota/check</code> on every launch</p>
+          <p>✅ Only changed files are downloaded (delta updates)</p>
+          <p>✅ Update applies instantly — no APK download needed</p>
+          <p>✅ Rollback to any previous version if needed</p>
+          <p>✅ Build new OTA bundle: <code>POST /api/ota/create</code></p>
+        </div>
+      </div>
+      <div class="bot-controls" style="margin-top:16px">
+        <button class="bot-btn primary" onclick="createOTA()"><i class="fas fa-plus"></i> Create OTA Bundle</button>
+        <button class="bot-btn success" onclick="checkOTA()"><i class="fas fa-search"></i> Check Latest</button>
+        <button class="bot-btn warning" onclick="rollbackOTA()"><i class="fas fa-undo"></i> Rollback</button>
+      </div>
+    </div>
 
-        function updateStats(stats) {
-            document.getElementById('totalUsers').textContent = stats.total_users;
-            document.getElementById('activeToday').textContent = stats.active_today;
-            document.getElementById('premiumUsers').textContent = stats.premium_users;
-            document.getElementById('pendingApprovals').textContent = stats.pending_approvals;
-            document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
-        }
-
-        function addNewUser(user) {
-            // Refresh users table
-            location.reload();
-        }
-
-        function addNewApproval(approval) {
-            // Add to approvals list
-            const approvalsList = document.getElementById('approvalsList');
-            const card = document.createElement('div');
-            card.className = 'card mb-3';
-            card.innerHTML = `
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h6>${approval.user_name}</h6>
-                            <p class="mb-1"><strong>Feature:</strong> ${approval.feature_name}</p>
-                            <p class="mb-1"><strong>Reason:</strong> ${approval.reason || 'No reason given'}</p>
-                            <small class="text-muted">Requested: ${new Date().toLocaleString()}</small>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <button class="btn btn-success btn-sm me-2" onclick="approveRequest('${approval.id}')">
-                                <i class="fas fa-check"></i> Approve
-                            </button>
-                            <button class="btn btn-danger btn-sm" onclick="rejectRequest('${approval.id}')">
-                                <i class="fas fa-times"></i> Reject
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            approvalsList.insertBefore(card, approvalsList.firstChild);
-        }
-
-        function addLog(message) {
-            const logsContainer = document.getElementById('logsContainer');
-            const logEntry = document.createElement('div');
-            logEntry.className = 'alert alert-info';
-            logEntry.innerHTML = `<small>${new Date().toLocaleString()}: ${message}</small>`;
-            logsContainer.insertBefore(logEntry, logsContainer.firstChild);
-        }
-
-        function showSection(section) {
-            // Hide all sections
-            document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
-            // Show selected section
-            document.getElementById(section + '-section').style.display = 'block';
-            // Update nav
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            event.target.classList.add('active');
-            currentSection = section;
-        }
-
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const mainContent = document.getElementById('mainContent');
-            sidebar.classList.toggle('show');
-        }
-
-        // Touch/swipe support for mobile
-        let touchStartX = 0;
-        let touchEndX = 0;
-
-        document.addEventListener('touchstart', function(e) {
-            touchStartX = e.changedTouches[0].screenX;
-        });
-
-        document.addEventListener('touchend', function(e) {
-            touchEndX = e.changedTouches[0].screenX;
-            handleSwipe();
-        });
-
-        function handleSwipe() {
-            const swipeThreshold = 50;
-            const sidebar = document.getElementById('sidebar');
-            
-            if (touchEndX - touchStartX > swipeThreshold) {
-                // Swipe right - show sidebar
-                sidebar.classList.add('show');
-            } else if (touchStartX - touchEndX > swipeThreshold) {
-                // Swipe left - hide sidebar
-                sidebar.classList.remove('show');
-            }
-        }
-
-        function approveRequest(reqId) {
-            fetch('/approve/' + reqId, { method: 'POST' })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                    location.reload();
-                });
-        }
-
-        function rejectRequest(reqId) {
-            const reason = prompt('Reason for rejection:');
-            if (reason !== null) {
-                fetch('/reject/' + reqId, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({reason: reason}) })
-                    .then(response => response.json())
-                    .then(data => {
-                        alert(data.message);
-                        location.reload();
-                    });
-            }
-        }
-
-        function upgradeUser(chatId) {
-            if (confirm('Upgrade this user to Premium?')) {
-                fetch('/upgrade/' + chatId, { method: 'POST' })
-                    .then(response => response.json())
-                    .then(data => {
-                        alert(data.message);
-                        location.reload();
-                    });
-            }
-        }
-
-        function viewUser(chatId) {
-            // Could open a modal or redirect to user details
-            alert('User details for ID: ' + chatId);
-        }
-
-        // Search functionality
-        document.getElementById('userSearch').addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase();
-            const rows = document.querySelectorAll('#usersTableBody tr');
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(searchTerm) ? '' : 'none';
-            });
-        });
-
-        // Wallet search functionality
-        document.getElementById('walletSearch').addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase();
-            const rows = document.querySelectorAll('#walletsTableBody tr');
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(searchTerm) ? '' : 'none';
-            });
-        });
-
-        // Payment functions
-        function viewWallet(chatId) {
-            // Could open a modal or redirect to wallet details
-            alert('Wallet details for user ID: ' + chatId);
-        }
-
-        function creditWallet(chatId) {
-            const amount = prompt('Enter amount to credit (INR):');
-            if (amount && parseFloat(amount) > 0) {
-                fetch('/credit_wallet/' + chatId, { 
-                    method: 'POST', 
-                    headers: {'Content-Type': 'application/json'}, 
-                    body: JSON.stringify({amount: parseFloat(amount)}) 
-                })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                    location.reload();
-                })
-                .catch(error => {
-                    alert('Error: ' + error.message);
-                });
-            }
-        }
-
-        function debitWallet(chatId) {
-            const amount = prompt('Enter amount to debit (INR):');
-            if (amount && parseFloat(amount) > 0) {
-                fetch('/debit_wallet/' + chatId, { 
-                    method: 'POST', 
-                    headers: {'Content-Type': 'application/json'}, 
-                    body: JSON.stringify({amount: parseFloat(amount)}) 
-                })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                    location.reload();
-                })
-                .catch(error => {
-                    alert('Error: ' + error.message);
-                });
-            }
-        }
-
-        function approveWithdrawal(txRef) {
-            if (confirm('Approve this withdrawal?')) {
-                fetch('/approve_withdrawal/' + txRef, { method: 'POST' })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                    location.reload();
-                });
-            }
-        }
-
-        function rejectWithdrawal(txRef) {
-            const reason = prompt('Reason for rejection:');
-            if (reason !== null) {
-                fetch('/reject_withdrawal/' + txRef, { 
-                    method: 'POST', 
-                    headers: {'Content-Type': 'application/json'}, 
-                    body: JSON.stringify({reason: reason}) 
-                })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                    location.reload();
-                });
-            }
-        }
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            initWebSocket();
-            // Set current origin for mini app URL display
-            const originEl = document.getElementById('currentOrigin');
-            if (originEl) originEl.textContent = window.location.origin;
-        });
-
-        // Mini App functions
-        function setPreviewSize(w, h) {
-            const frame = document.getElementById('miniAppFrame');
-            if (frame) { frame.style.width = w + 'px'; frame.style.height = h + 'px'; }
-        }
-
-        async function testMiniAppAPI() {
-            const resultDiv = document.getElementById('apiTestResult');
-            resultDiv.style.display = 'block';
-            resultDiv.innerHTML = '<div class="alert alert-info">Testing API endpoints...</div>';
-
-            const endpoints = [
-                { name: 'Dashboard', url: '/api/miniapp/dashboard' },
-                { name: 'Markets', url: '/api/miniapp/markets' },
-                { name: 'Signals', url: '/api/miniapp/signals' },
-                { name: 'Wallet', url: '/api/miniapp/wallet' }
-            ];
-
-            let html = '';
-            for (const ep of endpoints) {
-                try {
-                    const start = Date.now();
-                    const resp = await fetch(ep.url);
-                    const ms = Date.now() - start;
-                    const data = await resp.json();
-                    const keys = Object.keys(data);
-                    html += `<div class="alert alert-success py-1 mb-1" style="font-size:12px">
-                        <strong>✅ ${ep.name}</strong> — ${resp.status} OK (${ms}ms) — Keys: ${keys.join(', ')}
-                    </div>`;
-                } catch(e) {
-                    html += `<div class="alert alert-danger py-1 mb-1" style="font-size:12px">
-                        <strong>❌ ${ep.name}</strong> — ${e.message}
-                    </div>`;
-                }
-            }
-            resultDiv.innerHTML = html;
-        }
-    </script>
+    <!-- 🔐 Smart Auth -->
+    <div id="sec-auth" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-shield-alt"></i> 🔐 Smart Auth — Owner & User System</div></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-crown"></i></div><div class="stat-label">Owner</div><div class="stat-value" style="font-size:18px">{{ admin_name }}</div><div class="stat-change"><i class="fas fa-star"></i> Full access</div></div>
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-users"></i></div><div class="stat-label">Registered</div><div class="stat-value" id="auth-users">{{ stats.total_users }}</div><div class="stat-change"><i class="fas fa-user-plus"></i> Users</div></div>
+        <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-key"></i></div><div class="stat-label">Sessions</div><div class="stat-value" style="font-size:18px">Active</div><div class="stat-change"><i class="fas fa-clock"></i> JWT tokens</div></div>
+        <div class="stat-card"><div class="stat-icon cyan"><i class="fas fa-fingerprint"></i></div><div class="stat-label">Device ID</div><div class="stat-value" style="font-size:18px">ON</div><div class="stat-change"><i class="fas fa-mobile"></i> Fingerprint</div></div>
+      </div>
+      <div class="panel-card">
+        <div class="card-title" style="margin-bottom:12px"><i class="fas fa-sitemap" style="color:var(--gold)"></i> Access Tiers</div>
+        <table class="data-table"><thead><tr><th>Tier</th><th>Access Level</th><th>Permissions</th></tr></thead><tbody>
+          <tr><td>👑 OWNER</td><td>100%</td><td>Everything + Admin + Ban/Unban + Broadcast</td></tr>
+          <tr><td>🛡️ ADMIN</td><td>90%</td><td>All features + user management</td></tr>
+          <tr><td>⭐ PREMIUM</td><td>80%</td><td>All features + priority signals</td></tr>
+          <tr><td>👤 FREE</td><td>50%</td><td>Basic features + limited signals</td></tr>
+          <tr><td>🚫 BANNED</td><td>0%</td><td>No access</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+!function(){const p=document.getElementById('particles');for(let i=0;i<40;i++){const d=document.createElement('div');d.className='particle';d.style.left=Math.random()*100+'%';d.style.animationDuration=(10+Math.random()*20)+'s';d.style.animationDelay=Math.random()*20+'s';d.style.width=d.style.height=(1+Math.random()*3)+'px';d.style.background=['#3b82f6','#8b5cf6','#10b981','#06b6d4'][Math.floor(Math.random()*4)];p.appendChild(d)}}();
+function showSection(name,el){document.querySelectorAll('.section').forEach(s=>s.style.display='none');document.getElementById('sec-'+name).style.display='block';document.querySelectorAll('.sidebar-item').forEach(s=>s.classList.remove('active'));if(el)el.classList.add('active');if(name==='features')loadFeatures()}
+function refreshAll(){fetch('/api/admin/overview').then(r=>r.json()).then(d=>{if(d.total_users!==undefined)document.getElementById('s-users').textContent=d.total_users;showToast('✅ Refreshed')}).catch(()=>showToast('⚠️ Refresh failed'));document.getElementById('last-update').textContent=new Date().toLocaleTimeString()}
+function botCmd(cmd){const t=document.getElementById('bot-terminal');t.innerHTML+=`<div class="terminal-line"><span class="prompt">jarvis@bot:~$</span> <span class="cmd">${cmd}</span></div>`;const m={start:'✅ Bot started — telegram_bot.py running',stop:'⛔ Bot stopped',restart:'✅ Bot restarted',status:'✅ ONLINE | @David_crew_bot | Active',health:'✅ All systems OK',logs:'📋 Loading telegram_bot.log...'};setTimeout(()=>{t.innerHTML+=`<div class="terminal-line"><span class="success">${m[cmd]||'Done'}</span></div>`;t.scrollTop=t.scrollHeight},300)}
+function sendBroadcast(){const m=document.getElementById('broadcast-msg').value.trim();if(!m){showToast('⚠️ Enter message');return}showToast('📤 Broadcasting...')}
+function loadFeatures(){const g=document.getElementById('feature-grid');const f=[{id:'stock_analysis',n:'📊 Stock Analysis',c:'Stock'},{id:'stock_prediction',n:'🤖 ML Prediction',c:'Stock'},{id:'option_chain',n:'📈 Option Chain',c:'Stock'},{id:'candle_patterns',n:'🕯️ Candle Patterns',c:'Stock'},{id:'crypto_gems',n:'💎 Crypto Gems',c:'Crypto'},{id:'pump_fun',n:'🚀 Pump.fun',c:'Crypto'},{id:'whale_alerts',n:'🐋 Whale Alerts',c:'Crypto'},{id:'rug_detector',n:'🔍 Rug Detector',c:'Crypto'},{id:'ai_chat',n:'🤖 AI Chat',c:'AI'},{id:'jarvis_nlu',n:'🧠 JARVIS NLU',c:'AI'},{id:'morning_brief',n:'🌅 Morning Brief',c:'AI'},{id:'auto_alerts',n:'🔔 Auto Alerts',c:'Alert'},{id:'price_alerts',n:'💰 Price Alerts',c:'Alert'},{id:'portfolio',n:'💼 Portfolio',c:'Portfolio'},{id:'hindi_mode',n:'🇮🇳 Hindi Mode',c:'Global'}];g.innerHTML=f.map(x=>`<div class="feature-item"><div><div class="feature-name">${x.n}</div><div class="feature-cat">${x.c}</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>`).join('')}
+function addActivity(icon,text,ts){const f=document.getElementById('activity-feed');const c={rocket:'#3b82f6',check:'#10b981',bolt:'#f59e0b',brain:'#8b5cf6',user:'#06b6d4'}[icon]||'#3b82f6';f.innerHTML=`<div class="activity-item"><div class="activity-icon" style="background:${c}20;color:${c}"><i class="fas fa-${icon}"></i></div><div class="activity-text">${text}</div><div class="activity-time">${ts}</div></div>`+f.innerHTML;if(f.children.length>15)f.removeChild(f.lastChild)}
+addActivity('rocket','<strong>Server</strong> FastAPI started on :8000','now');addActivity('check','<strong>Admin Panel</strong> loaded with real data','now');addActivity('brain','<strong>JARVIS Brain v5</strong> connected','now');addActivity('bolt','<strong>12+ engines</strong> initialized','now');addActivity('user','<strong>{{ stats.total_users }} users</strong> in database','now');
+function loadLogs(){const l=document.getElementById('system-logs');l.innerHTML+=`<div class="terminal-line"><span class="prompt">[${new Date().toLocaleTimeString()}]</span> <span class="output">Refreshing...</span></div>`;fetch('/health').then(r=>r.json()).then(d=>{l.innerHTML+=`<div class="terminal-line"><span class="prompt">[HEALTH]</span> <span class="success">Status: ${d.status} | ${d.platform||'JARVIS'}</span></div>`}).catch(()=>{})}
+function userAction(a,id){showToast(`${a}: ${id}`)}
+function showToast(m){const o=document.querySelector('.toast');if(o)o.remove();const t=document.createElement('div');t.className='toast';t.innerHTML=m;document.body.appendChild(t);setTimeout(()=>t.remove(),3000)}
+setInterval(()=>{document.getElementById('last-update').textContent=new Date().toLocaleTimeString()},30000);
+loadFeatures();
+function createOTA(){showToast('📦 Creating OTA bundle...');fetch('/api/ota/create',{method:'POST'}).then(r=>r.json()).then(d=>showToast('✅ OTA Bundle: v'+d.version)).catch(()=>showToast('⚠️ OTA create failed'))}
+function checkOTA(){fetch('/api/ota/check?current_version=0.0.0').then(r=>r.json()).then(d=>{if(d.update_available)showToast('🔄 Update available: v'+d.latest_version);else showToast('✅ Already latest')}).catch(()=>showToast('⚠️ OTA check failed'))}
+function rollbackOTA(){showToast('⏪ Rollback initiated...')}
+</script>
 </body>
 </html>

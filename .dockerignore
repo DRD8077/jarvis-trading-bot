@@ -1,0 +1,12 @@
+.git
+node_modules
+telegram-mini-app/node_modules
+telegram-ai-app/node_modules
+__pycache__
+*.pyc
+.env
+.vscode
+*.apk
+android/
+*.log
+.DS_Store

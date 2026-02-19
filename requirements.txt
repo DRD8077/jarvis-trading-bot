@@ -28,6 +28,7 @@ scipy
 edge-tts
 nltk
 google-generativeai
+google-genai
 # Real Solana Trading
 solana>=0.36
 solders>=0.27

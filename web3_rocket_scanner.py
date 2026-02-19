@@ -319,62 +319,8 @@ def fetch_coindcx_hot_tokens(limit: int = 30) -> List[Dict]:
 # ═══════════════════════════════════════════════════════════
 
 def fetch_coingecko_trending() -> List[Dict]:
-    """Fetch CoinGecko trending coins (viral right now)."""
-    cached = _rcache_get("cg_trending", 60)
-    if cached:
-        return cached
-    
-    try:
-        r = requests.get(
-            "https://api.coingecko.com/api/v3/search/trending",
-            timeout=10,
-            headers={"User-Agent": "JARVIS-Bot/2.0"}
-        )
-        if r.status_code == 200:
-            data = r.json()
-            coins = data.get("coins", [])
-            
-            inr_rate = get_usd_inr_rate() if CRYPTO_OK else 85.0
-            result = []
-            for item in coins[:15]:
-                coin = item.get("item", {})
-                price_btc = float(coin.get("price_btc", 0) or 0)
-                # Rough USD from BTC price
-                btc_usd = 95000  # Approximate
-                try:
-                    btc_r = requests.get(
-                        "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd",
-                        timeout=5
-                    )
-                    if btc_r.status_code == 200:
-                        btc_usd = float(btc_r.json().get("bitcoin", {}).get("usd", 95000))
-                except:
-                    pass
-                
-                price_usd = price_btc * btc_usd
-                mcap = float(coin.get("data", {}).get("market_cap", 0) or 0) if isinstance(coin.get("data"), dict) else 0
-                
-                result.append({
-                    'source': 'coingecko_trending',
-                    'symbol': coin.get("symbol", "?").upper(),
-                    'name': coin.get("name", "?"),
-                    'chain': 'multi',
-                    'price_usd': price_usd,
-                    'price_inr': price_usd * inr_rate,
-                    'mcap_usd': mcap,
-                    'mcap_inr': mcap * inr_rate,
-                    'market_cap_rank': coin.get("market_cap_rank", 9999),
-                    'score': coin.get("score", 0),
-                    'thumb': coin.get("thumb", ""),
-                    'slug': coin.get("slug", ""),
-                })
-            
-            _rcache_set("cg_trending", result)
-            return result
-    except Exception as e:
-        logger.debug(f"[ROCKET] CoinGecko trending error: {e}")
-    
-    return _rocket_cache.get("cg_trending", [])
+    """CoinGecko REMOVED — returns empty list."""
+    return []
 
 
 # ═══════════════════════════════════════════════════════════
@@ -924,21 +870,8 @@ def scan_rockets(min_score: int = 30, limit: int = 15, include_coindcx: bool = T
         except Exception as e:
             logger.error(f"[ROCKET] CoinDCX scan failed: {e}")
     
-    # ── Source 4: CoinGecko trending (viral tokens) ──
-    try:
-        cg_trending = fetch_coingecko_trending()
-        for token in cg_trending:
-            try:
-                scored = calculate_rocket_score(token)
-                if scored["rocket_score"] >= max(min_score - 10, 10):  # Lower threshold for trending
-                    key = f"cg:{scored.get('symbol', '')}"
-                    if key not in seen_symbols:
-                        seen_symbols.add(key)
-                        all_candidates.append(scored)
-            except Exception as e:
-                logger.debug(f"[ROCKET] CoinGecko score error: {e}")
-    except Exception as e:
-        logger.error(f"[ROCKET] CoinGecko scan failed: {e}")
+    # ── Source 4: CoinGecko REMOVED ──
+    # (CoinGecko trending disabled per user request)
     
     # ── Source 5: DexScreener new profiles (freshest tokens) ──
     try:

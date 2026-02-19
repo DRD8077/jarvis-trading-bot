@@ -1,0 +1,53 @@
+{
+  "user_info": {
+    "name": "",
+    "chat_id": 123456789,
+    "first_seen": "2026-02-19T02:17:10.169012+05:30",
+    "language": "hinglish",
+    "risk_appetite": "moderate",
+    "trading_style": "",
+    "budget": ""
+  },
+  "conversations": [
+    {
+      "role": "user",
+      "text": "hello",
+      "intent": "greeting",
+      "timestamp": "2026-02-19T02:17:11.098703+05:30"
+    },
+    {
+      "role": "user",
+      "text": "hello jarvis, tell me about Bitcoin price",
+      "intent": "price_check",
+      "timestamp": "2026-02-19T02:27:31.466617+05:30"
+    },
+    {
+      "role": "user",
+      "text": "hello",
+      "intent": "greeting",
+      "timestamp": "2026-02-19T02:50:02.632716+05:30"
+    },
+    {
+      "role": "assistant",
+      "text": "नमस्ते! मैं जार्विस हूँ, आपका विश्वासपात्र ट्रेडिंग और मार्केट इंटेलिजेंस असिस्टेंट। \n\nआपके पिछले संदेश के अनुसार, बिटकॉइन की कीमत के बारे में जानना चाहते हैं। \n\nवर्तमान में, बिटकॉइन की कीमत **$66117.67** है, जो कि पिछले 24 घंटों में **-2.2%** की गिरावट के साथ है। \n\nक्या आप बिटकॉइन में निवेश करने की सोच रहे हैं या इसके बारे में और जानना चाहते हैं?",
+      "intent": "",
+      "timestamp": "2026-02-19T02:50:02.633850+05:30"
+    },
+    {
+      "role": "user",
+      "text": "BTC ka price kya hai?",
+      "intent": "price_check",
+      "timestamp": "2026-02-19T02:50:24.514172+05:30"
+    }
+  ],
+  "positions": [],
+  "facts": {
+    "favorite_symbols": [
+      "BTC"
+    ]
+  },
+  "predictions": [],
+  "learnings": [],
+  "summary": "",
+  "last_active": "2026-02-19T02:50:24.514204+05:30"
+}

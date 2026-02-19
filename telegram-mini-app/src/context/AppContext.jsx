@@ -20,11 +20,16 @@ export const AppProvider = ({ children }) => {
       if (tg.initDataUnsafe?.user) {
         setUser(tg.initDataUnsafe.user)
       }
-      tg.setHeaderColor('#0f172a')
-      tg.setBackgroundColor('#0f172a')
+      tg.setHeaderColor('#0a0e1a')
+      tg.setBackgroundColor('#0a0e1a')
     } else {
-      // Dev fallback
-      setUser({ id: 123456789, first_name: 'Dev', last_name: 'User', username: 'devuser' })
+      // APK / Browser fallback — generate a persistent device ID
+      let deviceId = localStorage.getItem('jarvis_device_id')
+      if (!deviceId) {
+        deviceId = String(Math.floor(100000000 + Math.random() * 900000000))
+        localStorage.setItem('jarvis_device_id', deviceId)
+      }
+      setUser({ id: Number(deviceId), first_name: 'JARVIS User', last_name: '', username: 'jarvis_user' })
     }
 
     // Online/offline detection

@@ -286,27 +286,8 @@ def research_topic(query: str) -> dict:
     except Exception:
         pass
 
-    # Source 3: CoinGecko (for crypto queries)
-    crypto_keywords = ["bitcoin", "crypto", "eth", "solana", "token", "coin", "defi", "nft"]
-    if any(kw in query.lower() for kw in crypto_keywords):
-        try:
-            resp = requests.get(
-                f"https://api.coingecko.com/api/v3/search",
-                params={"query": query},
-                timeout=10,
-            )
-            if resp.status_code == 200:
-                coins = resp.json().get("coins", [])[:3]
-                for coin in coins:
-                    results["sources"].append({
-                        "source": "CoinGecko",
-                        "title": coin.get("name", ""),
-                        "summary": f"Symbol: {coin.get('symbol', '').upper()}, "
-                                   f"Market Cap Rank: #{coin.get('market_cap_rank', 'N/A')}",
-                        "url": f"https://www.coingecko.com/en/coins/{coin.get('id', '')}",
-                    })
-        except Exception:
-            pass
+    # Source 3: CoinGecko REMOVED
+    # (CoinGecko search disabled per user request)
 
     # Source 4: DuckDuckGo Instant Answers
     try:
@@ -597,12 +578,13 @@ def format_agent_dashboard(chat_id: int) -> str:
         f"  🔍 `/research` — Kuch bhi research karo\n"
         f"  🌤️ `/weather` — Weather check karo\n"
         f"  🧮 `/calc` — Calculate karo\n"
-        f"  💰 `/deposit` — Paise deposit karo (UPI)\n"
+        f"  💰 `/deposit` — Paise deposit karo (UPI) — Min ₹1, UNLIMITED max\n"
         f"  🤖 `/autoinvest` — Auto crypto invest\n"
         f"  📊 `/portfolio` — Portfolio dekho\n"
-        f"  🏦 `/withdraw` — Bank mein withdraw\n"
-        f"  👛 `/wallet` — Wallet dashboard\n\n"
-        f"💡 Ya bas baat karo — main samajh jaunga! 😊\n\n"
+        f"  👻 `/withdraw` — Phantom wallet mein withdraw\n"
+        f"  👛 `/wallet` — Wallet dashboard\n"
+        f"  👻 `/phantom` — Phantom wallet connect karo\n\n"
+        f"💡 Deposit karo ₹1 se lekar kitna bhi — JARVIS auto trading shuru kar dega! 🚀\n\n"
         f"_🤖 JARVIS — Your AI, Your Rules, Always FREE_"
     )
 

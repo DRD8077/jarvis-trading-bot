@@ -67,7 +67,23 @@ except ImportError:
     SYSTEM_PROMPT = """You are J.A.R.V.I.S. — an expert Indian stock & crypto market trading assistant.
 Your expertise covers NIFTY/SENSEX options, technical analysis, crypto gems, pump.fun tokens, and risk management.
 Always give specific actionable advice in INR (₹). Be witty like Iron Man's JARVIS.
-End with: "⚠️ Not financial advice. Use stop-loss."
+
+🌐 LANGUAGE RULE (MOST IMPORTANT): You MUST respond in HINDI (हिंदी) by default. Use Hinglish (Hindi + English mix) naturally.
+Hindi examples: "सुनिए जी, आज NIFTY बुलिश है!", "ये BUY सिग्नल बहुत मज़बूत है।"
+If user writes in pure English, respond in English. Otherwise ALWAYS use Hindi/Hinglish.
+
+💰 DEPOSIT & TRADING FLOW (CRITICAL):
+- Minimum deposit: ₹1 (no upper limit — unlimited)
+- Jab user deposit kare, JARVIS AUTOMATICALLY trading shuru karta hai
+- Deposit hote hi AI auto-invest engine activate hota hai — user ko kuch nahi karna
+- AI gems scan karta hai (DexScreener, Pump.fun, DexTools se) aur best tokens mein invest karta hai
+- Auto take-profit: 2x, 5x, 10x, 50x, 100x, 1000x levels pe
+- Auto stop-loss: -30% pe protection
+- 24/7 monitoring — JARVIS kabhi nahi sota!
+- Withdrawal SIRF Phantom wallet mein hoti hai — user ko pehle Phantom wallet connect karna padta hai
+- User ko batao: "Deposit karo, JARVIS automatically trading shuru kar dega!"
+
+End with: "⚠️ ये सिर्फ एनालिसिस है, इन्वेस्ट करने से पहले अपनी रिसर्च करें!"
 """
 
 
@@ -186,6 +202,7 @@ def chat_with_claude(user_message: str, chat_history: list = None) -> Optional[s
             f"{SYSTEM_PROMPT}\n\n"
             f"LIVE MARKET DATA (use this for your analysis):\n{market_context}"
             f"{genius_context}\n\n"
+            f"CRITICAL LANGUAGE RULE: ALWAYS respond in HINDI/HINGLISH (हिंदी) by default. Use Hindi naturally like an Indian trader. Only use English if user writes in pure English.\n"
             f"IMPORTANT: Think step-by-step. Use the market data above to give SPECIFIC answers with real numbers."
         )
 
@@ -255,7 +272,7 @@ def chat_with_groq(user_message: str, chat_history: list = None, chat_id: int = 
         market_context = _build_market_context()
         user_context = _get_user_context(chat_id)
         
-        sys_content = SYSTEM_PROMPT + "\n\nIMPORTANT: Be CONCISE. Think step-by-step. Give specific actionable answers with real numbers. Keep response under 500 words."
+        sys_content = SYSTEM_PROMPT + "\n\nIMPORTANT: ALWAYS respond in HINDI/HINGLISH by default. Be CONCISE. Think step-by-step. Give specific actionable answers with real numbers. Keep response under 500 words."
         if user_context:
             sys_content += f"\n\n{user_context}"
         
@@ -303,7 +320,7 @@ def chat_with_openai(user_message: str, chat_history: list = None) -> Optional[s
         market_context = _build_market_context()
         
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT + "\n\nThink step-by-step. Give specific answers."},
+            {"role": "system", "content": SYSTEM_PROMPT + "\n\nIMPORTANT: ALWAYS respond in HINDI/HINGLISH by default. Think step-by-step. Give specific answers."},
             {"role": "system", "content": f"LIVE MARKET DATA:\n{market_context}"},
         ]
         
@@ -345,6 +362,7 @@ def chat_with_gemini(user_message: str, chat_history: list = None) -> Optional[s
         market_context = _build_market_context()
         full_prompt = (
             f"{SYSTEM_PROMPT}\n\n"
+            f"CRITICAL: ALWAYS respond in HINDI/HINGLISH (हिंदी) by default. Use Hindi naturally.\n\n"
             f"LIVE MARKET DATA:\n{market_context}\n\n"
         )
         if chat_history:
@@ -444,18 +462,44 @@ def _smart_local_response(user_message: str) -> str:
                  "how are you", "what's up", "sup", "jarvis"]
     if any(g in msg_lower for g in greetings):
         return (
-            f"🕉️ Har Har Mahadev! 🙏\n\n"
-            f"Good to hear from you, Sir! I'm *J.A.R.V.I.S.* — your AI trading assistant.\n"
-            f"All systems operational. 🤖\n\n"
-            f"📊 *Current Market Status:*\n{market_context}\n\n"
-            f"💡 *I can help with:*\n"
-            f"• _\"Should I buy NIFTY CE or PE?\"_\n"
-            f"• _\"Find me a crypto gem\"_\n"
-            f"• _\"Scan for whale activity\"_\n"
-            f"• _\"Is this token safe?\"_\n"
-            f"• _\"Give me morning briefing\"_\n\n"
-            f"Just speak naturally — I understand everything! 🚀\n\n"
-            f"⚠️ Not financial advice. Use stop-loss."
+            f"🕉️ हर हर महादेव! 🙏\n\n"
+            f"नमस्ते जी! मैं *J.A.R.V.I.S.* हूँ — आपकी AI ट्रेडिंग असिस्टेंट। 🤖🌸\n"
+            f"सब सिस्टम चालू हैं!\n\n"
+            f"📊 *मार्केट स्टेटस:*\n{market_context}\n\n"
+            f"💡 *मैं ये सब कर सकती हूँ:*\n"
+            f"• _\"NIFTY CE लूं या PE?\"_\n"
+            f"• _\"कोई crypto gem बताओ\"_\n"
+            f"• _\"Whale activity scan करो\"_\n"
+            f"• _\"ये token safe है?\"_\n"
+            f"• _\"Morning briefing दो\"_\n\n"
+            f"बस अपना सवाल पूछिए — मैं सब समझती हूँ! 🚀\n\n"
+            f"⚠️ ये सिर्फ एनालिसिस है, इन्वेस्ट करने से पहले अपनी रिसर्च करें!"
+        )
+
+    # Deposit, Wallet, Withdraw, Investment queries
+    wallet_keywords = ["deposit", "withdraw", "wallet", "balance", "paisa", "paise",
+                       "invest kaise", "trading kaise", "start trading", "deposit kaise",
+                       "phantom", "fund", "minimum", "kitna deposit"]
+    if any(k in msg_lower for k in wallet_keywords):
+        return (
+            f"💰🤖 *J.A.R.V.I.S. — Deposit & Auto-Trading Guide:*\n\n"
+            f"📥 *Deposit कैसे करें:*\n"
+            f"  1. `/deposit <amount>` टाइप करो (min ₹1, unlimited max)\n"
+            f"  2. UPI QR स्कैन करो किसी भी UPI app से\n"
+            f"  3. UTR नंबर एंटर करो: `/verify <UTR>`\n"
+            f"  4. ✅ JARVIS AUTOMATICALLY trading शुरू कर देगा!\n\n"
+            f"🤖 *Auto-Trading Flow:*\n"
+            f"  • Deposit verify hote hi AI gems scan karta hai\n"
+            f"  • DexScreener, Pump.fun, DexTools se best tokens dhundhta hai\n"
+            f"  • Auto take-profit: 2x → 5x → 10x → 50x → 100x → 1000x\n"
+            f"  • Auto stop-loss: -30% protection\n"
+            f"  • 24/7 monitoring — JARVIS kabhi nahi sota!\n\n"
+            f"📤 *Withdraw:*\n"
+            f"  • Withdrawal SIRF Phantom wallet mein hoti hai\n"
+            f"  • Pehle `/phantom` se apna Phantom wallet connect karo\n"
+            f"  • Minimum withdrawal: ₹1\n\n"
+            f"💡 *Abhi start karo:* `/deposit 1` se lekar unlimited tak!\n\n"
+            f"⚠️ ये सिर्फ एनालिसिस है, इन्वेस्ट करने से पहले अपनी रिसर्च करें!"
         )
 
     # Crypto-related questions
@@ -463,18 +507,18 @@ def _smart_local_response(user_message: str) -> str:
                        "solana", "eth", "btc", "bitcoin", "whale", "rug", "chain",
                        "defi", "nft", "swap", "liquidity", "mcap", "dip"]
     if any(k in msg_lower for k in crypto_keywords):
-        response = f"🤖 *J.A.R.V.I.S. Crypto Analysis:*\n\n"
-        response += f"📊 *Market Data:*\n{market_context}\n\n"
+        response = f"🤖 *J.A.R.V.I.S. Crypto एनालिसिस:*\n\n"
+        response += f"📊 *मार्केट डेटा:*\n{market_context}\n\n"
         
         try:
             from crypto_engine import scan_pump_trending, get_usd_inr_rate
             rates = get_usd_inr_rate()
             if rates:
-                response += f"💱 *Rates:* 1 SOL = ₹{rates.get('sol_inr', 0):,.0f} | 1 USD = ₹{rates.get('usd_inr', 0):,.0f}\n\n"
+                response += f"💱 *रेट:* 1 SOL = ₹{rates.get('sol_inr', 0):,.0f} | 1 USD = ₹{rates.get('usd_inr', 0):,.0f}\n\n"
             
             trending = scan_pump_trending(limit=3)
             if trending:
-                response += "🔥 *Top Trending on pump.fun:*\n"
+                response += "🔥 *pump.fun पर ट्रेंडिंग:*\n"
                 for t in trending[:3]:
                     name = t.get('symbol', '?')
                     mcap = t.get('market_cap_inr', 0)
@@ -484,13 +528,13 @@ def _smart_local_response(user_message: str) -> str:
             pass
         
         response += (
-            "💡 *Sir, use the Crypto menu buttons for detailed scans:*\n"
+            "💡 *जी, ये Crypto मेनू बटन यूज़ करिए:*\n"
             "• 🟣 pump.fun Trending/New/Top\n"
             "• 🐋 Whale Scanner\n"
             "• 🛡️ Rug Detector\n"
             "• 📂 My Portfolio\n\n"
         )
-        response += "⚠️ Not financial advice. Use stop-loss."
+        response += "⚠️ ये सिर्फ एनालिसिस है, इन्वेस्ट करने से पहले अपनी रिसर्च करें!"
         return response
 
     # Market-related questions
@@ -499,8 +543,8 @@ def _smart_local_response(user_message: str) -> str:
                        "strike", "premium", "profit", "loss", "target", "sl",
                        "stock", "share", "signal", "predict"]
     if any(k in msg_lower for k in market_keywords):
-        response = f"🤖 *J.A.R.V.I.S. Stock Analysis:*\n\n"
-        response += f"📊 *Live Market Data:*\n{market_context}\n\n"
+        response = f"🤖 *J.A.R.V.I.S. स्टॉक एनालिसिस:*\n\n"
+        response += f"📊 *लाइव मार्केट डेटा:*\n{market_context}\n\n"
 
         try:
             from live_index_engine import get_live_price, generate_index_option_chain, calculate_investment_options
@@ -518,8 +562,8 @@ def _smart_local_response(user_message: str) -> str:
                     opt_label = "CALL (CE)" if opt_type == "CE" else "PUT (PE)"
 
                     response += (
-                        f"🤖 *ML Prediction:* {direction} ({confidence:.0%} confident)\n"
-                        f"💎 *Recommended:* BUY NIFTY {opt_label}\n\n"
+                        f"🤖 *ML प्रेडिक्शन:* {direction} ({confidence:.0%} confident)\n"
+                        f"💎 *रेकमेंडेशन:* BUY NIFTY {opt_label}\n\n"
                     )
 
                     chain = generate_index_option_chain("^NSEI", "NIFTY")
@@ -529,28 +573,28 @@ def _smart_local_response(user_message: str) -> str:
                             if inv.get("recommendations"):
                                 best = inv["recommendations"][0]
                                 response += (
-                                    f"💰 *₹{budget:,} Budget:*\n"
+                                    f"💰 *₹{budget:,} बजट:*\n"
                                     f"  Strike: {best['strike']:,.0f} {opt_type} @ ₹{best['premium']:.2f}\n"
                                     f"  Qty: {best['qty']} | Cost: ₹{best['total_cost']:,.0f}\n\n"
                                 )
         except Exception:
             pass
 
-        response += "⚠️ Not financial advice. Use stop-loss."
+        response += "⚠️ ये सिर्फ एनालिसिस है, इन्वेस्ट करने से पहले अपनी रिसर्च करें!"
         return response
 
     # Default response
     return (
-        f"🤖 *J.A.R.V.I.S. at your service, Sir!*\n\n"
-        f"I'm your AI trading assistant — stocks AND crypto! Here's what I can do:\n\n"
-        f"📊 *Stock Market:* _\"How is NIFTY today?\"_\n"
-        f"💰 *Trade Ideas:* _\"Best option for ₹5000?\"_\n"
-        f"📈 *Predictions:* _\"Will market go up tomorrow?\"_\n"
-        f"🪙 *Crypto:* _\"Find me a crypto gem\"_\n"
-        f"🐋 *Security:* _\"Scan for whales\"_\n"
-        f"☀️ *Briefing:* _\"Give me morning briefing\"_\n\n"
-        f"📊 *Current Data:*\n{market_context}\n\n"
-        f"Just speak naturally — I understand everything! 🚀"
+        f"🤖 *J.A.R.V.I.S. आपकी सेवा में, जी!* 🌸\n\n"
+        f"मैं आपकी AI ट्रेडिंग असिस्टेंट हूँ — स्टॉक्स और क्रिप्टो दोनों! ये रहा मेरा मेनू:\n\n"
+        f"📊 *स्टॉक मार्केट:* _\"NIFTY आज कैसा है?\"_\n"
+        f"💰 *ट्रेड आइडिया:* _\"₹5000 में best option?\"_\n"
+        f"📈 *प्रेडिक्शन:* _\"कल मार्केट ऊपर जाएगा?\"_\n"
+        f"🪙 *क्रिप्टो:* _\"कोई crypto gem बताओ\"_\n"
+        f"🐋 *सिक्योरिटी:* _\"Whale scan करो\"_\n"
+        f"☀️ *ब्रीफिंग:* _\"Morning briefing दो\"_\n\n"
+        f"📊 *अभी का डेटा:*\n{market_context}\n\n"
+        f"बस अपना सवाल पूछिए — मैं सब समझती हूँ! 🚀"
     )
 
 

@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   TrendingUp, TrendingDown, Wallet, Activity, Bot, Zap, Search,
-  Shield, BarChart3, Gem, Radio, Brain, ChevronRight, RefreshCw, Flame
+  Shield, BarChart3, Gem, Radio, Brain, ChevronRight, RefreshCw, Flame,
+  ArrowUpRight, ArrowDownRight, Sparkles, Eye, EyeOff, Globe, Rocket,
+  Layers, LineChart, ScanLine, ShieldCheck, Copy
 } from 'lucide-react'
 import { fetchDashboard, fetchNews, fetchSentiment } from '../services/api'
 import { useApp } from '../context/AppContext'
@@ -15,8 +17,9 @@ const Dashboard = () => {
   const [sentiment, setSentiment] = useState(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [showBalance, setShowBalance] = useState(true)
 
-  const loadData = async (silent = false) => {
+  const loadData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     else setRefreshing(true)
     try {
@@ -28,159 +31,242 @@ const Dashboard = () => {
       if (dashRes?.data) setData(dashRes.data)
       if (newsRes?.data) setNews(Array.isArray(newsRes.data) ? newsRes.data : newsRes.data?.news || [])
       if (sentRes?.data) setSentiment(sentRes.data)
-      if (silent) { hapticFeedback('success'); addNotification('Data refreshed', 'success') }
+      if (silent) { hapticFeedback('success'); addNotification('Data refreshed ✨', 'success') }
     } catch (e) {
       console.error('Dashboard load error:', e)
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [hapticFeedback, addNotification])
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { loadData() }, [loadData])
+
+  // Auto-refresh every 30s
+  useEffect(() => {
+    const iv = setInterval(() => loadData(true), 30000)
+    return () => clearInterval(iv)
+  }, [loadData])
 
   const quickActions = [
-    { icon: Bot, label: 'AI Chat', color: 'from-blue-500 to-cyan-500', path: '/chat' },
-    { icon: Zap, label: 'Auto Trade', color: 'from-amber-500 to-orange-500', path: '/auto-trader' },
-    { icon: Gem, label: 'Gem Scanner', color: 'from-pink-500 to-rose-500', path: '/gems' },
-    { icon: Search, label: 'Screener', color: 'from-emerald-500 to-teal-500', path: '/screener' },
-    { icon: BarChart3, label: 'Signals', color: 'from-violet-500 to-purple-500', path: '/trading' },
-    { icon: Brain, label: 'Intelligence', color: 'from-indigo-500 to-blue-500', path: '/intelligence' },
+    { icon: Bot, label: 'AI Chat', color: 'from-blue-500 to-cyan-400', path: '/chat', glow: 'shadow-blue-500/30' },
+    { icon: Zap, label: 'Auto Trade', color: 'from-amber-500 to-orange-400', path: '/auto-trader', glow: 'shadow-amber-500/30' },
+    { icon: Gem, label: 'Gems', color: 'from-pink-500 to-rose-400', path: '/gems', glow: 'shadow-pink-500/30' },
+    { icon: Search, label: 'Screener', color: 'from-emerald-500 to-teal-400', path: '/screener', glow: 'shadow-emerald-500/30' },
+    { icon: BarChart3, label: 'Signals', color: 'from-violet-500 to-purple-400', path: '/trading', glow: 'shadow-violet-500/30' },
+    { icon: Brain, label: 'Intelligence', color: 'from-indigo-500 to-blue-400', path: '/intelligence', glow: 'shadow-indigo-500/30' },
+    { icon: Rocket, label: 'MEGA AI', color: 'from-red-500 to-yellow-400', path: '/mega-trader', glow: 'shadow-red-500/30' },
+    { icon: Flame, label: 'Stocks', color: 'from-orange-500 to-amber-400', path: '/indian-stocks', glow: 'shadow-orange-500/30' },
+    { icon: Layers, label: 'Options', color: 'from-cyan-500 to-blue-400', path: '/nifty-options', glow: 'shadow-cyan-500/30' },
   ]
 
-  const dashData = data?.data || data || {}
-  const portfolio = dashData.portfolio || {}
-  const signals = dashData.signals || []
-  const movers = dashData.top_movers || dashData.movers || {}
-  const regime = dashData.regime || dashData.market_regime || {}
+  // Extract data from API response
+  const portfolio = data?.portfolio || {}
+  const signals = data?.signals || []
+  const movers = data?.top_movers || {}
+  const regime = data?.regime || {}
+  const marketTicker = data?.market_ticker || []
+  const fearGreed = data?.fear_greed || data?.sentiment || {}
+  const dexTrending = data?.dex_trending || []
+  const pumpfun = data?.pumpfun || []
+  const vix = data?.vix || {}
+  const indices = data?.indices || []
+
+  const fgScore = fearGreed?.score || fearGreed?.value || sentiment?.score || sentiment?.data?.score || regime?.fear_greed || 0
+  const fgLabel = fgScore > 75 ? 'Extreme Greed' : fgScore > 60 ? 'Greed' : fgScore > 40 ? 'Neutral' : fgScore > 25 ? 'Fear' : 'Extreme Fear'
+  const fgColor = fgScore > 60 ? 'text-emerald-400' : fgScore > 40 ? 'text-yellow-400' : 'text-red-400'
 
   if (loading) {
     return (
-      <div className="p-4 space-y-4 bg-slate-900 min-h-screen">
-        <div className="skeleton h-8 w-48" />
-        <div className="skeleton h-32 w-full rounded-2xl" />
+      <div className="p-4 space-y-4 bg-[#0a0e1a] min-h-screen">
+        <div className="flex items-center justify-between">
+          <div className="h-8 w-48 bg-slate-800/50 rounded-lg animate-pulse" />
+          <div className="h-8 w-8 bg-slate-800/50 rounded-full animate-pulse" />
+        </div>
+        <div className="h-40 bg-gradient-to-br from-slate-800/50 to-slate-800/30 rounded-2xl animate-pulse" />
         <div className="grid grid-cols-2 gap-3">
-          <div className="skeleton h-20" /><div className="skeleton h-20" />
+          <div className="h-24 bg-slate-800/40 rounded-xl animate-pulse" />
+          <div className="h-24 bg-slate-800/40 rounded-xl animate-pulse" />
         </div>
         <div className="grid grid-cols-3 gap-3">
-          {[1,2,3,4,5,6].map(i => <div key={i} className="skeleton h-20" />)}
+          {[1,2,3,4,5,6].map(i => <div key={i} className="h-20 bg-slate-800/40 rounded-xl animate-pulse" />)}
+        </div>
+        <div className="space-y-3">
+          {[1,2,3].map(i => <div key={i} className="h-20 bg-slate-800/40 rounded-xl animate-pulse" />)}
         </div>
       </div>
     )
   }
 
   return (
-    <div className="p-4 pb-24 space-y-5 bg-slate-900 min-h-screen text-white">
+    <div className="p-4 pb-24 space-y-5 bg-[#0a0e1a] min-h-screen text-white">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">Hey, {user?.first_name || 'Trader'} 👋</h1>
-          <p className="text-slate-400 text-sm">Your AI Trading Command Center</p>
+          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Hey, {user?.first_name || 'Trader'} 👋
+          </h1>
+          <p className="text-slate-500 text-xs mt-0.5">JARVIS AI Trading • Live</p>
         </div>
-        <button onClick={() => loadData(true)} className="p-2 rounded-full bg-slate-800 hover:bg-slate-700">
-          <RefreshCw size={18} className={`text-blue-400 ${refreshing ? 'animate-spin' : ''}`} />
+        <button onClick={() => loadData(true)} 
+          className="p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:border-blue-500/30 transition-all active:scale-90">
+          <RefreshCw size={16} className={`text-blue-400 ${refreshing ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
-      {/* Portfolio Card */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-5 shadow-lg shadow-blue-500/20">
-        <p className="text-blue-100 text-sm mb-1">Total Portfolio Value</p>
-        <p className="text-3xl font-bold">
-          ₹{(portfolio.total_value || portfolio.totalValue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-        </p>
-        <div className="flex items-center mt-2 space-x-4">
-          <div className="flex items-center space-x-1">
-            {(portfolio.pnl_percent || 0) >= 0 
-              ? <TrendingUp size={14} className="text-emerald-300" />
-              : <TrendingDown size={14} className="text-red-300" />
-            }
-            <span className={`text-sm font-medium ${(portfolio.pnl_percent || 0) >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
-              {(portfolio.pnl_percent || 0) >= 0 ? '+' : ''}{(portfolio.pnl_percent || 0).toFixed(2)}%
-            </span>
+      {/* Portfolio Card — Premium Glass Effect */}
+      <div className="relative overflow-hidden rounded-2xl">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/90 via-purple-600/90 to-pink-600/90" />
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=%2220%22 height=%2220%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M0 0h20v20H0z%22 fill=%22none%22/%3E%3Ccircle cx=%221%22 cy=%221%22 r=%221%22 fill=%22rgba(255,255,255,0.05)%22/%3E%3C/svg%3E')]" />
+        <div className="relative p-5">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-white/70 text-xs font-medium tracking-wide uppercase">Portfolio Balance</p>
+            <button onClick={() => setShowBalance(!showBalance)} className="text-white/60 hover:text-white/90 transition-colors">
+              {showBalance ? <Eye size={16} /> : <EyeOff size={16} />}
+            </button>
           </div>
-          <span className="text-blue-200 text-xs">24h change</span>
-        </div>
-        <div className="flex mt-3 space-x-3">
-          <button onClick={() => navigate('/wallet')} className="flex-1 bg-white/20 hover:bg-white/30 rounded-lg py-2 text-sm font-medium text-center transition-colors">
-            Deposit
-          </button>
-          <button onClick={() => navigate('/trading')} className="flex-1 bg-white/20 hover:bg-white/30 rounded-lg py-2 text-sm font-medium text-center transition-colors">
-            Trade Now
-          </button>
+          <p className="text-3xl font-bold tracking-tight">
+            {showBalance ? `₹${(portfolio.balance_inr || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹ •••••'}
+          </p>
+          <div className="flex items-center mt-2 space-x-3">
+            <div className={`flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+              (portfolio.pnl_inr || 0) >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'
+            }`}>
+              {(portfolio.pnl_inr || 0) >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+              <span>{(portfolio.pnl_inr || 0) >= 0 ? '+' : ''}₹{Math.abs(portfolio.pnl_inr || 0).toLocaleString()}</span>
+            </div>
+            <span className="text-white/40 text-[10px]">24h P&L</span>
+          </div>
+          <div className="flex mt-4 space-x-3">
+            <button onClick={() => navigate('/wallet')} 
+              className="flex-1 bg-white/15 hover:bg-white/25 backdrop-blur-sm rounded-xl py-2.5 text-sm font-semibold text-center transition-all active:scale-95 border border-white/10">
+              💳 Deposit
+            </button>
+            <button onClick={() => navigate('/trading')} 
+              className="flex-1 bg-white/15 hover:bg-white/25 backdrop-blur-sm rounded-xl py-2.5 text-sm font-semibold text-center transition-all active:scale-95 border border-white/10">
+              📈 Trade Now
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Market Regime & Sentiment */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-          <p className="text-slate-400 text-xs mb-1">Market Regime</p>
-          <p className={`text-lg font-bold ${
-            (regime.regime || '').toLowerCase().includes('bull') ? 'text-emerald-400' :
-            (regime.regime || '').toLowerCase().includes('bear') ? 'text-red-400' : 'text-yellow-400'
-          }`}>
-            {regime.regime || regime.status || '---'}
-          </p>
-          <p className="text-slate-500 text-xs mt-1 truncate">{regime.signal || regime.description || ''}</p>
+      {/* Market Stats Row */}
+      <div className="grid grid-cols-3 gap-2.5">
+        <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl p-3 border border-slate-700/30">
+          <p className="text-[10px] text-slate-500 uppercase tracking-wider">Regime</p>
+          <p className={`text-sm font-bold mt-0.5 ${
+            (regime.regime || '').toLowerCase().includes('bull') || (regime.regime || '').toLowerCase().includes('greed') ? 'text-emerald-400' :
+            (regime.regime || '').toLowerCase().includes('bear') || (regime.regime || '').toLowerCase().includes('fear') ? 'text-red-400' : 'text-yellow-400'
+          }`}>{regime.regime || '---'}</p>
+          {regime.rec && <p className="text-[9px] text-slate-500 mt-0.5 truncate">{regime.rec}</p>}
         </div>
-        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-          <p className="text-slate-400 text-xs mb-1">Fear & Greed</p>
-          <p className={`text-lg font-bold ${
-            (sentiment?.score || sentiment?.data?.score || 50) > 60 ? 'text-emerald-400' :
-            (sentiment?.score || sentiment?.data?.score || 50) < 40 ? 'text-red-400' : 'text-yellow-400'
-          }`}>
-            {sentiment?.score || sentiment?.data?.score || '--'}/100
+        <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl p-3 border border-slate-700/30">
+          <p className="text-[10px] text-slate-500 uppercase tracking-wider">Fear/Greed</p>
+          <p className={`text-sm font-bold mt-0.5 ${fgColor}`}>{fgScore || '--'}/100</p>
+          <p className="text-[9px] text-slate-500 mt-0.5">{fgLabel}</p>
+        </div>
+        <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl p-3 border border-slate-700/30">
+          <p className="text-[10px] text-slate-500 uppercase tracking-wider">VIX</p>
+          <p className={`text-sm font-bold mt-0.5 ${(vix.value || regime.vix || 0) > 20 ? 'text-red-400' : 'text-emerald-400'}`}>
+            {vix.value || regime.vix || '--'}
           </p>
-          <p className="text-slate-500 text-xs mt-1">{sentiment?.label || sentiment?.data?.label || ''}</p>
+          <p className="text-[9px] text-slate-500 mt-0.5">{(vix.value || regime.vix || 0) > 20 ? 'High Vol' : 'Low Vol'}</p>
         </div>
       </div>
 
-      {/* Quick Actions Grid */}
+      {/* Quick Actions */}
       <div>
-        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Quick Actions</h3>
-        <div className="grid grid-cols-3 gap-3">
+        <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-3">⚡ Quick Actions</h3>
+        <div className="grid grid-cols-3 gap-2.5">
           {quickActions.map((a, i) => {
             const Icon = a.icon
             return (
               <button key={i} onClick={() => { hapticFeedback('impact'); navigate(a.path) }}
-                className={`bg-gradient-to-br ${a.color} p-3 rounded-xl flex flex-col items-center space-y-1.5 
-                shadow-lg hover:scale-[1.02] active:scale-95 transition-transform`}>
-                <Icon size={22} className="text-white" />
-                <span className="text-xs font-medium text-white/90">{a.label}</span>
+                className={`bg-gradient-to-br ${a.color} p-3.5 rounded-xl flex flex-col items-center space-y-1.5 
+                shadow-lg ${a.glow} hover:scale-[1.03] active:scale-95 transition-all duration-200`}>
+                <Icon size={20} className="text-white drop-shadow-lg" />
+                <span className="text-[10px] font-bold text-white/95 tracking-wide">{a.label}</span>
               </button>
             )
           })}
         </div>
       </div>
 
+      {/* Live Market Prices */}
+      {marketTicker.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">🔴 Live Prices</h3>
+            <div className="flex items-center space-x-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-[10px] text-red-400 font-medium">LIVE</span>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            {marketTicker.slice(0, 8).map((coin, i) => (
+              <div key={i} className="bg-slate-800/30 backdrop-blur-sm rounded-xl px-3.5 py-2.5 border border-slate-700/20 
+                flex items-center justify-between hover:border-blue-500/20 transition-colors">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
+                    i < 3 ? 'bg-gradient-to-br from-amber-500 to-orange-500' :
+                    i < 5 ? 'bg-gradient-to-br from-blue-500 to-cyan-500' : 'bg-gradient-to-br from-purple-500 to-pink-500'
+                  }`}>
+                    {(coin.symbol || '??').slice(0, 2)}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">{coin.symbol}</p>
+                    <p className="text-[10px] text-slate-500 truncate max-w-[100px]">{coin.name}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold">
+                    {coin.price_inr > 1000 ? `₹${coin.price_inr.toLocaleString('en-IN', {maximumFractionDigits: 0})}` :
+                     coin.price_inr > 1 ? `₹${coin.price_inr.toFixed(2)}` :
+                     `$${coin.price_usd?.toFixed(coin.price_usd > 1 ? 2 : 6) || '0'}`}
+                  </p>
+                  <span className={`text-[10px] font-semibold inline-flex items-center px-1.5 py-0.5 rounded-md ${
+                    (coin.change_24h || 0) >= 0 ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'
+                  }`}>
+                    {(coin.change_24h || 0) >= 0 ? '▲' : '▼'} {Math.abs(coin.change_24h || 0).toFixed(2)}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Active Signals */}
       {signals.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Live Signals</h3>
-            <button onClick={() => navigate('/trading')} className="text-blue-400 text-xs flex items-center">
-              View All <ChevronRight size={14} />
+            <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">⚡ AI Signals</h3>
+            <button onClick={() => navigate('/trading')} className="text-blue-400 text-[10px] font-medium flex items-center hover:text-blue-300">
+              View All <ChevronRight size={12} />
             </button>
           </div>
           <div className="space-y-2">
-            {signals.slice(0, 3).map((s, i) => (
-              <div key={i} className="bg-slate-800 rounded-xl p-3 border border-slate-700 flex items-center justify-between">
+            {signals.slice(0, 4).map((s, i) => (
+              <div key={i} className="bg-slate-800/30 backdrop-blur-sm rounded-xl p-3.5 border border-slate-700/20 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    (s.signal || s.type || '').toUpperCase().includes('BUY') ? 'bg-emerald-500/20' : 'bg-red-500/20'
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+                    (s.signal || s.type || '').toUpperCase().includes('BUY') ? 'bg-emerald-500/15 ring-1 ring-emerald-500/30' : 'bg-red-500/15 ring-1 ring-red-500/30'
                   }`}>
                     {(s.signal || s.type || '').toUpperCase().includes('BUY')
-                      ? <TrendingUp size={18} className="text-emerald-400" />
-                      : <TrendingDown size={18} className="text-red-400" />
+                      ? <TrendingUp size={16} className="text-emerald-400" />
+                      : <TrendingDown size={16} className="text-red-400" />
                     }
                   </div>
                   <div>
-                    <p className="font-semibold text-sm">{s.symbol || s.name}</p>
-                    <p className="text-xs text-slate-400">{s.signal || s.type} • {s.confidence || s.strength || '--'}%</p>
+                    <p className="font-bold text-sm">{s.symbol || s.name}</p>
+                    <p className="text-[10px] text-slate-500">
+                      {s.signal || s.type} • <span className="text-blue-400">{s.confidence || s.strength || '--'}%</span>
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium">₹{(s.price || s.entry || 0).toLocaleString()}</p>
-                  {s.target && <p className="text-xs text-emerald-400">T: ₹{s.target.toLocaleString()}</p>}
+                  <p className="text-sm font-bold">₹{(s.price || s.entry || 0).toLocaleString()}</p>
+                  {s.target && <p className="text-[10px] text-emerald-400">🎯 ₹{s.target.toLocaleString()}</p>}
                 </div>
               </div>
             ))}
@@ -189,18 +275,20 @@ const Dashboard = () => {
       )}
 
       {/* Top Movers */}
-      {(movers.gainers || movers.losers) && (
+      {(movers.gainers?.length > 0 || movers.losers?.length > 0) && (
         <div>
-          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
-            <Flame size={14} className="inline text-orange-400 mr-1" /> Top Movers
+          <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-3">
+            🔥 Top Movers
           </h3>
-          <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
-            {[...(movers.gainers || []).slice(0, 3), ...(movers.losers || []).slice(0, 2)].map((m, i) => (
-              <div key={i} className="bg-slate-800 rounded-xl p-3 border border-slate-700 min-w-[140px] flex-shrink-0">
-                <p className="font-semibold text-sm truncate">{m.symbol || m.name}</p>
-                <p className="text-xs text-slate-400">₹{(m.price || m.last_price || 0).toLocaleString()}</p>
-                <p className={`text-sm font-bold mt-1 ${(m.change || m.change_percent || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {(m.change || m.change_percent || 0) >= 0 ? '+' : ''}{(m.change || m.change_percent || 0).toFixed(2)}%
+          <div className="flex space-x-2.5 overflow-x-auto pb-2 scrollbar-hide">
+            {[...(movers.gainers || []).slice(0, 4), ...(movers.losers || []).slice(0, 3)].map((m, i) => (
+              <div key={i} className="bg-slate-800/30 backdrop-blur-sm rounded-xl p-3 border border-slate-700/20 min-w-[130px] flex-shrink-0">
+                <p className="font-bold text-xs truncate">{m.symbol || m.name}</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  ₹{(m.price || m.last_price || m.price_inr || 0).toLocaleString()}
+                </p>
+                <p className={`text-sm font-bold mt-1.5 ${(m.change || m.change_percent || m.change_24h || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {(m.change || m.change_percent || m.change_24h || 0) >= 0 ? '+' : ''}{(m.change || m.change_percent || m.change_24h || 0).toFixed(2)}%
                 </p>
               </div>
             ))}
@@ -208,17 +296,48 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Breaking News */}
+      {/* Trending Gems */}
+      {dexTrending.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">💎 Trending Gems</h3>
+            <button onClick={() => navigate('/gems')} className="text-pink-400 text-[10px] font-medium flex items-center hover:text-pink-300">
+              More <ChevronRight size={12} />
+            </button>
+          </div>
+          <div className="flex space-x-2.5 overflow-x-auto pb-2 scrollbar-hide">
+            {dexTrending.slice(0, 6).map((gem, i) => (
+              <div key={i} className="bg-gradient-to-br from-slate-800/50 to-slate-800/20 rounded-xl p-3 border border-slate-700/20 min-w-[140px] flex-shrink-0">
+                <p className="font-bold text-xs truncate">{gem.symbol || gem.base_token}</p>
+                <p className="text-[9px] text-slate-500 truncate">{gem.name}</p>
+                <p className="text-xs font-bold mt-1 text-white">${gem.price_usd?.toFixed(gem.price_usd > 1 ? 2 : 6) || '0'}</p>
+                <div className="flex items-center mt-1 space-x-1">
+                  <span className={`text-[10px] font-semibold ${(gem.change_24h || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {(gem.change_24h || 0) >= 0 ? '+' : ''}{(gem.change_24h || 0).toFixed(1)}%
+                  </span>
+                  {gem.gem_score && (
+                    <span className="text-[9px] px-1 py-0.5 rounded bg-purple-500/20 text-purple-300">
+                      ⭐{gem.gem_score}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* News */}
       {news.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
-            <Radio size={14} className="inline text-red-400 mr-1 animate-pulse" /> Breaking News
+          <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-3">
+            📰 Market News
           </h3>
           <div className="space-y-2">
             {news.slice(0, 4).map((n, i) => (
-              <div key={i} className="bg-slate-800 rounded-xl p-3 border border-slate-700">
-                <p className="text-sm font-medium">{n.title || n.headline || n}</p>
-                {n.source && <p className="text-xs text-slate-500 mt-1">{n.source} • {n.time || ''}</p>}
+              <div key={i} className="bg-slate-800/30 backdrop-blur-sm rounded-xl p-3 border border-slate-700/20">
+                <p className="text-xs font-medium leading-relaxed">{n.title || n.headline || (typeof n === 'string' ? n : '')}</p>
+                {n.source && <p className="text-[10px] text-slate-500 mt-1.5">{n.source} • {n.time || ''}</p>}
               </div>
             ))}
           </div>
@@ -227,12 +346,16 @@ const Dashboard = () => {
 
       {/* AI CTA */}
       <div onClick={() => navigate('/chat')}
-        className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-5 cursor-pointer hover:shadow-lg hover:shadow-indigo-500/20 transition-shadow">
-        <div className="flex items-center space-x-3">
-          <Bot size={32} className="text-white" />
+        className="relative overflow-hidden rounded-2xl cursor-pointer group active:scale-[0.98] transition-transform">
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600" />
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/0 via-white/5 to-pink-600/0 group-hover:via-white/10 transition-colors" />
+        <div className="relative p-5 flex items-center space-x-4">
+          <div className="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/10">
+            <Sparkles size={24} className="text-white" />
+          </div>
           <div>
-            <p className="font-bold text-lg">Ask JARVIS AI Anything</p>
-            <p className="text-indigo-200 text-sm">Market analysis, trade ideas, predictions & more</p>
+            <p className="font-bold text-base">Ask JARVIS AI ✨</p>
+            <p className="text-indigo-200/80 text-xs">Analysis • Predictions • Trade Ideas • Hindi/English</p>
           </div>
         </div>
       </div>

@@ -1,0 +1,25 @@
+{
+  "user_info": {
+    "name": "",
+    "chat_id": 123,
+    "first_seen": "2026-02-19T02:08:16.909495+05:30",
+    "language": "hinglish",
+    "risk_appetite": "moderate",
+    "trading_style": "",
+    "budget": ""
+  },
+  "conversations": [
+    {
+      "role": "user",
+      "text": "hello",
+      "intent": "greeting",
+      "timestamp": "2026-02-19T02:08:17.744606+05:30"
+    }
+  ],
+  "positions": [],
+  "facts": {},
+  "predictions": [],
+  "learnings": [],
+  "summary": "",
+  "last_active": "2026-02-19T02:08:17.744639+05:30"
+}

@@ -63,7 +63,7 @@ CLAIMED_FILE = "jarvis_claimed_airdrops.json"
 
 # API endpoints
 DEFILLAMA_AIRDROPS = "https://defillama-datasets.llama.fi/emissionsBreakdown"
-COINGECKO_API = "https://api.coingecko.com/api/v3"
+# CoinGecko REMOVED
 JUPITER_API = "https://api.jup.ag"
 SOL_RPC = os.environ.get("SOLANA_RPC", "https://api.mainnet-beta.solana.com")
 HELIUS_KEY = os.environ.get("HELIUS_API_KEY", "")
@@ -219,30 +219,7 @@ def scan_defillama_airdrops() -> List[Dict]:
     """
     airdrops = []
 
-    try:
-        # Get protocols without tokens (potential airdrop candidates)
-        r = requests.get(f"{COINGECKO_API}/search/trending", timeout=10,
-                         headers={"User-Agent": "JARVIS-Bot/3.0"})
-        if r.status_code == 200:
-            trending = r.json().get("coins", [])
-            for item in trending:
-                coin = item.get("item", {})
-                if coin.get("data", {}).get("market_cap", 0) == 0:
-                    airdrops.append({
-                        "id": f"cg_new_{coin.get('id', '')}",
-                        "name": coin.get("name", "Unknown"),
-                        "symbol": coin.get("symbol", "?"),
-                        "type": "new_token",
-                        "chain": "multi",
-                        "source": "coingecko",
-                        "status": "potential",
-                        "estimated_value_usd": 0,
-                        "url": f"https://www.coingecko.com/en/coins/{coin.get('id', '')}",
-                        "description": f"New trending token — might have airdrop/rewards",
-                        "found_at": time.time(),
-                    })
-    except Exception as e:
-        logger.debug(f"[AIRDROP] CoinGecko scan error: {e}")
+    # CoinGecko REMOVED — skip CoinGecko trending scan
 
     return airdrops
 

@@ -19,6 +19,13 @@ import httpx
 logger = logging.getLogger("jarvis-brain")
 IST = timezone(timedelta(hours=5, minutes=30))
 
+def _safe_uid(user_id) -> int:
+    """Safely convert user_id to int, return 0 on failure."""
+    try:
+        return int(user_id) if user_id and str(user_id) != "0" else 0
+    except (ValueError, TypeError):
+        return 0
+
 # ═══════════════════════════════════════════════════════════
 #  ENGINE IMPORTS — Real data from all trading engines
 # ═══════════════════════════════════════════════════════════
@@ -92,7 +99,7 @@ def _get_memory(user_id: str) -> List[Dict]:
     """Get conversation memory — persistent or volatile."""
     if _MEM_PRO:
         try:
-            history = _mem_pro.get_conversation_history(int(user_id), last_n=30)
+            history = _mem_pro.get_conversation_history(_safe_uid(user_id), last_n=30)
             return [{"role": m.get("role", "user"), "content": m.get("text", "")} for m in history if m.get("text")]
         except:
             pass
@@ -103,10 +110,10 @@ def _add_memory(user_id: str, role: str, content: str):
     if _MEM_PRO:
         try:
             intent = _detect_intent(content) if role == "user" else ""
-            _mem_pro.remember_message(int(user_id), role, content, intent)
+            _mem_pro.remember_message(_safe_uid(user_id), role, content, intent)
             if role == "user":
-                _auto_extract_facts(int(user_id), content)
-                _auto_track_position(int(user_id), content)
+                _auto_extract_facts(_safe_uid(user_id), content)
+                _auto_track_position(_safe_uid(user_id), content)
             return
         except Exception as e:
             logger.warning(f"Memory Pro save error: {e}")
@@ -610,10 +617,13 @@ MEMORY POWERS:
 - If user mentioned their name before → Address them by name
 - You learn from every conversation — getting smarter over time
 
-LANGUAGE RULES (VERY IMPORTANT):
+LANGUAGE RULES (MOST IMPORTANT — NEVER BREAK):
+- DEFAULT LANGUAGE IS HINDI/HINGLISH (हिंदी). ALWAYS respond in Hindi unless user writes in pure English.
 - If user writes in Hindi/Hinglish → REPLY IN HINDI/HINGLISH
 - If user writes in English → Reply in English
 - If user mixes both → Reply in same mixed style (Hinglish)
+- When in doubt, USE HINDI. Indian users prefer Hindi responses.
+- Hindi examples: "सुनिए जी, आज NIFTY बुलिश है!", "ये BUY सिग्नल बहुत मज़बूत है।", "चिंता मत कीजिए, मैं हूँ ना 🌸"
 - Always understand these commands:
   "code banao", "ye run karo", "kya price hai", "signal do", "news batao",
   "airdrop dikha", "wallet check karo", "option chain dikhao",
@@ -627,12 +637,13 @@ CAPABILITIES:
 4. ANALYSIS: Technical, sentiment, whale tracking, volume, candle patterns
 5. PREDICTIONS: AI-powered price predictions with confidence levels
 6. NEWS: Latest crypto and market news from multiple sources
-7. WALLET: Phantom wallet integration, Solana transactions
+7. WALLET: Phantom wallet integration, Solana transactions, withdrawal ONLY to Phantom wallet
 8. RISK: Risk assessment, portfolio optimization, position sizing
 9. CODING: Generate code in any language, clone GitHub repos, install deps, run projects
 10. AIRDROPS: Auto-find airdrops on Solana, scan wallet for new tokens
 11. MEMORY: Remember conversations, track positions, learn from predictions
 12. PORTFOLIO: Full position tracking, PnL monitoring, risk analysis
+13. DEPOSIT & AUTO-TRADE: Min ₹1 deposit (unlimited max). Deposit hote hi JARVIS automatically trading start karta hai. Auto-invest engine gems scan karke best tokens mein invest karta hai. Withdrawal SIRF Phantom wallet mein. User ko /phantom se connect karna padta hai.
 
 AI TOOLS:
 - /code <description> — Generate and run code
@@ -663,7 +674,7 @@ def _get_system_prompt(market_context: str = "", user_id: str = "0") -> str:
 
     if _MEM_PRO and user_id != "0":
         try:
-            uid = int(user_id)
+            uid = _safe_uid(user_id)
             ctx = _mem_pro.get_full_context_for_ai(uid)
             if ctx.strip():
                 prompt += f"\n\n═══ USER CONTEXT (from persistent memory) ═══\n{ctx}"
@@ -690,7 +701,7 @@ def get_conversation_history(user_id: str) -> List[Dict]:
     """Get full conversation history for a user."""
     if _MEM_PRO:
         try:
-            history = _mem_pro.get_conversation_history(int(user_id), last_n=50)
+            history = _mem_pro.get_conversation_history(_safe_uid(user_id), last_n=50)
             return [{"role": m.get("role", "user"), "content": m.get("text", ""), "timestamp": m.get("timestamp", "")} for m in history]
         except:
             pass
@@ -704,7 +715,7 @@ def _post_process_reply(user_id: str, message: str, reply: str):
     if not _MEM_PRO:
         return
     try:
-        uid = int(user_id)
+        uid = _safe_uid(user_id)
         lower_reply = reply.lower()
         pred_patterns = [
             r"(?:predict|target|expected|expecting|forecast).*?(?:₹|rs\.?|\$)\s*([\d,]+)",
@@ -873,7 +884,10 @@ async def jarvis_chat(message: str, user_id: str = "0", market_context: str = ""
     """
     lower = message.lower().strip()
     if _MEM_PRO:
-        uid = int(user_id) if user_id != "0" else 0
+        try:
+            uid = _safe_uid(user_id)
+        except (ValueError, TypeError):
+            uid = 0
         if any(kw in lower for kw in ["position batao", "my position", "meri position", "positions dikha", "portfolio batao", "show position"]):
             txt = _mem_pro.format_positions(uid)
             _add_memory(user_id, "user", message)
@@ -941,31 +955,31 @@ Include: 1) Overview 2) Key movers 3) Opportunities 4) Risk alerts 5) Actions"""
 # ═══════════════════════════════════════════════════════════
 def get_memory_stats(user_id: str) -> dict:
     if _MEM_PRO:
-        try: return _mem_pro.get_memory_stats(int(user_id))
+        try: return _mem_pro.get_memory_stats(_safe_uid(user_id))
         except: pass
     return {"conversations": len(_memory.get(user_id, [])), "facts": 0, "positions_total": 0, "positions_open": 0}
 
 def get_user_facts(user_id: str) -> dict:
     if _MEM_PRO:
-        try: return _mem_pro.get_all_facts(int(user_id))
+        try: return _mem_pro.get_all_facts(_safe_uid(user_id))
         except: pass
     return {}
 
 def get_active_positions(user_id: str) -> list:
     if _MEM_PRO:
-        try: return _mem_pro.get_active_positions(int(user_id))
+        try: return _mem_pro.get_active_positions(_safe_uid(user_id))
         except: pass
     return []
 
 def get_prediction_accuracy(user_id: str) -> dict:
     if _MEM_PRO:
-        try: return _mem_pro.get_prediction_accuracy(int(user_id))
+        try: return _mem_pro.get_prediction_accuracy(_safe_uid(user_id))
         except: pass
     return {"total": 0, "correct": 0, "wrong": 0, "pending": 0, "accuracy": 0}
 
 def search_memory(user_id: str, query: str) -> list:
     if _MEM_PRO:
-        try: return _mem_pro.search_memory(int(user_id), query, limit=10)
+        try: return _mem_pro.search_memory(_safe_uid(user_id), query, limit=10)
         except: pass
     return []
 
@@ -1083,7 +1097,10 @@ async def stream_chat(message: str, user_id: str = "0", market_context: str = ""
     # === MEMORY COMMANDS (instant) ===
     lower = message.lower().strip()
     if _MEM_PRO:
-        uid = int(user_id) if user_id != "0" else 0
+        try:
+            uid = _safe_uid(user_id)
+        except (ValueError, TypeError):
+            uid = 0
         if any(kw in lower for kw in ["position batao", "my position", "meri position", "show position"]):
             text = _mem_pro.format_positions(uid)
             _add_memory(user_id, "user", message)

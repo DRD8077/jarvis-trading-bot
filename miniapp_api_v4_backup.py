@@ -294,7 +294,7 @@ async def wallet(user_id: str = "0"):
 async def deposit(request: Request):
     body = await request.json()
     uid, amount = int(body.get("user_id", 0)), float(body.get("amount", 0))
-    if amount < 100: return {"error": "Min deposit ₹100"}
+    if amount < 1: return {"error": "Min deposit ₹1"}
     if not _payment: return {"error": "Payment unavailable"}
     try:
         return _payment.generate_deposit_qr(uid, amount)

@@ -36,18 +36,18 @@ INR_RATE_TTL = 300  # refresh every 5 min
 
 
 def get_usd_inr_rate() -> float:
-    """Get live USD/INR rate from CoinGecko. Cached 5 min."""
+    """Get live USD/INR rate. Cached 5 min. (CoinGecko removed, using exchangerate API)"""
     global _inr_rate, _inr_rate_ts
     now = time.time()
     if now - _inr_rate_ts < INR_RATE_TTL:
         return _inr_rate
     try:
         r = requests.get(
-            "https://api.coingecko.com/api/v3/simple/price?ids=usd-coin&vs_currencies=inr",
+            "https://api.exchangerate-api.com/v4/latest/USD",
             timeout=8,
         )
         if r.status_code == 200:
-            rate = r.json().get("usd-coin", {}).get("inr", 0)
+            rate = r.json().get("rates", {}).get("INR", 0)
             if rate > 50:
                 _inr_rate = float(rate)
                 _inr_rate_ts = now
@@ -78,14 +78,17 @@ def fmt_inr(amount: float) -> str:
 
 
 def get_sol_inr_price() -> float:
-    """Get SOL price in INR."""
+    """Get SOL price in INR (via Jupiter + exchange rate, CoinGecko removed)."""
     try:
+        # Get SOL/USD from Jupiter
         r = requests.get(
-            "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=inr",
+            "https://api.jup.ag/price/v2?ids=So11111111111111111111111111111111111111112",
             timeout=8,
         )
         if r.status_code == 200:
-            return float(r.json().get("solana", {}).get("inr", 0))
+            sol_usd = float(r.json().get("data", {}).get("So11111111111111111111111111111111111111112", {}).get("price", 0))
+            if sol_usd > 0:
+                return sol_usd * get_usd_inr_rate()
     except Exception:
         pass
     return 0.0

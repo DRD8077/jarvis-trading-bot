@@ -52,7 +52,7 @@ except ImportError:
     logger.warning("[CRYPTO-IQ] rug_detector not available")
 
 try:
-    from buy_sell_engine import get_crypto_signal, format_bs_signal
+    from buy_sell_engine import get_crypto_signal, format_signal_message as format_bs_signal
     SIGNAL_OK = True
 except ImportError:
     SIGNAL_OK = False

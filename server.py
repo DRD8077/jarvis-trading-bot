@@ -11,6 +11,20 @@ import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+# Load .env file if present
+try:
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
+except ImportError:
+    # Manual .env loading fallback
+    env_path = Path(__file__).parent / ".env"
+    if env_path.exists():
+        for line in env_path.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
+
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -89,7 +103,36 @@ async def lifespan(app: FastAPI):
     logger.info("  ✅ Server ready!")
     logger.info("═══════════════════════════════════════")
     
+    # Start background data prefetcher for Indian market data
+    async def _prefetch_loop():
+        """Background task to keep Indian market data warm in cache."""
+        import httpx
+        await asyncio.sleep(5)  # Wait for server to fully start
+        base = f"http://127.0.0.1:{os.getenv('PORT', '8000')}"
+        endpoints = [
+            "/api/miniapp/india/dashboard",
+            "/api/miniapp/dashboard",
+            "/api/miniapp/markets",
+        ]
+        while True:
+            try:
+                async with httpx.AsyncClient(timeout=30) as client:
+                    for ep in endpoints:
+                        try:
+                            await client.get(f"{base}{ep}")
+                        except Exception:
+                            pass
+                logger.debug("🔄 Background data refresh completed")
+            except Exception:
+                pass
+            await asyncio.sleep(90)  # Refresh every 90 seconds
+    
+    prefetch_task = asyncio.create_task(_prefetch_loop())
+    
     yield
+    
+    # Shutdown
+    prefetch_task.cancel()
     
     # Shutdown: close HTTP client
     logger.info("Shutting down JARVIS...")
@@ -114,8 +157,27 @@ app = FastAPI(
 )
 
 # ═══════════════════════════════════════════════════════════
-#  MIDDLEWARE — Security + CORS
+#  MIDDLEWARE — Speed + Security + CORS
 # ═══════════════════════════════════════════════════════════
+# GZip compression for fast responses
+from starlette.middleware.gzip import GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+# Cache headers for static assets
+from starlette.middleware.base import BaseHTTPMiddleware
+class CacheMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        if '/assets/' in path:
+            response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+        elif path.endswith(('.js', '.css', '.png', '.svg', '.woff2')):
+            response.headers['Cache-Control'] = 'public, max-age=86400'
+        elif '/api/' in path:
+            response.headers['Cache-Control'] = 'no-cache, max-age=0'
+        return response
+app.add_middleware(CacheMiddleware)
+
 # Security middleware (rate limiting, headers)
 from security_middleware import SecurityMiddleware
 app.add_middleware(SecurityMiddleware)
@@ -150,10 +212,54 @@ if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 # ═══════════════════════════════════════════════════════════
+#  REACT MINI APP — Serve built React SPA from dist/
+# ═══════════════════════════════════════════════════════════
+MINIAPP_DIST = BASE_DIR / "telegram-mini-app" / "dist"
+MINIAPP_INDEX = MINIAPP_DIST / "index.html"
+
+# Serve React app assets (JS, CSS bundles)
+if (MINIAPP_DIST / "assets").exists():
+    app.mount("/miniapp/assets", StaticFiles(directory=str(MINIAPP_DIST / "assets")), name="miniapp-assets")
+
+# Serve PWA icons
+if (MINIAPP_DIST / "icons").exists():
+    app.mount("/miniapp/icons", StaticFiles(directory=str(MINIAPP_DIST / "icons")), name="miniapp-icons")
+
+# Serve OTA update bundles
+ota_dir = BASE_DIR / "ota_bundles"
+if ota_dir.exists():
+    app.mount("/ota_bundles", StaticFiles(directory=str(ota_dir)), name="ota-bundles")
+
+# Serve voice audio files
+voice_dir = BASE_DIR / "voice_cache"
+if not voice_dir.exists():
+    voice_dir.mkdir(exist_ok=True)
+app.mount("/voice_cache", StaticFiles(directory=str(voice_dir)), name="voice-cache")
+
+# ═══════════════════════════════════════════════════════════
 #  ROUTES — MiniApp API
 # ═══════════════════════════════════════════════════════════
 from miniapp_api import router as miniapp_router
 app.include_router(miniapp_router)
+
+# ═══════════════════════════════════════════════════════════
+#  NEW ENGINE ROUTES — Voice, Gemini, Auth, Intelligence, OTA
+# ═══════════════════════════════════════════════════════════
+_new_engines = [
+    ("jarvis_hindi_voice", "register_voice_routes", "Hindi Voice"),
+    ("jarvis_gemini_bridge", "register_gemini_routes", "Gemini Bridge"),
+    ("jarvis_smart_auth", "register_auth_routes", "Smart Auth"),
+    ("jarvis_super_intelligence", "register_intelligence_routes", "Super Intelligence"),
+    ("jarvis_ota_update", "register_ota_routes", "OTA Updates"),
+]
+for mod_name, func_name, label in _new_engines:
+    try:
+        mod = __import__(mod_name)
+        register_fn = getattr(mod, func_name)
+        register_fn(app)
+        logger.info(f"  ✅ {label} routes registered")
+    except Exception as e:
+        logger.warning(f"  ⚠️ {label} routes failed: {e}")
 
 
 # ═══════════════════════════════════════════════════════════
@@ -162,18 +268,54 @@ app.include_router(miniapp_router)
 @app.get("/", response_class=HTMLResponse)
 async def serve_miniapp(request: Request):
     """Serve the main JARVIS mini app."""
+    if MINIAPP_INDEX.exists():
+        return HTMLResponse(MINIAPP_INDEX.read_text())
     return templates.TemplateResponse("miniapp.html", {"request": request})
 
 
 @app.get("/app", response_class=HTMLResponse)
 async def serve_miniapp_alt(request: Request):
     """Alternate route for the mini app."""
+    if MINIAPP_INDEX.exists():
+        return HTMLResponse(MINIAPP_INDEX.read_text())
     return templates.TemplateResponse("miniapp.html", {"request": request})
 
 
 @app.get("/miniapp", response_class=HTMLResponse)
-async def serve_miniapp_alt2(request: Request):
-    """Another alternate route."""
+async def serve_miniapp_route(request: Request):
+    """Main mini app — serves React SPA."""
+    if MINIAPP_INDEX.exists():
+        return HTMLResponse(MINIAPP_INDEX.read_text())
+    return templates.TemplateResponse("miniapp.html", {"request": request})
+
+
+# Serve manifest.json and sw.js for PWA
+from fastapi.responses import FileResponse
+
+@app.get("/miniapp/manifest.json")
+async def miniapp_manifest():
+    f = MINIAPP_DIST / "manifest.json"
+    if f.exists():
+        return FileResponse(str(f), media_type="application/json")
+    return JSONResponse({"name": "JARVIS Trading"})
+
+@app.get("/miniapp/sw.js")
+async def miniapp_sw():
+    f = MINIAPP_DIST / "sw.js"
+    if f.exists():
+        return FileResponse(str(f), media_type="application/javascript")
+    return JSONResponse({"error": "not found"}, status_code=404)
+
+
+# SPA catch-all — any /miniapp/* that doesn't match API routes → serve index.html
+@app.get("/miniapp/{path:path}", response_class=HTMLResponse)
+async def miniapp_spa_catchall(request: Request, path: str):
+    """Catch-all for React Router — serves index.html for all SPA routes."""
+    # Don't catch API routes or static assets that already have their own mounts
+    if path.startswith("assets/") or path.startswith("icons/"):
+        return JSONResponse({"error": "not found"}, status_code=404)
+    if MINIAPP_INDEX.exists():
+        return HTMLResponse(MINIAPP_INDEX.read_text())
     return templates.TemplateResponse("miniapp.html", {"request": request})
 
 
@@ -257,6 +399,9 @@ async def ping():
 async def not_found(request: Request, exc):
     if request.url.path.startswith("/api/"):
         return JSONResponse({"error": "Not found"}, status_code=404)
+    # Serve React SPA for any non-API 404s (SPA routing)
+    if MINIAPP_INDEX.exists():
+        return HTMLResponse(MINIAPP_INDEX.read_text())
     return templates.TemplateResponse("miniapp.html", {"request": request})
 
 

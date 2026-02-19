@@ -33,7 +33,7 @@ echo "  📱 Bot PID: $BOT_PID"
 
 # Start FastAPI server (foreground)
 echo "  🌐 Starting server on port ${PORT:-8000}..."
-python3 jarvis_admin.py
+python3 server.py
 
 # Cleanup
 kill $BOT_PID 2>/dev/null

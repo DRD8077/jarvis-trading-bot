@@ -230,35 +230,17 @@ def calculate_stochastic(highs: List[float], lows: List[float], closes: List[flo
 
 
 # ═══════════════════════════════════════════════════════════
-#  PRICE HISTORY FETCHER — CoinGecko + DexScreener
+#  PRICE HISTORY FETCHER — DexScreener only (CoinGecko removed)
 # ═══════════════════════════════════════════════════════════
 
 def fetch_price_history(token_id: str, chain: str = "", days: int = 7) -> Dict:
-    """Fetch price history for technical analysis."""
+    """Fetch price history for technical analysis (DexScreener only, CoinGecko removed)."""
     prices = []
     volumes = []
     highs = []
     lows = []
     
-    # Try CoinGecko first (for listed tokens)
-    try:
-        url = f"https://api.coingecko.com/api/v3/coins/{token_id}/market_chart"
-        data = requests.get(url, params={
-            "vs_currency": "usd",
-            "days": str(days),
-        }, timeout=10).json()
-        
-        if "prices" in data:
-            for p in data["prices"]:
-                prices.append(p[1])
-                highs.append(p[1] * 1.005)  # Approximate
-                lows.append(p[1] * 0.995)
-            for v in data.get("total_volumes", []):
-                volumes.append(v[1])
-            
-            logger.info(f"[SIGNALS] Got {len(prices)} price points from CoinGecko for {token_id}")
-    except Exception as e:
-        logger.debug(f"[SIGNALS] CoinGecko history failed for {token_id}: {e}")
+    # CoinGecko REMOVED — only DexScreener / synthetic data used
     
     # Fallback: generate synthetic data from available price changes
     if not prices:
@@ -269,7 +251,7 @@ def fetch_price_history(token_id: str, chain: str = "", days: int = 7) -> Dict:
         "volumes": volumes[:len(prices)],
         "highs": highs[:len(prices)],
         "lows": lows[:len(prices)],
-        "source": "coingecko",
+        "source": "dexscreener",
     }
 
 

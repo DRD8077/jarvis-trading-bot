@@ -26,7 +26,7 @@ fi
 
 # Build public URL
 if [ -n "$CODESPACE_NAME" ] && [ -n "$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN" ]; then
-    PUBLIC_URL="https://${CODESPACE_NAME}-8080.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+    PUBLIC_URL="https://${CODESPACE_NAME}-8000.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
     echo -e "${BLUE}🌐 Public URL: ${PUBLIC_URL}${NC}"
     echo -e "${BLUE}🌐 Mini App:   ${PUBLIC_URL}/miniapp${NC}"
     echo -e "${BLUE}🌐 Admin:      ${PUBLIC_URL}/${NC}"
@@ -37,8 +37,8 @@ if [ -n "$CODESPACE_NAME" ] && [ -n "$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN" 
     export WEBAPP_URL="${PUBLIC_URL}/miniapp"
     
     # Make port public 
-    echo -e "${YELLOW}🔓 Making port 8080 public...${NC}"
-    gh codespace ports visibility 8080:public -c "$CODESPACE_NAME" 2>/dev/null || true
+    echo -e "${YELLOW}🔓 Making port 8000 public...${NC}"
+    gh codespace ports visibility 8000:public -c "$CODESPACE_NAME" 2>/dev/null || true
 fi
 
 # Kill any existing processes
@@ -48,16 +48,16 @@ pkill -f "node.*bot.js" 2>/dev/null || true
 sleep 1
 
 # ═══ Start FastAPI Server ═══
-echo -e "${BLUE}🚀 Starting FastAPI server on port 8080...${NC}"
+echo -e "${BLUE}🚀 Starting FastAPI server on port 8000...${NC}"
 cd "$SCRIPT_DIR"
-python -m uvicorn jarvis_admin:app --host 0.0.0.0 --port 8080 --log-level info &
+python -m uvicorn jarvis_admin:app --host 0.0.0.0 --port 8000 --log-level info &
 FASTAPI_PID=$!
 echo -e "${GREEN}✅ FastAPI PID: ${FASTAPI_PID}${NC}"
 
 # Wait for server to be ready
 echo -e "${YELLOW}⏳ Waiting for server...${NC}"
 for i in {1..15}; do
-    if curl -s http://localhost:8080/api/miniapp/health > /dev/null 2>&1; then
+    if curl -s http://localhost:8000/api/miniapp/health > /dev/null 2>&1; then
         echo -e "${GREEN}✅ FastAPI server is ready!${NC}"
         break
     fi

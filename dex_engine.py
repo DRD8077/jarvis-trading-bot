@@ -18,12 +18,14 @@ logger = logging.getLogger("dex-engine")
 DEXSCREENER_BASE = "https://api.dexscreener.com"
 DEXTOOLS_BASE = "https://public-api.dextools.io/trial/v2"
 PUMPFUN_BASE = "https://frontend-api.pump.fun"
-COINGECKO_BASE = "https://api.coingecko.com/api/v3"
+# COINGECKO REMOVED — user requested no CoinGecko
 BIRDEYE_BASE = "https://public-api.birdeye.so"
 JUPITER_PRICE_BASE = "https://price.jup.ag/v6"
 
 DEXTOOLS_API_KEY = os.getenv("DEXTOOLS_API_KEY", "")
 BIRDEYE_API_KEY = os.getenv("BIRDEYE_API_KEY", "")
+COINMARKETCAP_API_KEY = os.getenv("COINMARKETCAP_API_KEY", "")
+COINMARKETCAP_BASE = "https://pro-api.coinmarketcap.com"
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
@@ -260,87 +262,19 @@ def _compute_gem_score(price, chg5m, chg1h, chg24h, vol, liq, mcap, buys, sells)
 
 
 # ═══════════════════════════════════════════════════════════
-#  COINGECKO — Free tier, major coins
+#  COINGECKO — REMOVED (user requested removal)
 # ═══════════════════════════════════════════════════════════
-async def cg_prices(ids: str = "bitcoin,ethereum,solana,cardano,dogecoin,shiba-inu,pepe,bonk",
-                     vs: str = "usd,inr") -> Dict:
-    """Get real-time prices from CoinGecko."""
-    await _rate_limit("coingecko")
-    data = await _fetch(f"{COINGECKO_BASE}/simple/price", params={
-        "ids": ids,
-        "vs_currencies": vs,
-        "include_24hr_change": "true",
-        "include_24hr_vol": "true",
-        "include_market_cap": "true",
-    })
-    return data or {}
-
+async def cg_prices(ids: str = "", vs: str = "usd,inr") -> Dict:
+    """CoinGecko REMOVED — returns empty."""
+    return {}
 
 async def cg_trending() -> List[Dict]:
-    """Get trending coins from CoinGecko with price data."""
-    await _rate_limit("coingecko_trending")
-    data = await _fetch(f"{COINGECKO_BASE}/search/trending")
-    if not data or "coins" not in data:
-        return []
-    results = []
-    for item in data["coins"][:15]:
-        coin = item.get("item", {})
-        # CoinGecko trending includes price data in 'data' field
-        coin_data = coin.get("data", {})
-        price_usd = float(coin_data.get("price", 0) or coin.get("price_btc", 0) * 65000 or 0)
-        price_change = float(coin_data.get("price_change_percentage_24h", {}).get("usd", 0) or 0)
-        mcap = float(coin_data.get("market_cap", "0").replace(",","").replace("$","") if isinstance(coin_data.get("market_cap"), str) else coin_data.get("market_cap", 0) or 0)
-        vol = float(coin_data.get("total_volume", "0").replace(",","").replace("$","") if isinstance(coin_data.get("total_volume"), str) else coin_data.get("total_volume", 0) or 0)
-        results.append({
-            "symbol": coin.get("symbol", ""),
-            "name": coin.get("name", ""),
-            "market_cap_rank": coin.get("market_cap_rank", 0),
-            "price_usd": price_usd,
-            "change_24h": price_change,
-            "market_cap": mcap,
-            "volume_24h": vol,
-            "gem_score": max(0, 100 - (coin.get("score", 0) * 6)),
-            "chain": "multi",
-            "thumb": coin.get("thumb", ""),
-            "source": "coingecko_trending",
-        })
-    return results
-
+    """CoinGecko REMOVED — returns empty."""
+    return []
 
 async def cg_market_data(limit: int = 50) -> List[Dict]:
-    """Get top coins with full market data."""
-    await _rate_limit("coingecko_market")
-    data = await _fetch(f"{COINGECKO_BASE}/coins/markets", params={
-        "vs_currency": "usd",
-        "order": "market_cap_desc",
-        "per_page": str(limit),
-        "page": "1",
-        "sparkline": "false",
-        "price_change_percentage": "1h,24h,7d",
-    })
-    if not data or not isinstance(data, list):
-        return []
-    results = []
-    for c in data:
-        results.append({
-            "id": c.get("id", ""),
-            "symbol": c.get("symbol", "").upper(),
-            "name": c.get("name", ""),
-            "price_usd": c.get("current_price", 0),
-            "market_cap": c.get("market_cap", 0),
-            "volume_24h": c.get("total_volume", 0),
-            "change_1h": c.get("price_change_percentage_1h_in_currency", 0),
-            "change_24h": c.get("price_change_percentage_24h", 0),
-            "change_7d": c.get("price_change_percentage_7d_in_currency", 0),
-            "high_24h": c.get("high_24h", 0),
-            "low_24h": c.get("low_24h", 0),
-            "ath": c.get("ath", 0),
-            "ath_change": c.get("ath_change_percentage", 0),
-            "image": c.get("image", ""),
-            "rank": c.get("market_cap_rank", 0),
-            "source": "coingecko",
-        })
-    return results
+    """CoinGecko REMOVED — returns empty."""
+    return []
 
 
 async def cg_fear_greed() -> Dict:
@@ -357,61 +291,92 @@ async def cg_fear_greed() -> Dict:
 
 
 # ═══════════════════════════════════════════════════════════
-#  PUMP.FUN — Solana meme coin launchpad
+#  PUMP.FUN — Solana meme coin launchpad (with DexScreener fallback)
 # ═══════════════════════════════════════════════════════════
 async def pumpfun_trending() -> List[Dict]:
-    """Get trending tokens from Pump.fun."""
+    """Get trending tokens from Pump.fun, with DexScreener boosted Solana fallback."""
     await _rate_limit("pumpfun")
+    # Try pump.fun API first
     data = await _fetch(f"{PUMPFUN_BASE}/coins", params={
-        "offset": "0",
-        "limit": "20",
-        "sort": "market_cap",
-        "order": "DESC",
-        "includeNsfw": "false",
+        "offset": "0", "limit": "20", "sort": "market_cap",
+        "order": "DESC", "includeNsfw": "false",
     })
-    if not data or not isinstance(data, list):
+    if data and isinstance(data, list) and len(data) > 3:
+        results = []
+        for token in data[:20]:
+            mcap = float(token.get("market_cap", 0) or 0)
+            results.append({
+                "address": token.get("mint", ""),
+                "symbol": token.get("symbol", ""),
+                "name": token.get("name", ""),
+                "description": (token.get("description", "") or "")[:100],
+                "image": token.get("image_uri", ""),
+                "market_cap": mcap,
+                "reply_count": token.get("reply_count", 0),
+                "creator": token.get("creator", ""),
+                "created_at": token.get("created_timestamp", 0),
+                "chain": "solana",
+                "source": "pumpfun",
+                "url": f"https://pump.fun/{token.get('mint', '')}",
+            })
+        return results
+    
+    # Fallback: DexScreener boosted Solana tokens
+    logger.info("Pump.fun blocked — using DexScreener Solana boosted tokens as fallback")
+    boost_data = await _fetch(f"{DEXSCREENER_BASE}/token-boosts/top/v1")
+    if not boost_data or not isinstance(boost_data, list):
         return []
+    sol_tokens = [t for t in boost_data if t.get("chainId") == "solana"][:15]
     results = []
-    for token in data[:20]:
-        mcap = float(token.get("market_cap", 0) or 0)
-        results.append({
-            "address": token.get("mint", ""),
-            "symbol": token.get("symbol", ""),
-            "name": token.get("name", ""),
-            "description": (token.get("description", "") or "")[:100],
-            "image": token.get("image_uri", ""),
-            "market_cap": mcap,
-            "reply_count": token.get("reply_count", 0),
-            "creator": token.get("creator", ""),
-            "created_at": token.get("created_timestamp", 0),
-            "chain": "solana",
-            "source": "pumpfun",
-            "url": f"https://pump.fun/{token.get('mint', '')}",
-        })
+    for item in sol_tokens:
+        addr = item.get("tokenAddress", "")
+        pair_data = await _fetch(f"{DEXSCREENER_BASE}/latest/dex/tokens/{addr}")
+        if pair_data and pair_data.get("pairs"):
+            best = max(pair_data["pairs"][:5], key=lambda p: float(p.get("volume", {}).get("h24", 0) or 0), default=None)
+            if best:
+                parsed = _parse_dex_pair(best)
+                parsed["source"] = "pumpfun_dexscreener"
+                parsed["boost_amount"] = item.get("totalAmount", 0)
+                results.append(parsed)
+        await _rate_limit("pumpfun_fb")
     return results
 
 
 async def pumpfun_new_coins() -> List[Dict]:
-    """Get newest coins from Pump.fun."""
+    """Get newest coins — Pump.fun with DexScreener token profiles fallback."""
     await _rate_limit("pumpfun_new")
     data = await _fetch(f"{PUMPFUN_BASE}/coins", params={
-        "offset": "0",
-        "limit": "20",
-        "sort": "created_timestamp",
-        "order": "DESC",
-        "includeNsfw": "false",
+        "offset": "0", "limit": "20", "sort": "created_timestamp",
+        "order": "DESC", "includeNsfw": "false",
     })
-    if not data or not isinstance(data, list):
+    if data and isinstance(data, list) and len(data) > 3:
+        return [{
+            "address": t.get("mint", ""),
+            "symbol": t.get("symbol", ""),
+            "name": t.get("name", ""),
+            "market_cap": float(t.get("market_cap", 0) or 0),
+            "chain": "solana",
+            "source": "pumpfun_new",
+            "url": f"https://pump.fun/{t.get('mint', '')}",
+        } for t in data[:20]]
+    
+    # Fallback: DexScreener latest token profiles
+    logger.info("Pump.fun new blocked — using DexScreener profiles fallback")
+    profiles = await _fetch(f"{DEXSCREENER_BASE}/token-profiles/latest/v1")
+    if not profiles or not isinstance(profiles, list):
         return []
-    return [{
-        "address": t.get("mint", ""),
-        "symbol": t.get("symbol", ""),
-        "name": t.get("name", ""),
-        "market_cap": float(t.get("market_cap", 0) or 0),
-        "chain": "solana",
-        "source": "pumpfun_new",
-        "url": f"https://pump.fun/{t.get('mint', '')}",
-    } for t in data[:20]]
+    results = []
+    for item in profiles[:12]:
+        addr = item.get("tokenAddress", "")
+        chain = item.get("chainId", "solana")
+        pair_data = await _fetch(f"{DEXSCREENER_BASE}/latest/dex/tokens/{addr}")
+        if pair_data and pair_data.get("pairs"):
+            best = pair_data["pairs"][0]
+            parsed = _parse_dex_pair(best)
+            parsed["source"] = "dexscreener_new_profile"
+            results.append(parsed)
+        await _rate_limit("pf_new_fb")
+    return results
 
 
 # ═══════════════════════════════════════════════════════════
@@ -640,6 +605,136 @@ async def get_india_vix() -> Dict:
 
 
 # ═══════════════════════════════════════════════════════════
+#  COINMARKETCAP — Pro-grade market data
+# ═══════════════════════════════════════════════════════════
+async def cmc_top_listings(limit: int = 100) -> List[Dict]:
+    """Get top coins by market cap from CoinMarketCap."""
+    if not COINMARKETCAP_API_KEY:
+        return []
+    await _rate_limit("cmc_listings")
+    data = await _fetch(
+        f"{COINMARKETCAP_BASE}/v1/cryptocurrency/listings/latest",
+        headers={"X-CMC_PRO_API_KEY": COINMARKETCAP_API_KEY},
+        params={"limit": str(limit), "convert": "USD", "sort": "market_cap"}
+    )
+    if not data or "data" not in data:
+        return []
+    results = []
+    for c in data["data"]:
+        q = c.get("quote", {}).get("USD", {})
+        results.append({
+            "id": c.get("id", 0),
+            "symbol": c.get("symbol", ""),
+            "name": c.get("name", ""),
+            "slug": c.get("slug", ""),
+            "rank": c.get("cmc_rank", 0),
+            "price_usd": q.get("price", 0),
+            "change_1h": q.get("percent_change_1h", 0),
+            "change_24h": q.get("percent_change_24h", 0),
+            "change_7d": q.get("percent_change_7d", 0),
+            "change_30d": q.get("percent_change_30d", 0),
+            "market_cap": q.get("market_cap", 0),
+            "volume_24h": q.get("volume_24h", 0),
+            "volume_change_24h": q.get("volume_change_24h", 0),
+            "circulating_supply": c.get("circulating_supply", 0),
+            "max_supply": c.get("max_supply", 0),
+            "source": "coinmarketcap",
+        })
+    return results
+
+
+async def cmc_global_metrics() -> Dict:
+    """Get global crypto market metrics from CoinMarketCap."""
+    if not COINMARKETCAP_API_KEY:
+        return {}
+    await _rate_limit("cmc_global")
+    data = await _fetch(
+        f"{COINMARKETCAP_BASE}/v1/global-metrics/quotes/latest",
+        headers={"X-CMC_PRO_API_KEY": COINMARKETCAP_API_KEY}
+    )
+    if not data or "data" not in data:
+        return {}
+    d = data["data"]
+    q = d.get("quote", {}).get("USD", {})
+    return {
+        "total_market_cap": q.get("total_market_cap", 0),
+        "total_volume_24h": q.get("total_volume_24h", 0),
+        "total_volume_change_24h": q.get("total_volume_24h_yesterday_percentage_change", 0),
+        "btc_dominance": d.get("btc_dominance", 0),
+        "eth_dominance": d.get("eth_dominance", 0),
+        "active_cryptocurrencies": d.get("active_cryptocurrencies", 0),
+        "active_exchanges": d.get("active_exchanges", 0),
+        "defi_volume_24h": d.get("defi_volume_24h", 0),
+        "defi_market_cap": d.get("defi_market_cap", 0),
+        "stablecoin_volume_24h": d.get("stablecoin_volume_24h", 0),
+        "source": "coinmarketcap",
+    }
+
+
+async def dex_boosted_tokens() -> List[Dict]:
+    """Get DexScreener boosted/promoted tokens across all chains."""
+    await _rate_limit("dex_boosted")
+    data = await _fetch(f"{DEXSCREENER_BASE}/token-boosts/top/v1")
+    if not data or not isinstance(data, list):
+        return []
+    # Group by chain
+    results = []
+    tasks = []
+    for item in data[:20]:
+        addr = item.get("tokenAddress", "")
+        if addr:
+            tasks.append(_fetch(f"{DEXSCREENER_BASE}/latest/dex/tokens/{addr}"))
+    pair_results = await asyncio.gather(*tasks, return_exceptions=True)
+    seen = set()
+    for i, pr in enumerate(pair_results):
+        if isinstance(pr, Exception) or not pr or "pairs" not in pr:
+            continue
+        pairs = pr.get("pairs", [])
+        if not pairs:
+            continue
+        best = max(pairs[:5], key=lambda p: float(p.get("volume", {}).get("h24", 0) or 0), default=None)
+        if best:
+            parsed = _parse_dex_pair(best)
+            sym = parsed.get("symbol", "")
+            if sym and sym not in seen:
+                parsed["source"] = "dexscreener_boosted"
+                parsed["boost_amount"] = data[i].get("totalAmount", 0) if i < len(data) else 0
+                results.append(parsed)
+                seen.add(sym)
+    return results
+
+
+async def dex_token_profiles() -> List[Dict]:
+    """Get latest token profiles from DexScreener."""
+    await _rate_limit("dex_profiles")
+    data = await _fetch(f"{DEXSCREENER_BASE}/token-profiles/latest/v1")
+    if not data or not isinstance(data, list):
+        return []
+    results = []
+    tasks = []
+    for item in data[:15]:
+        addr = item.get("tokenAddress", "")
+        if addr:
+            tasks.append(_fetch(f"{DEXSCREENER_BASE}/latest/dex/tokens/{addr}"))
+    pair_results = await asyncio.gather(*tasks, return_exceptions=True)
+    seen = set()
+    for pr in pair_results:
+        if isinstance(pr, Exception) or not pr or "pairs" not in pr:
+            continue
+        pairs = pr.get("pairs", [])
+        if not pairs:
+            continue
+        best = pairs[0]
+        parsed = _parse_dex_pair(best)
+        sym = parsed.get("symbol", "")
+        if sym and sym not in seen:
+            parsed["source"] = "dexscreener_profile"
+            results.append(parsed)
+            seen.add(sym)
+    return results
+
+
+# ═══════════════════════════════════════════════════════════
 #  AGGREGATED DATA — Combined from all sources
 # ═══════════════════════════════════════════════════════════
 async def get_full_market_snapshot() -> Dict:
@@ -652,6 +747,9 @@ async def get_full_market_snapshot() -> Dict:
         pumpfun_trending(),
         get_nse_indices(),
         get_india_vix(),
+        cmc_top_listings(50),
+        cmc_global_metrics(),
+        dex_boosted_tokens(),
         return_exceptions=True,
     )
     
@@ -663,6 +761,9 @@ async def get_full_market_snapshot() -> Dict:
         "pumpfun": results[4] if isinstance(results[4], list) else [],
         "nse_indices": results[5] if isinstance(results[5], list) else [],
         "india_vix": results[6] if isinstance(results[6], dict) else {},
+        "cmc_listings": results[7] if isinstance(results[7], list) else [],
+        "cmc_global": results[8] if isinstance(results[8], dict) else {},
+        "dex_boosted": results[9] if isinstance(results[9], list) else [],
         "ts": datetime.now(IST).isoformat(),
     }
 

@@ -1,85 +1,82 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
-
-const defaultTickers = [
-  { symbol: 'BTC', price: 0, change: 0 },
-  { symbol: 'ETH', price: 0, change: 0 },
-  { symbol: 'SOL', price: 0, change: 0 },
-  { symbol: 'BNB', price: 0, change: 0 },
-  { symbol: 'XRP', price: 0, change: 0 },
-  { symbol: 'NIFTY', price: 0, change: 0 },
-]
+import { fetchDashboard } from '../services/api'
 
 const LiveTicker = () => {
-  const [tickers, setTickers] = useState(defaultTickers)
+  const [tickers, setTickers] = useState([])
   const scrollRef = useRef(null)
 
   useEffect(() => {
     const fetchPrices = async () => {
       try {
-        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,binancecoin,ripple&vs_currencies=usd&include_24hr_change=true')
-        if (res.ok) {
-          const d = await res.json()
-          setTickers(prev => {
-            const updated = [...prev]
-            const map = {
-              BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana',
-              BNB: 'binancecoin', XRP: 'ripple'
-            }
-            updated.forEach(t => {
-              const id = map[t.symbol]
-              if (id && d[id]) {
-                t.price = d[id].usd || 0
-                t.change = d[id].usd_24h_change || 0
-              }
-            })
-            return [...updated]
-          })
+        const res = await fetchDashboard()
+        const data = res?.data || {}
+        const mt = data.market_ticker || []
+        if (mt.length > 0) {
+          setTickers(mt.map(t => ({
+            symbol: t.symbol || '???',
+            price: t.price_inr || t.price_usd || 0,
+            priceUsd: t.price_usd || 0,
+            change: t.change_24h || 0,
+            isInr: !!(t.price_inr && t.price_inr > 1)
+          })))
         }
       } catch (e) { /* silent */ }
     }
-
     fetchPrices()
-    const interval = setInterval(fetchPrices, 30000)
+    const interval = setInterval(fetchPrices, 20000)
     return () => clearInterval(interval)
   }, [])
 
-  // Auto-scroll animation
   useEffect(() => {
     const el = scrollRef.current
-    if (!el) return
+    if (!el || tickers.length === 0) return
     let pos = 0
-    const speed = 0.5
+    let animId
     const animate = () => {
-      pos += speed
+      pos += 0.5
       if (pos >= el.scrollWidth / 2) pos = 0
       el.scrollLeft = pos
-      requestAnimationFrame(animate)
+      animId = requestAnimationFrame(animate)
     }
-    const anim = requestAnimationFrame(animate)
-    return () => cancelAnimationFrame(anim)
+    animId = requestAnimationFrame(animate)
+    return () => cancelAnimationFrame(animId)
   }, [tickers])
 
-  const formatPrice = (p) => {
-    if (p >= 1000) return p.toLocaleString(undefined, { maximumFractionDigits: 0 })
-    if (p >= 1) return p.toFixed(2)
-    return p.toFixed(4)
+  const formatPrice = (p, isInr) => {
+    const sym = isInr ? '₹' : '$'
+    if (p >= 100000) return sym + (p / 100000).toFixed(2) + 'L'
+    if (p >= 1000) return sym + p.toLocaleString(isInr ? 'en-IN' : undefined, { maximumFractionDigits: 0 })
+    if (p >= 1) return sym + p.toFixed(2)
+    if (p >= 0.01) return sym + p.toFixed(4)
+    return sym + p.toExponential(2)
+  }
+
+  if (tickers.length === 0) {
+    return (
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-slate-700/30 py-2 px-3">
+        <div className="flex items-center space-x-3 animate-pulse">
+          {[1,2,3,4,5].map(i => <div key={i} className="h-3 w-20 bg-slate-700 rounded shrink-0" />)}
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700/50 overflow-hidden">
-      <div ref={scrollRef} className="flex items-center space-x-4 py-1.5 px-2 overflow-hidden whitespace-nowrap"
+    <div className="bg-gradient-to-r from-slate-900 via-slate-800/95 to-slate-900 border-b border-blue-500/10 overflow-hidden">
+      <div ref={scrollRef} className="flex items-center space-x-5 py-2 px-3 overflow-hidden whitespace-nowrap"
         style={{ scrollBehavior: 'auto' }}>
-        {/* Double the tickers for seamless scroll */}
         {[...tickers, ...tickers].map((t, i) => (
           <div key={i} className="flex items-center space-x-1.5 shrink-0">
-            <span className="text-[10px] text-slate-400 font-medium">{t.symbol}</span>
-            <span className="text-[10px] font-bold text-white">${formatPrice(t.price)}</span>
-            <span className={`text-[10px] font-medium flex items-center ${
-              t.change > 0 ? 'text-emerald-400' : t.change < 0 ? 'text-red-400' : 'text-slate-500'
+            <span className="text-[11px] text-blue-300/80 font-bold tracking-wide">{t.symbol}</span>
+            <span className="text-[11px] font-bold text-white">{formatPrice(t.price, t.isInr)}</span>
+            <span className={`text-[10px] font-semibold flex items-center px-1 py-0.5 rounded ${
+              t.change > 0 ? 'text-emerald-400 bg-emerald-500/10' : 
+              t.change < 0 ? 'text-red-400 bg-red-500/10' : 'text-slate-500'
             }`}>
-              {t.change > 0 ? <TrendingUp size={8} /> : t.change < 0 ? <TrendingDown size={8} /> : <Minus size={8} />}
-              {Math.abs(t.change).toFixed(1)}%
+              {t.change > 0 ? <TrendingUp size={8} className="mr-0.5" /> : 
+               t.change < 0 ? <TrendingDown size={8} className="mr-0.5" /> : <Minus size={8} className="mr-0.5" />}
+              {t.change > 0 ? '+' : ''}{t.change.toFixed(1)}%
             </span>
           </div>
         ))}

@@ -47,7 +47,8 @@ HELIUS_RPC = f"https://mainnet.helius-rpc.com/?api-key={HELIUS_API_KEY}" if HELI
 BIRDEYE_API_KEY = os.environ.get("BIRDEYE_API_KEY", "")
 JUPITER_PRICE_API = "https://api.jup.ag/price/v2"
 DEXSCREENER_TOKEN_API = "https://api.dexscreener.com/latest/dex/tokens/"
-COINGECKO_SOLANA_API = "https://api.coingecko.com/api/v3/coins/solana/contract/"
+# CoinGecko REMOVED — using DexScreener/Jupiter instead
+DEXSCREENER_TOKEN_SEARCH = "https://api.dexscreener.com/latest/dex/tokens/"
 
 # Phantom deep link base
 PHANTOM_CONNECT_BASE = "https://phantom.app/ul/v1/connect"
@@ -361,13 +362,13 @@ def generate_phantom_connect_link(chat_id: int, bot_username: str = "DavidCrewBo
 # ═══════════════════════════════════════════════════════════
 
 def _get_usd_inr():
-    """Get current USD/INR rate."""
+    """Get current USD/INR rate (CoinGecko removed)."""
     global _usd_inr_rate
     try:
-        r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=usd&vs_currencies=inr", timeout=8)
+        r = requests.get("https://api.exchangerate-api.com/v4/latest/USD", timeout=8)
         if r.status_code == 200:
-            data = r.json()
-            _usd_inr_rate = data.get("usd", {}).get("inr", 83.5)
+            rate = r.json().get("rates", {}).get("INR", 83.5)
+            _usd_inr_rate = rate
     except:
         pass
     return _usd_inr_rate

@@ -271,14 +271,14 @@ def resolve_token_metadata(tokens: List[dict]) -> List[dict]:
 
 
 def _update_usd_inr():
-    """Update USD/INR rate (free CoinGecko)."""
+    """Update USD/INR rate (CoinGecko removed, using exchangerate API)."""
     global _usd_inr, _usd_inr_ts
     if time.time() - _usd_inr_ts < 3600:
         return
     try:
-        r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=usd&vs_currencies=inr", timeout=5)
+        r = requests.get("https://api.exchangerate-api.com/v4/latest/USD", timeout=5)
         if r.status_code == 200:
-            _usd_inr = r.json().get("usd", {}).get("inr", 83.5)
+            _usd_inr = r.json().get("rates", {}).get("INR", 83.5)
             _usd_inr_ts = time.time()
     except:
         pass

@@ -329,8 +329,8 @@ async def deposit(request: Request):
         user_id = data.get("user_id")
         amount = data.get("amount", 0)
         
-        if amount < 100:
-            return {"error": "Minimum deposit is ₹100"}
+        if amount < 1:
+            return {"error": "Minimum deposit is ₹1"}
         
         # Try to generate UPI QR
         try:
@@ -619,7 +619,7 @@ async def ai_chat(request: Request):
             elif any(w in msg_lower for w in ['btc', 'bitcoin', 'crypto', 'eth', 'sol']):
                 response = "🪙 <b>Crypto Analysis</b>\n\nCheck the <b>Markets</b> tab for live crypto prices from CoinDCX. The AI is continuously scanning for gems and trading signals.\n\n💡 Try: 'best crypto to buy' or 'check BTC signal'"
             elif any(w in msg_lower for w in ['wallet', 'balance', 'deposit', 'withdraw']):
-                response = "💰 <b>Wallet</b>\n\nGo to the <b>Wallet</b> tab to check your balance, make UPI deposits, or request withdrawals.\n\nMinimum deposit: ₹100"
+                response = "💰 <b>Wallet</b>\n\nGo to the <b>Wallet</b> tab to check your balance, make UPI deposits, or withdraw to your Phantom wallet.\n\nMinimum deposit: ₹1"
             elif any(w in msg_lower for w in ['option', 'put', 'call', 'strike']):
                 response = "📊 <b>Options Intelligence</b>\n\nCheck Options from the home screen for live PCR, Max Pain, India VIX, and budget option picks under ₹5.\n\n💡 Try: 'NIFTY options strategy'"
             elif any(w in msg_lower for w in ['hello', 'hi', 'hey']):

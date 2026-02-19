@@ -40,8 +40,8 @@ _HMAC_KEY = hashlib.sha256(f"JARVIS-HMAC-{_BOT_TOKEN}".encode()).digest()
 WALLET_FILE = Path("jarvis_wallets_encrypted.json")
 TRANSACTIONS_FILE = Path("jarvis_transactions.json")
 
-MIN_DEPOSIT = 100
-MAX_DEPOSIT = 500000
+MIN_DEPOSIT = 1  # ₹1 minimum
+MAX_DEPOSIT = 999999999  # Unlimited
 
 
 def _encrypt(data: str) -> str:
@@ -362,10 +362,12 @@ def set_bank_details(chat_id: int, bank_name: str, account_no: str,
 
 def request_withdrawal(chat_id: int, amount_inr: float) -> dict:
     wallet = get_wallet(chat_id)
-    if not wallet.get("bank_details", {}).get("account_encrypted"):
-        return {"error": "Pehle bank set karo: /setbank BANK ACC_NO IFSC NAME"}
-    if amount_inr < 500:
-        return {"error": "Min withdrawal Rs.500"}
+    # Withdrawal ONLY to user's Phantom wallet
+    phantom_addr = wallet.get("phantom_address", "")
+    if not phantom_addr:
+        return {"error": "Pehle Phantom wallet connect karo: /phantom se apna Solana address set karo"}
+    if amount_inr < 1:
+        return {"error": "Min withdrawal Rs.1"}
     if amount_inr > wallet["balance_inr"]:
         return {"error": f"Insufficient balance. Available: Rs.{wallet['balance_inr']:,.2f}"}
 
@@ -381,15 +383,15 @@ def request_withdrawal(chat_id: int, amount_inr: float) -> dict:
 
     _record_tx(chat_id, {
         "type": "withdrawal", "amount_inr": amount_inr, "tx_ref": tx_ref,
-        "bank": wallet["bank_details"]["bank_name"],
+        "destination": f"Phantom: {phantom_addr[:8]}...{phantom_addr[-4:]}",
         "status": "processing", "created": datetime.now().isoformat(),
     })
 
     return {
         "success": True, "amount": amount_inr, "tx_ref": tx_ref,
         "new_balance": new_bal,
-        "bank": wallet["bank_details"]["bank_name"],
-        "estimated_time": "1-24 hours (IMPS/NEFT)",
+        "phantom_wallet": phantom_addr,
+        "estimated_time": "Auto-transfer to your Phantom wallet",
     }
 
 
@@ -516,42 +518,8 @@ def scan_gem_tokens() -> List[dict]:
         except Exception as e:
             logger.debug(f"[GEM] Pump.fun error for {endpoint}: {e}")
 
-    # --- SOURCE 4: CoinGecko — larger cap dips ---
-    try:
-        resp = requests.get(
-            "https://api.coingecko.com/api/v3/coins/markets",
-            params={
-                "vs_currency": "usd", "order": "price_change_percentage_24h_asc",
-                "per_page": 100, "page": 1, "sparkline": False,
-                "price_change_percentage": "24h,7d",
-            }, timeout=15)
-        if resp.status_code == 200:
-            for coin in resp.json():
-                cid = coin.get("id", "")
-                if cid in seen_addrs:
-                    continue
-                seen_addrs.add(cid)
-                change = coin.get("price_change_percentage_24h", 0) or 0
-                mcap = coin.get("market_cap", 0) or 0
-                vol = coin.get("total_volume", 0) or 0
-                if (change <= GEM_CRITERIA["min_drop_pct"]
-                    and GEM_CRITERIA["min_market_cap"] <= mcap <= GEM_CRITERIA["max_market_cap"]
-                    and vol >= GEM_CRITERIA["min_volume_24h"]):
-                    ath = coin.get("ath", 0) or 0
-                    price = coin.get("current_price", 0) or 0.0001
-                    recovery_x = ath / price if price > 0 else 0
-                    gems.append({
-                        "token_id": cid, "symbol": coin.get("symbol", "").upper(),
-                        "name": coin.get("name", ""), "price_usd": price,
-                        "change_24h": change, "market_cap": mcap, "volume_24h": vol,
-                        "liquidity": vol * 0.3, "tx_count": 999,
-                        "recovery_x": recovery_x, "ath": ath,
-                        "chain": "multi", "source": "coingecko",
-                        "pair_url": f"https://www.coingecko.com/en/coins/{cid}",
-                        "score": 0,
-                    })
-    except Exception as e:
-        logger.error(f"[GEM] CoinGecko error: {e}")
+    # --- SOURCE 4: CoinGecko REMOVED ---
+    # (CoinGecko gem scanning disabled per user request)
 
     # Score all gems
     for gem in gems:
@@ -1138,25 +1106,13 @@ _usd_inr_cache = {"rate": 83.5, "ts": 0}
 
 
 def _get_token_price(token_id: str) -> float:
-    """Get live price from CoinGecko / DexScreener."""
+    """Get live price from DexScreener (CoinGecko removed)."""
     now = time.time()
     c = _price_cache.get(token_id)
     if c and now - c["ts"] < 60:
         return c["p"]
 
     import requests
-
-    # CoinGecko (for named tokens)
-    try:
-        r = requests.get(f"https://api.coingecko.com/api/v3/simple/price",
-                         params={"ids": token_id, "vs_currencies": "usd"}, timeout=8)
-        if r.status_code == 200:
-            p = r.json().get(token_id, {}).get("usd", 0)
-            if p > 0:
-                _price_cache[token_id] = {"p": p, "ts": now}
-                return p
-    except Exception:
-        pass
 
     # DexScreener (for contract addresses)
     if len(token_id) > 20:
@@ -1181,10 +1137,10 @@ def _get_usd_inr_rate() -> float:
         return _usd_inr_cache["rate"]
     try:
         import requests
-        r = requests.get("https://api.coingecko.com/api/v3/simple/price",
-                         params={"ids": "usd-coin", "vs_currencies": "inr"}, timeout=8)
+        # Use exchangerate API instead of CoinGecko
+        r = requests.get("https://api.exchangerate-api.com/v4/latest/USD", timeout=8)
         if r.status_code == 200:
-            rate = r.json().get("usd-coin", {}).get("inr", 83.5)
+            rate = r.json().get("rates", {}).get("INR", 83.5)
             _usd_inr_cache.update({"rate": rate, "ts": now})
             return rate
     except Exception:
@@ -1261,7 +1217,7 @@ def format_portfolio(chat_id: int) -> str:
         e = "+" if pnl >= 0 else "-"
         src = {"dexscreener_boosted": "DEX-BOOST", "dexscreener_new": "DEX-NEW",
                "dexscreener_search": "DEX-SEARCH", "pump.fun": "PUMP",
-               "coingecko": "CG"}.get(pos.get("source", ""), "DEX")
+               "dexscreener_search": "SEARCH", "pump.fun": "PUMP"}.get(pos.get("source", ""), "DEX")
         msg += (
             f"\n{i}. [{e}] *{pos['symbol']}* ({src})\n"
             f"   ${pos['buy_price_usd']:.8f} -> ${pos.get('current_price_usd', 0):.8f}\n"
@@ -1283,14 +1239,15 @@ def format_gem_scan(gems: list) -> str:
     if not gems:
         return "Koi gem nahi mila. Market stable hai."
     msg = (
-        f"*GEM SCAN -- DexScreener + Pump.fun + CoinGecko*\n"
+        f"*GEM SCAN -- DexScreener + Pump.fun*\n"
         f"{'=' * 36}\n"
         f"_Tokens down >=5% | Recovery potential: 100x-10000x_\n\n"
     )
     for i, g in enumerate(gems[:15], 1):
         bars = "#" * (int(g["score"]) // 20) + "." * (5 - int(g["score"]) // 20)
         src = {"dexscreener_boosted": "BOOST", "pump.fun": "PUMP",
-               "coingecko": "CG", "dexscreener_new": "NEW",
+               "dexscreener_search": "SEARCH", "pump.fun": "PUMP",
+               "dexscreener_new": "NEW",
                "dexscreener_search": "SEARCH"}.get(g.get("source", ""), "DEX")
         msg += (
             f"{i}. [{src}] *{g['symbol']}* -- {g['name'][:25]}\n"

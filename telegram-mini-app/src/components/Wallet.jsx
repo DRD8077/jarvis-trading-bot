@@ -16,6 +16,8 @@ const WalletPage = () => {
   const [utrInput, setUtrInput] = useState('')
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [withdrawMethod, setWithdrawMethod] = useState('upi')
+  const [phantomAddress, setPhantomAddress] = useState('')
+  const [withdrawUpiId, setWithdrawUpiId] = useState('')
   const [processing, setProcessing] = useState(false)
 
   const loadWallet = async () => {
@@ -33,8 +35,8 @@ const WalletPage = () => {
   useEffect(() => { loadWallet() }, [])
 
   const handleDeposit = async () => {
-    if (!depositAmount || parseFloat(depositAmount) < 100) {
-      addNotification('Minimum deposit is ₹100', 'error'); return
+    if (!depositAmount || parseFloat(depositAmount) < 1) {
+      addNotification('Minimum deposit is ₹1', 'error'); return
     }
     setProcessing(true)
     try {
@@ -66,13 +68,20 @@ const WalletPage = () => {
   }
 
   const handleWithdraw = async () => {
-    if (!withdrawAmount || parseFloat(withdrawAmount) < 100) {
-      addNotification('Minimum withdrawal is ₹100', 'error'); return
+    if (!withdrawAmount || parseFloat(withdrawAmount) < 1) {
+      addNotification('Minimum withdrawal is ₹1', 'error'); return
+    }
+    if (withdrawMethod === 'phantom' && (!phantomAddress || phantomAddress.length < 32)) {
+      addNotification('Please enter a valid Phantom wallet address', 'error'); return
+    }
+    if (withdrawMethod === 'upi' && !withdrawUpiId) {
+      addNotification('Please enter your UPI ID', 'error'); return
     }
     setProcessing(true)
     try {
-      await requestWithdraw(parseFloat(withdrawAmount), withdrawMethod)
-      addNotification('Withdrawal request submitted!', 'success')
+      await requestWithdraw(parseFloat(withdrawAmount), withdrawMethod, withdrawMethod === 'phantom' ? phantomAddress : withdrawUpiId)
+      const dest = withdrawMethod === 'phantom' ? 'Phantom wallet' : 'UPI'
+      addNotification(`Withdrawal to ${dest} submitted!`, 'success')
       hapticFeedback('success')
       setActiveView('overview')
       loadWallet()
@@ -154,7 +163,7 @@ const WalletPage = () => {
           {!depositQR ? (
             <>
               <div className="grid grid-cols-3 gap-2 mb-3">
-                {[500, 1000, 5000].map(amt => (
+                {[100, 500, 1000].map(amt => (
                   <button key={amt} onClick={() => setDepositAmount(amt.toString())}
                     className={`py-2 rounded-lg text-sm font-medium transition-all ${
                       depositAmount === amt.toString()
@@ -163,7 +172,7 @@ const WalletPage = () => {
                 ))}
               </div>
               <input type="number" value={depositAmount} onChange={e => setDepositAmount(e.target.value)}
-                placeholder="Enter amount (min ₹100)"
+                placeholder="Enter amount (min ₹1)"
                 className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-sm mb-3 focus:ring-2 focus:ring-blue-500 outline-none" />
               <button onClick={handleDeposit} disabled={processing}
                 className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-50 transition-colors">
@@ -194,25 +203,64 @@ const WalletPage = () => {
         </div>
       )}
 
-      {/* WITHDRAW VIEW */}
+      {/* WITHDRAW VIEW — UPI / Bank / Phantom */}
       {activeView === 'withdraw' && (
         <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-5 animate-fade-up">
           <h3 className="font-bold mb-3">Withdraw Funds</h3>
-          <div className="flex space-x-2 mb-3">
-            {['upi', 'bank'].map(m => (
-              <button key={m} onClick={() => setWithdrawMethod(m)}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium ${
-                  withdrawMethod === m ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300'
-                }`}>{m.toUpperCase()}</button>
+
+          {/* Method Toggle */}
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            {[
+              { key: 'upi', label: 'UPI', icon: '💳' },
+              { key: 'bank', label: 'Bank', icon: '🏦' },
+              { key: 'phantom', label: 'Phantom', icon: '👻' },
+            ].map(m => (
+              <button key={m.key} onClick={() => setWithdrawMethod(m.key)}
+                className={`py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  withdrawMethod === m.key
+                    ? m.key === 'phantom' ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}>
+                {m.icon} {m.label}
+              </button>
             ))}
           </div>
+
+          {/* UPI Withdraw */}
+          {withdrawMethod === 'upi' && (
+            <input type="text" value={withdrawUpiId} onChange={e => setWithdrawUpiId(e.target.value)}
+              placeholder="Enter your UPI ID (e.g. name@upi)"
+              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-sm mb-3 focus:ring-2 focus:ring-blue-500 outline-none" />
+          )}
+
+          {/* Bank Withdraw */}
+          {withdrawMethod === 'bank' && (
+            <div className="bg-yellow-600/20 border border-yellow-500/30 rounded-lg p-3 mb-3">
+              <p className="text-xs text-yellow-300">🏦 Bank transfers take 1-3 business days. Contact admin via bot for bank withdrawal.</p>
+            </div>
+          )}
+
+          {/* Phantom Wallet */}
+          {withdrawMethod === 'phantom' && (
+            <>
+              <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-3 mb-3">
+                <p className="text-xs text-purple-300">👻 Withdrawals sent directly to your Phantom (Solana) wallet</p>
+              </div>
+              <input type="text" value={phantomAddress} onChange={e => setPhantomAddress(e.target.value)}
+                placeholder="Enter your Phantom wallet address..."
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-sm mb-3 focus:ring-2 focus:ring-purple-500 outline-none font-mono" />
+            </>
+          )}
+
           <input type="number" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)}
-            placeholder="Enter amount (min ₹100)"
+            placeholder="Enter amount (min ₹1)"
             className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-sm mb-3 focus:ring-2 focus:ring-blue-500 outline-none" />
           <p className="text-xs text-slate-400 mb-3">Available: ₹{balance.toLocaleString()}</p>
-          <button onClick={handleWithdraw} disabled={processing}
-            className="w-full bg-orange-600 hover:bg-orange-500 text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-50">
-            {processing ? 'Processing...' : 'Withdraw'}
+          <button onClick={handleWithdraw} disabled={processing || withdrawMethod === 'bank'}
+            className={`w-full py-3 rounded-xl font-semibold text-sm disabled:opacity-50 transition-colors ${
+              withdrawMethod === 'phantom' ? 'bg-purple-600 hover:bg-purple-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'
+            }`}>
+            {processing ? 'Processing...' : withdrawMethod === 'phantom' ? '👻 Withdraw to Phantom' : withdrawMethod === 'upi' ? '💳 Withdraw to UPI' : '🏦 Contact Admin for Bank'}
           </button>
         </div>
       )}

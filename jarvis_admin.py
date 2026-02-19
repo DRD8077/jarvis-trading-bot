@@ -699,6 +699,16 @@ if _os.path.isfile(_REACT_VITE_SVG):
     async def serve_vite_svg():
         return _FileResponse(_REACT_VITE_SVG)
 
+# ═══ APK DOWNLOAD ENDPOINT ═══
+_APK_PATH = _os.path.join(_REACT_DIST, 'jarvis-trading.apk')
+@app.get("/download/apk")
+async def download_apk():
+    """Download JARVIS Trading APK."""
+    if _os.path.isfile(_APK_PATH):
+        from fastapi.responses import FileResponse as _FR2
+        return _FR2(_APK_PATH, media_type="application/vnd.android.package-archive", filename="JARVIS-Trading.apk")
+    return {"error": "APK not found. Build first."}
+
 @app.get("/miniapp", response_class=HTMLResponse)
 async def serve_miniapp(request: Request):
     """Serve React SPA index.html."""

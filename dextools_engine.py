@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 DEXTOOLS_API_KEY = os.environ.get("DEXTOOLS_API_KEY", "")
 DEXSCREENER_BASE = "https://api.dexscreener.com/latest/dex"
 DEXTOOLS_BASE = "https://public-api.dextools.io/trial/v2"
-COINGECKO_BASE = "https://api.coingecko.com/api/v3"
+# COINGECKO REMOVED — user requested no CoinGecko
 BIRDEYE_BASE = "https://public-api.birdeye.so"
 BIRDEYE_KEY = os.environ.get("BIRDEYE_API_KEY", "")
 
@@ -240,49 +240,12 @@ def _parse_dexscreener_pair(pair: dict) -> Optional[Dict]:
 
 
 # ═══════════════════════════════════════════════════════════
-#  SOURCE 2: COINGECKO TRENDING — Viral Tokens
+#  SOURCE 2: COINGECKO TRENDING — REMOVED
 # ═══════════════════════════════════════════════════════════
 
 def fetch_coingecko_trending(limit: int = 15) -> List[Dict]:
-    """Fetch top trending tokens from CoinGecko."""
-    tokens = []
-    try:
-        data = _get(f"{COINGECKO_BASE}/search/trending")
-        coins = data.get("coins", [])
-        
-        for item in coins[:limit]:
-            coin = item.get("item", {})
-            token = {
-                "name": coin.get("name", "Unknown"),
-                "symbol": coin.get("symbol", "???").upper(),
-                "address": coin.get("id", ""),
-                "pair_address": "",
-                "chain": "multi",
-                "chain_emoji": "🌐",
-                "chain_symbol": "MULTI",
-                "price_usd": _safe_float(coin.get("data", {}).get("price", 0)),
-                "price_change_24h": _safe_float(coin.get("data", {}).get("price_change_percentage_24h", {}).get("usd", 0) if isinstance(coin.get("data", {}).get("price_change_percentage_24h"), dict) else coin.get("data", {}).get("price_change_percentage_24h", 0)),
-                "price_change_5m": 0,
-                "price_change_1h": 0,
-                "price_change_6h": 0,
-                "volume_24h": _safe_float(coin.get("data", {}).get("total_volume", 0)),
-                "liquidity": 0,
-                "market_cap": _safe_float(coin.get("data", {}).get("market_cap", 0)),
-                "buys_24h": 0, "sells_24h": 0, "buys_1h": 0, "sells_1h": 0,
-                "buy_sell_ratio": 0,
-                "dex": "coingecko",
-                "source": "coingecko_trending",
-                "is_new": False,
-                "market_cap_rank": coin.get("market_cap_rank", 999),
-                "coingecko_score": coin.get("score", 0),
-                "dextools_url": "",
-                "dexscreener_url": "",
-                "thumb": coin.get("thumb", ""),
-            }
-            tokens.append(token)
-    except Exception as e:
-        logger.error(f"[DEXTOOLS] CoinGecko trending error: {e}")
-    return tokens
+    """CoinGecko REMOVED — returns empty list."""
+    return []
 
 
 # ═══════════════════════════════════════════════════════════
@@ -292,50 +255,9 @@ def fetch_coingecko_trending(limit: int = 15) -> List[Dict]:
 def fetch_meme_board(limit: int = 15) -> List[Dict]:
     """Fetch top meme coins — equivalent to dextools.io/meme-board."""
     tokens = []
-    try:
-        # CoinGecko meme category
-        data = _get(f"{COINGECKO_BASE}/coins/markets", params={
-            "vs_currency": "usd",
-            "category": "meme-token",
-            "order": "volume_desc",
-            "per_page": str(limit),
-            "page": "1",
-            "sparkline": "false",
-            "price_change_percentage": "1h,24h,7d",
-        })
-        
-        if isinstance(data, list):
-            for coin in data:
-                token = {
-                    "name": coin.get("name", "Unknown"),
-                    "symbol": coin.get("symbol", "???").upper(),
-                    "address": coin.get("id", ""),
-                    "pair_address": "",
-                    "chain": "multi",
-                    "chain_emoji": "🐸",
-                    "chain_symbol": "MEME",
-                    "price_usd": _safe_float(coin.get("current_price", 0)),
-                    "price_change_1h": _safe_float(coin.get("price_change_percentage_1h_in_currency", 0)),
-                    "price_change_24h": _safe_float(coin.get("price_change_percentage_24h", 0)),
-                    "price_change_5m": 0,
-                    "price_change_6h": 0,
-                    "volume_24h": _safe_float(coin.get("total_volume", 0)),
-                    "liquidity": 0,
-                    "market_cap": _safe_float(coin.get("market_cap", 0)),
-                    "buys_24h": 0, "sells_24h": 0, "buys_1h": 0, "sells_1h": 0,
-                    "buy_sell_ratio": 0,
-                    "dex": "coingecko",
-                    "source": "meme_board",
-                    "is_new": False,
-                    "ath_change": _safe_float(coin.get("ath_change_percentage", 0)),
-                    "dextools_url": "",
-                    "dexscreener_url": "",
-                }
-                tokens.append(token)
-    except Exception as e:
-        logger.error(f"[DEXTOOLS] Meme board error: {e}")
+    # CoinGecko REMOVED — skip CoinGecko meme category
     
-    # Also try DexScreener search for "meme"
+    # DexScreener search for "meme"
     try:
         data = _get(f"{DEXSCREENER_BASE}/search?q=meme")
         pairs = data.get("pairs", [])[:10]
@@ -438,7 +360,7 @@ def fetch_dextools_airdrops(limit: int = 10) -> List[Dict]:
 
 def scan_all_tokens(limit: int = 15, include_memes: bool = True) -> List[Dict]:
     """
-    Master scan: combines all DexScreener + CoinGecko + DexTools sources.
+    Master scan: combines all DexScreener + DexTools sources (CoinGecko removed).
     Returns top tokens sorted by combined score.
     """
     all_tokens = []
@@ -459,13 +381,8 @@ def scan_all_tokens(limit: int = 15, include_memes: bool = True) -> List[Dict]:
     except:
         pass
     
-    # Source 3: CoinGecko trending
-    try:
-        trending = fetch_coingecko_trending(limit=15)
-        all_tokens.extend(trending)
-        logger.info(f"[DEXTOOLS] Source 3 — CoinGecko Trending: {len(trending)} tokens")
-    except:
-        pass
+    # Source 3: CoinGecko REMOVED
+    # (CoinGecko trending disabled per user request)
     
     # Source 4: Meme Board
     if include_memes:
@@ -597,10 +514,7 @@ def get_token_links(token: dict) -> Dict[str, str]:
     if chain and pair_addr:
         links["dexscreener"] = f"{DEXSCREENER_WEB}/{chain}/{pair_addr}"
     
-    # CoinGecko link
-    cg_id = token.get("address", "")
-    if token.get("source") in ("coingecko_trending", "meme_board") and cg_id:
-        links["coingecko"] = f"https://www.coingecko.com/en/coins/{cg_id}"
+    # CoinGecko link REMOVED
     
     # Birdeye (Solana)
     if chain == "solana" and token_addr:

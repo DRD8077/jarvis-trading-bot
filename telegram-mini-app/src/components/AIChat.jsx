@@ -202,7 +202,7 @@ const AIChat = () => {
   const fallbackChat = async (msg) => {
     setLoading(true)
     try {
-      const res = await sendChat(msg, `User: ${user?.first_name}, ID: ${userId}`)
+      const res = await sendChat(msg, `User: ${user?.first_name}, ID: ${userId}`, userId)
       const reply = res.data?.data?.reply || res.data?.reply || res.data?.response || 'Error processing request.'
       setMessages(prev => [...prev, { role: 'assistant', content: reply, model: selectedModel }])
       hapticFeedback?.('success')

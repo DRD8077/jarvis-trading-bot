@@ -9,18 +9,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy ALL app code first
+COPY . /app
+
 # Install Node.js bot dependencies
-COPY telegram-ai-app/package*.json /app/telegram-ai-app/
 RUN cd /app/telegram-ai-app && npm install --production 2>/dev/null || true
 
 # Install frontend dependencies and build
-COPY telegram-mini-app/package*.json /app/telegram-mini-app/
 RUN cd /app/telegram-mini-app && npm install 2>/dev/null || true
-COPY telegram-mini-app/ /app/telegram-mini-app/
 RUN cd /app/telegram-mini-app && npm run build 2>/dev/null || true
-
-# Copy all app code
-COPY . /app
 
 # Create data directory
 RUN mkdir -p /app/data

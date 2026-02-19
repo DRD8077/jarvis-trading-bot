@@ -209,7 +209,7 @@ const MegaTrader = () => {
               <li>Create trading wallet (free Solana address)</li>
               <li>Send SOL to your wallet address</li>
               <li>Enable AI Trader — JARVIS auto-trades 24/7</li>
-              <li>AI scans DexScreener, PumpFun, DexTools, CoinGecko</li>
+              <li>AI scans DexScreener, PumpFun, DexTools</li>
               <li>Auto rug-check before every buy (GoPlus security)</li>
               <li>Auto take-profit: 2x→5x→10x→50x→100x→1000x</li>
               <li>Smart stop-loss: -35% fixed + trailing at +50%</li>

@@ -1,8 +1,11 @@
-import React, { Suspense, lazy } from 'react'
+import React, { Suspense, lazy, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AppProvider } from './context/AppContext'
 import Navigation from './components/Navigation'
 import LiveTicker from './components/LiveTicker'
+import InstallPrompt from './components/InstallPrompt'
+import otaUpdater from './services/otaUpdater'
+import jarvisAuth from './services/smartAuth'
 
 // Lazy load pages for performance
 const Dashboard = lazy(() => import('./components/Dashboard'))
@@ -30,6 +33,7 @@ const OptionsProLive = lazy(() => import('./pages/OptionsProLive'))
 const StrategyBuilder = lazy(() => import('./pages/StrategyBuilder'))
 const RiskManager = lazy(() => import('./pages/RiskManager'))
 const MegaTrader = lazy(() => import('./components/MegaTrader'))
+const HindiVoice = lazy(() => import('./components/HindiVoiceAssistant'))
 
 const PageLoader = () => (
   <div className="p-4 bg-slate-900 min-h-screen space-y-3 animate-pulse">
@@ -44,6 +48,12 @@ const PageLoader = () => (
 )
 
 function App() {
+  // 🔄 OTA Silent Update + 🔐 Auto-Login on mount
+  useEffect(() => {
+    otaUpdater.silentUpdate()
+    jarvisAuth.autoLogin().catch(() => {})
+  }, [])
+
   return (
     <AppProvider>
       <Router basename="/miniapp">
@@ -77,10 +87,12 @@ function App() {
                 <Route path="/strategy-builder" element={<StrategyBuilder />} />
                 <Route path="/risk-manager" element={<RiskManager />} />
                 <Route path="/mega-trader" element={<MegaTrader />} />
+                <Route path="/voice" element={<HindiVoice fullScreen />} />
               </Routes>
             </main>
           </Suspense>
           <Navigation />
+          <InstallPrompt />
         </div>
       </Router>
     </AppProvider>

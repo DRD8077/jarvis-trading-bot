@@ -1,0 +1,14 @@
+{
+  "appId": "com.jarvis.trading",
+  "appName": "JARVIS Trading",
+  "webDir": "dist",
+  "server": {
+    "url": "https://super-duper-funicular-gp99q655qw6cprr-8000.app.github.dev/miniapp",
+    "cleartext": true,
+    "allowNavigation": ["*.app.github.dev"]
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#0a0e1a"
+  }
+}

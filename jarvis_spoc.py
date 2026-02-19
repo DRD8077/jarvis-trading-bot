@@ -106,7 +106,6 @@ PROJECT_MODULES = {
 API_ENDPOINTS = {
     "Telegram": "https://api.telegram.org/bot{token}/getMe",
     "DexScreener": "https://api.dexscreener.com/latest/dex/search?q=SOL",
-    "CoinGecko": "https://api.coingecko.com/api/v3/ping",
     "pump.fun": "https://frontend-api-v2.pump.fun/coins/trending",
     "CoinDCX": "https://api.coindcx.com/exchange/ticker",
 }

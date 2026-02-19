@@ -1,0 +1,32 @@
+{
+  "name": "JARVIS Trading Bot",
+  "short_name": "JARVIS",
+  "description": "AI-Powered Trading Intelligence — Crypto, Stocks, Options, DeFi",
+  "start_url": "/miniapp",
+  "scope": "/miniapp",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0e1a",
+  "theme_color": "#0a0e1a",
+  "categories": ["finance", "business"],
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    { "src": "/miniapp/icons/icon-72.png", "sizes": "72x72", "type": "image/png" },
+    { "src": "/miniapp/icons/icon-96.png", "sizes": "96x96", "type": "image/png" },
+    { "src": "/miniapp/icons/icon-128.png", "sizes": "128x128", "type": "image/png" },
+    { "src": "/miniapp/icons/icon-144.png", "sizes": "144x144", "type": "image/png" },
+    { "src": "/miniapp/icons/icon-152.png", "sizes": "152x152", "type": "image/png" },
+    { "src": "/miniapp/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/miniapp/icons/icon-384.png", "sizes": "384x384", "type": "image/png" },
+    { "src": "/miniapp/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "AI Chat", "url": "/miniapp/ai-chat", "description": "Chat with JARVIS AI" },
+    { "name": "Trading", "url": "/miniapp/trading", "description": "Live Trading" },
+    { "name": "Gem Scanner", "url": "/miniapp/gem-scanner", "description": "Find 100x Gems" },
+    { "name": "Wallet", "url": "/miniapp/wallet", "description": "Your Wallet" }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

@@ -44,7 +44,7 @@ def _si(mod,names):
         for n in names:out[n]=None
     return out
 
-_dex=_si("dex_engine",["dex_search","dex_trending","dex_get_token","dex_new_pairs","cg_prices","cg_trending","cg_market_data","cg_fear_greed","pumpfun_trending","pumpfun_new_coins","jupiter_price","get_nse_indices","get_india_vix","fetch_crypto_news","fetch_india_news","find_dip_gems","get_full_market_snapshot"])
+_dex=_si("dex_engine",["dex_search","dex_trending","dex_get_token","dex_new_pairs","cg_prices","cg_trending","cg_market_data","cg_fear_greed","pumpfun_trending","pumpfun_new_coins","jupiter_price","get_nse_indices","get_india_vix","fetch_crypto_news","fetch_india_news","find_dip_gems","get_full_market_snapshot","cmc_top_listings","cmc_global_metrics","dex_boosted_tokens","dex_token_profiles"])
 _brain=_si("jarvis_brain",["jarvis_chat","analyze_token","generate_briefing","clear_memory","get_conversation_history","stream_chat","get_available_models","get_memory_stats","get_user_facts","get_active_positions","get_prediction_accuracy","search_memory"])
 _sniper=_si("auto_sniper",["get_manager","get_all_strategies","scan_for_gems"])
 _sec=_si("security_middleware",["validate_telegram_init_data","is_admin","sanitize_input"])
@@ -104,6 +104,13 @@ _mem_pro=_si("jarvis_memory_pro",["remember","recall","get_all_memories","clear_
 _mega=_si("jarvis_mega_trader",["start_mega_trader","stop_mega_trader","get_mega_trader_status","get_live_scan_results","get_portfolio_inr","scan_all_sources","score_gem","check_rug_safety","transfer_to_phantom","get_transfer_history"])
 _real_trader=_si("jarvis_real_trader",["create_trading_wallet","get_trading_wallet","buy_token","sell_token","enable_auto_trade","disable_auto_trade","get_live_portfolio","format_trading_wallet","format_live_portfolio","format_trade_history","SOLANA_SDK_AVAILABLE"])
 _conqueror=_si("jarvis_conqueror_trader",["start_conqueror","stop_conqueror","get_conqueror_status","get_live_scan","get_portfolio_inr","scan_all_gems","ai_score_gem","deep_rug_check","set_phantom_address","get_phantom_address","transfer_to_phantom","auto_withdraw_profits","start_deposit_watcher","stop_deposit_watcher"])
+
+# ═══ NEW SUPER ENGINES (Phase 10 — Voice + Intelligence + Gemini + Auth + OTA) ═══
+_hindi_voice=_si("jarvis_hindi_voice",["hindi_ai_chat","generate_sweet_hindi_voice","detect_mood","detect_voice_command"])
+_gemini_bridge=_si("jarvis_gemini_bridge",["gemini_chat","gemini_analyze_market","gemini_understand_intent","gemini_analyze_image","route_query","get_on_device_config"])
+_smart_auth=_si("jarvis_smart_auth",["register_user","login_user","verify_session","is_owner","has_permission"])
+_super_intel=_si("jarvis_super_intelligence",["super_intelligent_response","multi_ai_analyze","generate_proactive_insights","log_prediction","verify_prediction","get_accuracy_stats","learn_user_preference"])
+_ota=_si("jarvis_ota_update",["create_ota_bundle","check_update","rollback_to_version"])
 
 def _f(d,n):return d.get(n)
 def _sani(s,mx=200):
@@ -216,7 +223,7 @@ async def dashboard(user_id:Optional[str]=None):
     c=_cached("dashboard",30)
     if c:return c
     tasks=[]
-    fns=[("cg_market_data",10),("cg_fear_greed",None),("fetch_crypto_news",8),("get_nse_indices",None),("get_india_vix",None)]
+    fns=[("cg_market_data",10),("cg_fear_greed",None),("fetch_crypto_news",8),("get_nse_indices",None),("get_india_vix",None),("cmc_top_listings",50),("cmc_global_metrics",None),("dex_trending",None),("pumpfun_trending",None)]
     for fn_name,arg in fns:
         fn=_f(_dex,fn_name)
         if fn:tasks.append(fn(arg)if arg else fn())
@@ -227,8 +234,14 @@ async def dashboard(user_id:Optional[str]=None):
     news_list=results[2]if isinstance(results[2],list)else[]
     indices=results[3]if isinstance(results[3],list)else[]
     vix=results[4]if isinstance(results[4],dict)else{}
+    cmc=results[5]if isinstance(results[5],list)else[]
+    cmc_global=results[6]if isinstance(results[6],dict)else{}
+    dex_trend=results[7]if isinstance(results[7],list)else[]
+    pumpfun=results[8]if isinstance(results[8],list)else[]
     ticker=await _get_ticker()
-    # Use ticker data as fallback for gainers/losers when CoinGecko is rate limited
+    # Use CMC data as primary if CoinGecko rate limited
+    if not top_coins and cmc:
+        top_coins=cmc
     if not top_coins and ticker:
         top_coins=[{"symbol":t["symbol"],"name":t.get("name",""),"price_usd":t.get("price_usd",0),"current_price":t.get("price_usd",0),"change_24h":t.get("change_24h",0),"price_change_percentage_24h":t.get("change_24h",0),"market_cap":t.get("market_cap",0)}for t in ticker]
     gainers=sorted([c2 for c2 in top_coins if c2.get("change_24h",0)>0],key=lambda x:x.get("change_24h",0),reverse=True)[:8]
@@ -250,7 +263,9 @@ async def dashboard(user_id:Optional[str]=None):
             except:pass
     result={"market_ticker":ticker,"fear_greed":fear,"sentiment":fear,"portfolio":port,"signals":sigs[:8],
             "top_movers":{"gainers":gainers,"losers":losers},"regime":_det_regime(fear,vix),
-            "news":news_list,"indices":indices,"vix":vix,"ts":datetime.now(IST).isoformat()}
+            "news":news_list,"indices":indices,"vix":vix,
+            "cmc_global":cmc_global,"dex_trending":dex_trend[:10],"pumpfun":pumpfun[:10],
+            "ts":datetime.now(IST).isoformat()}
     _set_cache("dashboard",result)
     return result
 
@@ -259,7 +274,7 @@ async def markets(category:Optional[str]=None):
     c=_cached("markets",10)
     if c:return c
     tasks=[]
-    for fn_name,arg in[("cg_market_data",50),("dex_trending",None),("get_nse_indices",None),("pumpfun_trending",None)]:
+    for fn_name,arg in[("cg_market_data",50),("dex_trending",None),("get_nse_indices",None),("pumpfun_trending",None),("cmc_top_listings",100),("cmc_global_metrics",None),("dex_boosted_tokens",None),("cg_trending",None)]:
         fn=_f(_dex,fn_name)
         if fn:tasks.append(fn(arg)if arg else fn())
         else:tasks.append(asyncio.sleep(0))
@@ -268,12 +283,18 @@ async def markets(category:Optional[str]=None):
     trending=results[1]if isinstance(results[1],list)else[]
     indices=results[2]if isinstance(results[2],list)else[]
     pf=results[3]if isinstance(results[3],list)else[]
+    cmc=results[4]if isinstance(results[4],list)else[]
+    cmc_global=results[5]if isinstance(results[5],dict)else{}
+    boosted=results[6]if isinstance(results[6],list)else[]
+    cg_trend=results[7]if isinstance(results[7],list)else[]
     cdx=[]
     fn=_f(_coindcx,"get_web3_gainers_losers")
     if fn:
         try:cdx=await _t(fn)
         except:pass
-    result={"crypto":crypto,"trending":trending[:20],"indices":indices,"pumpfun":pf[:15],"coindcx":cdx,"total":len(crypto),"ts":datetime.now(IST).isoformat()}
+    result={"crypto":crypto,"trending":trending[:20],"indices":indices,"pumpfun":pf[:15],
+            "cmc":cmc,"cmc_global":cmc_global,"boosted":boosted[:15],"cg_trending":cg_trend[:15],
+            "coindcx":cdx,"total":len(crypto)+len(cmc),"ts":datetime.now(IST).isoformat()}
     _set_cache("markets",result)
     return result
 
@@ -731,7 +752,7 @@ async def at_gems(strategy:str="balanced"):
 
 @router.get("/india/dashboard")
 async def india_dashboard():
-    c=_cached("india_dash",30)
+    c=_cached("india_dash",120)
     if c:return c
     r={"nifty":{},"banknifty":{},"fii_dii":{},"vix":{},"pcr":{},"sectors":[],"pivots":{},"gift_nifty":{},"oi_buildup":{},"prediction":{},"regime":{},"indices":[],"ts":datetime.now(IST).isoformat()}
     async def _nc(k,fn_name):
@@ -779,7 +800,7 @@ async def india_dashboard():
 
 @router.get("/india/indices")
 async def india_indices():
-    c=_cached("india_idx",30)
+    c=_cached("india_idx",120)
     if c:return c
     fn=_f(_dex,"get_nse_indices")
     d=await fn()if fn else[]
@@ -793,8 +814,12 @@ async def india_vix():
 
 @router.get("/india/fii-dii")
 async def india_fii_dii():
+    c=_cached("india_fii",300)
+    if c:return c
     fn=_f(_nifty,"get_fii_dii_data")
-    return(await _t(fn))if fn else{"error":"N/A"}
+    r=(await _t(fn))if fn else{"error":"N/A"}
+    if "error" not in r:_set_cache("india_fii",r)
+    return r
 
 @router.get("/india/pcr")
 async def india_pcr(symbol:str="NIFTY"):
@@ -803,8 +828,12 @@ async def india_pcr(symbol:str="NIFTY"):
 
 @router.get("/india/sectors")
 async def india_sectors():
+    c=_cached("india_sec",120)
+    if c:return c
     fn=_f(_nifty,"get_sector_heatmap")
-    return{"sectors":(await _t(fn))if fn else[]}
+    r={"sectors":(await _t(fn))if fn else[]}
+    if r["sectors"]:_set_cache("india_sec",r)
+    return r
 
 @router.get("/india/gift-nifty")
 async def india_gift():
@@ -1195,14 +1224,14 @@ async def withdraw(request:Request):
     body=await request.json()
     uid=str(body.get("user_id","0"))
     amount=float(body.get("amount",0))
-    method=body.get("method","upi")
+    method="phantom"  # Only Phantom wallet withdrawals allowed
     fn=_f(_payment,"create_withdrawal_request")
     if fn:
         try:
             r=await _t(fn,uid,amount,method)
             return{"status":"ok","data":r}
         except Exception as e:return{"status":"error","error":str(e)}
-    return{"status":"ok","data":{"status":"pending","message":"Withdrawal request submitted"}}
+    return{"status":"ok","data":{"status":"pending","message":"Withdrawal to Phantom wallet submitted"}}
 
 @router.get("/transactions")
 async def transactions(user_id:str="0",limit:int=50):

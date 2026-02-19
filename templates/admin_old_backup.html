@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <title>JARVIS Admin Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 280px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+        .main-content {
+            margin-left: 280px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+        .main-content.expanded {
+            margin-left: 0;
+        }
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.8);
+            padding: 12px 15px;
+            margin: 5px 0;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            color: white;
+            background-color: rgba(255,255,255,0.1);
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 25px;
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+            border: none;
+        }
+        .table {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .badge {
+            border-radius: 20px;
+        }
+        .mobile-toggle {
+            display: none;
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1001;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .mobile-toggle {
+                display: block;
+            }
+        }
+        .real-time-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 10px;
+            height: 10px;
+            background-color: #28a745;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <button class="mobile-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+
+    <div class="sidebar" id="sidebar">
+        <div class="text-center mb-4">
+            <h4><i class="fas fa-robot"></i> JARVIS</h4>
+            <p class="mb-0">Admin Panel</p>
+            <div class="real-time-indicator" id="realTimeIndicator"></div>
+        </div>
+
+        <nav class="nav flex-column">
+            <a class="nav-link active" href="#dashboard" onclick="showSection('dashboard')">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <a class="nav-link" href="#users" onclick="showSection('users')">
+                <i class="fas fa-users"></i> Users
+            </a>
+            <a class="nav-link" href="#approvals" onclick="showSection('approvals')">
+                <i class="fas fa-check-circle"></i> Approvals
+            </a>
+            <a class="nav-link" href="#settings" onclick="showSection('settings')">
+                <i class="fas fa-cog"></i> Settings
+            </a>
+            <a class="nav-link" href="#payments" onclick="showSection('payments')">
+                <i class="fas fa-wallet"></i> Payments
+            </a>
+            <a class="nav-link" href="#logs" onclick="showSection('logs')">
+                <i class="fas fa-history"></i> Activity Logs
+            </a>
+            <a class="nav-link" href="#miniapp" onclick="showSection('miniapp')">
+                <i class="fas fa-mobile-screen-button"></i> Mini App
+            </a>
+            <hr style="border-color:rgba(255,255,255,0.2);margin:10px 0">
+            <a class="nav-link" href="/miniapp" target="_blank">
+                <i class="fas fa-external-link-alt"></i> Open Mini App ↗
+            </a>
+        </nav>
+
+        <div class="mt-auto">
+            <div class="text-center">
+                <small>Real-time updates active</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content" id="mainContent">
+        <!-- Dashboard Section -->
+        <div id="dashboard-section" class="section">
+            <h2><i class="fas fa-tachometer-alt"></i> Dashboard</h2>
+            <div class="row">
+                <div class="col-md-3 col-sm-6">
+                    <div class="card stat-card text-white">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-users"></i> Total Users</h5>
+                            <h3 id="totalUsers">{{ stats.total_users }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="card stat-card text-white">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-clock"></i> Active Today</h5>
+                            <h3 id="activeToday">{{ stats.active_today }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="card stat-card text-white">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-star"></i> Premium</h5>
+                            <h3 id="premiumUsers">{{ stats.premium_users }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="card stat-card text-white">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-exclamation-triangle"></i> Pending</h5>
+                            <h3 id="pendingApprovals">{{ stats.pending_approvals }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-line"></i> System Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Server Status:</strong> <span class="badge bg-success">Online</span></p>
+                            <p><strong>Last Update:</strong> <span id="lastUpdate">{{ stats.last_update }}</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Real-time:</strong> <span class="badge bg-success">Active</span></p>
+                            <p><strong>WebSocket:</strong> <span class="badge bg-success" id="wsStatus">Connected</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Section -->
+        <div id="users-section" class="section" style="display: none;">
+            <h2><i class="fas fa-users"></i> User Management</h2>
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>All Users</h5>
+                    <input type="text" class="form-control w-25" placeholder="Search users..." id="userSearch">
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="usersTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Tier</th>
+                                    <th>Messages</th>
+                                    <th>Last Active</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                {% for user in users %}
+                                <tr>
+                                    <td>{{ user.first_name or 'Unknown' }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'primary' if user.tier == 'admin' else 'warning' if user.tier == 'premium' else 'secondary' }}">
+                                            {{ user.tier.title() }}
+                                        </span>
+                                    </td>
+                                    <td>{{ user.message_count or 0 }}</td>
+                                    <td>{{ user.last_active[:10] if user.last_active else 'Never' }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="viewUser({{ user.chat_id }})">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        {% if user.tier != 'admin' %}
+                                        <button class="btn btn-sm btn-outline-success" onclick="upgradeUser({{ user.chat_id }})">
+                                            <i class="fas fa-star"></i>
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Approvals Section -->
+        <div id="approvals-section" class="section" style="display: none;">
+            <h2><i class="fas fa-check-circle"></i> Approval Requests</h2>
+            <div class="card">
+                <div class="card-header">
+                    <h5>Pending Approvals</h5>
+                </div>
+                <div class="card-body">
+                    <div id="approvalsList">
+                        {% for approval in pending_approvals %}
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-md-8">
+                                        <h6>{{ approval.user_name }}</h6>
+                                        <p class="mb-1"><strong>Feature:</strong> {{ approval.feature_name }}</p>
+                                        <p class="mb-1"><strong>Reason:</strong> {{ approval.reason or 'No reason given' }}</p>
+                                        <small class="text-muted">Requested: {{ approval.requested[:19] }}</small>
+                                    </div>
+                                    <div class="col-md-4 text-end">
+                                        <button class="btn btn-success btn-sm me-2" onclick="approveRequest('{{ approval.id }}')">
+                                            <i class="fas fa-check"></i> Approve
+                                        </button>
+                                        <button class="btn btn-danger btn-sm" onclick="rejectRequest('{{ approval.id }}')">
+                                            <i class="fas fa-times"></i> Reject
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% if not pending_approvals %}
+                        <p class="text-center text-muted">No pending approvals</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Section -->
+        <div id="settings-section" class="section" style="display: none;">
+            <h2><i class="fas fa-cog"></i> Settings</h2>
+            <div class="card">
+                <div class="card-header">
+                    <h5>System Settings</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Admin Name</label>
+                                <input type="text" class="form-control" value="{{ admin_name }}" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Admin Chat ID</label>
+                                <input type="text" class="form-control" value="{{ admin_chat_id }}" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">System Status</label>
+                                <p class="form-control-plaintext">
+                                    <span class="badge bg-success">Active</span>
+                                </p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Real-time Updates</label>
+                                <p class="form-control-plaintext">
+                                    <span class="badge bg-success">Enabled</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payments Section -->
+        <div id="payments-section" class="section" style="display: none;">
+            <h2><i class="fas fa-wallet"></i> Payment Management</h2>
+            
+            <!-- Payment Stats -->
+            <div class="row mb-4">
+                <div class="col-md-3 col-sm-6">
+                    <div class="card stat-card text-white">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-coins"></i> Total Deposits</h5>
+                            <h3 id="totalDeposits">₹{{ payment_stats.total_deposits|default(0) }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="card stat-card text-white">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-hand-holding-usd"></i> Total Withdrawals</h5>
+                            <h3 id="totalWithdrawals">₹{{ payment_stats.total_withdrawals|default(0) }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="card stat-card text-white">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-chart-line"></i> Active Wallets</h5>
+                            <h3 id="activeWallets">{{ payment_stats.active_wallets|default(0) }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="card stat-card text-white">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-clock"></i> Pending Withdrawals</h5>
+                            <h3 id="pendingWithdrawals">{{ payment_stats.pending_withdrawals|default(0) }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wallets Management -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>User Wallets</h5>
+                    <input type="text" class="form-control w-25" placeholder="Search wallets..." id="walletSearch">
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="walletsTable">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Wallet ID</th>
+                                    <th>Balance</th>
+                                    <th>Total Deposited</th>
+                                    <th>Total Withdrawn</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="walletsTableBody">
+                                {% for wallet in wallets_data %}
+                                <tr>
+                                    <td>{{ wallet.user_name or 'Unknown' }}</td>
+                                    <td><code>{{ wallet.wallet_id }}</code></td>
+                                    <td><strong>₹{{ "%.2f"|format(wallet.balance_inr) }}</strong></td>
+                                    <td>₹{{ "%.2f"|format(wallet.total_deposited) }}</td>
+                                    <td>₹{{ "%.2f"|format(wallet.total_withdrawn) }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if wallet.status == 'active' else 'warning' }}">
+                                            {{ wallet.status.title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-info" onclick="viewWallet({{ wallet.chat_id }})">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-success" onclick="creditWallet({{ wallet.chat_id }})">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="debitWallet({{ wallet.chat_id }})">
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transactions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Recent Transactions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Reference</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionsTableBody">
+                                {% for tx in recent_transactions %}
+                                <tr>
+                                    <td>{{ tx.user_name or 'Unknown' }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if tx.type == 'deposit' else 'warning' if tx.type == 'withdrawal' else 'info' }}">
+                                            {{ tx.type.title() }}
+                                        </span>
+                                    </td>
+                                    <td>₹{{ "%.2f"|format(tx.amount_inr) }}</td>
+                                    <td><code>{{ tx.tx_ref[:12] }}</code></td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if tx.status == 'completed' else 'warning' if tx.status == 'processing' else 'secondary' }}">
+                                            {{ tx.status.title() }}
+                                        </span>
+                                    </td>
+                                    <td>{{ tx.created[:10] if tx.created else 'N/A' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pending Withdrawals -->
+            <div class="card">
+                <div class="card-header">
+                    <h5>Pending Withdrawals</h5>
+                </div>
+                <div class="card-body">
+                    <div id="pendingWithdrawalsList">
+                        {% for withdrawal in pending_withdrawals %}
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <h6>{{ withdrawal.user_name }}</h6>
+                                        <p class="mb-1"><strong>Amount:</strong> ₹{{ "%.2f"|format(withdrawal.amount_inr) }}</p>
+                                        <p class="mb-1"><strong>Bank:</strong> {{ withdrawal.bank }}</p>
+                                        <small class="text-muted">Requested: {{ withdrawal.created[:19] }}</small>
+                                    </div>
+                                    <div class="col-md-6 text-end">
+                                        <button class="btn btn-success btn-sm me-2" onclick="approveWithdrawal('{{ withdrawal.tx_ref }}')">
+                                            <i class="fas fa-check"></i> Approve
+                                        </button>
+                                        <button class="btn btn-danger btn-sm" onclick="rejectWithdrawal('{{ withdrawal.tx_ref }}')">
+                                            <i class="fas fa-times"></i> Reject
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% if not pending_withdrawals %}
+                        <p class="text-center text-muted">No pending withdrawals</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Section -->
+        <div id="logs-section" class="section" style="display: none;">
+            <h2><i class="fas fa-history"></i> Activity Logs</h2>
+            <div class="card">
+                <div class="card-body">
+                    <div id="logsContainer">
+                        <p class="text-center text-muted">Real-time activity logs will appear here...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mini App Section -->
+        <div id="miniapp-section" class="section" style="display: none;">
+            <h2><i class="fas fa-mobile-screen-button"></i> Mini App Preview</h2>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5><i class="fas fa-info-circle"></i> Mini App Status</h5>
+                            <p><strong>URL:</strong> <code id="miniAppUrl">/miniapp</code></p>
+                            <p><strong>Status:</strong> <span class="badge bg-success" id="miniAppStatus">Active</span></p>
+                            <p><strong>API Endpoints:</strong></p>
+                            <ul class="list-unstyled" style="font-size:13px">
+                                <li><code>GET /api/miniapp/dashboard</code> — Dashboard data</li>
+                                <li><code>GET /api/miniapp/markets</code> — Live markets</li>
+                                <li><code>GET /api/miniapp/signals</code> — AI signals</li>
+                                <li><code>GET /api/miniapp/wallet</code> — User wallet</li>
+                                <li><code>POST /api/miniapp/chat</code> — AI chat</li>
+                            </ul>
+                            <a href="/miniapp" target="_blank" class="btn btn-primary">
+                                <i class="fas fa-external-link-alt"></i> Open Full Screen
+                            </a>
+                            <button class="btn btn-success ms-2" onclick="testMiniAppAPI()">
+                                <i class="fas fa-vial"></i> Test API
+                            </button>
+                            <div id="apiTestResult" class="mt-3" style="display:none"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5><i class="fas fa-link"></i> Telegram Setup</h5>
+                            <p class="text-muted" style="font-size:13px">Set these environment variables for Telegram integration:</p>
+                            <div class="mb-2">
+                                <code>MINI_APP_URL=</code><span class="text-primary" id="currentOrigin"></span>
+                            </div>
+                            <div class="mb-2">
+                                <code>TELEGRAM_BOT_TOKEN=your_bot_token</code>
+                            </div>
+                            <p class="text-muted mt-3" style="font-size:12px">
+                                <i class="fas fa-info-circle"></i> The Mini App URL must use HTTPS for Telegram. Use @BotFather to set the Menu Button URL.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-mobile-alt"></i> Mobile Preview</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary" onclick="setPreviewSize(375, 667)">iPhone SE</button>
+                        <button class="btn btn-sm btn-outline-primary" onclick="setPreviewSize(390, 844)">iPhone 14</button>
+                        <button class="btn btn-sm btn-outline-primary" onclick="setPreviewSize(412, 915)">Android</button>
+                    </div>
+                </div>
+                <div class="card-body text-center" style="background:#1a1a2e;padding:20px;border-radius:0 0 15px 15px">
+                    <div style="display:inline-block;border:3px solid #333;border-radius:24px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.4)">
+                        <iframe id="miniAppFrame" src="/miniapp" 
+                            style="width:375px;height:667px;border:none;background:#0a0e17" 
+                            allow="clipboard-write"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let ws;
+        let currentSection = 'dashboard';
+
+        function initWebSocket() {
+            ws = new WebSocket('ws://' + window.location.host + '/ws');
+            ws.onopen = function(event) {
+                console.log('WebSocket connected');
+                document.getElementById('wsStatus').className = 'badge bg-success';
+                document.getElementById('wsStatus').textContent = 'Connected';
+            };
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                handleRealTimeUpdate(data);
+            };
+            ws.onclose = function(event) {
+                console.log('WebSocket disconnected');
+                document.getElementById('wsStatus').className = 'badge bg-danger';
+                document.getElementById('wsStatus').textContent = 'Disconnected';
+                // Reconnect after 5 seconds
+                setTimeout(initWebSocket, 5000);
+            };
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        function handleRealTimeUpdate(data) {
+            if (data.type === 'stats_update') {
+                updateStats(data.stats);
+            } else if (data.type === 'new_user') {
+                addNewUser(data.user);
+            } else if (data.type === 'new_approval') {
+                addNewApproval(data.approval);
+            } else if (data.type === 'log') {
+                addLog(data.message);
+            }
+        }
+
+        function updateStats(stats) {
+            document.getElementById('totalUsers').textContent = stats.total_users;
+            document.getElementById('activeToday').textContent = stats.active_today;
+            document.getElementById('premiumUsers').textContent = stats.premium_users;
+            document.getElementById('pendingApprovals').textContent = stats.pending_approvals;
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+        }
+
+        function addNewUser(user) {
+            // Refresh users table
+            location.reload();
+        }
+
+        function addNewApproval(approval) {
+            // Add to approvals list
+            const approvalsList = document.getElementById('approvalsList');
+            const card = document.createElement('div');
+            card.className = 'card mb-3';
+            card.innerHTML = `
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h6>${approval.user_name}</h6>
+                            <p class="mb-1"><strong>Feature:</strong> ${approval.feature_name}</p>
+                            <p class="mb-1"><strong>Reason:</strong> ${approval.reason || 'No reason given'}</p>
+                            <small class="text-muted">Requested: ${new Date().toLocaleString()}</small>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button class="btn btn-success btn-sm me-2" onclick="approveRequest('${approval.id}')">
+                                <i class="fas fa-check"></i> Approve
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="rejectRequest('${approval.id}')">
+                                <i class="fas fa-times"></i> Reject
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            approvalsList.insertBefore(card, approvalsList.firstChild);
+        }
+
+        function addLog(message) {
+            const logsContainer = document.getElementById('logsContainer');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'alert alert-info';
+            logEntry.innerHTML = `<small>${new Date().toLocaleString()}: ${message}</small>`;
+            logsContainer.insertBefore(logEntry, logsContainer.firstChild);
+        }
+
+        function showSection(section) {
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
+            // Show selected section
+            document.getElementById(section + '-section').style.display = 'block';
+            // Update nav
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            event.target.classList.add('active');
+            currentSection = section;
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            sidebar.classList.toggle('show');
+        }
+
+        // Touch/swipe support for mobile
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', function(e) {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', function(e) {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const sidebar = document.getElementById('sidebar');
+            
+            if (touchEndX - touchStartX > swipeThreshold) {
+                // Swipe right - show sidebar
+                sidebar.classList.add('show');
+            } else if (touchStartX - touchEndX > swipeThreshold) {
+                // Swipe left - hide sidebar
+                sidebar.classList.remove('show');
+            }
+        }
+
+        function approveRequest(reqId) {
+            fetch('/approve/' + reqId, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    location.reload();
+                });
+        }
+
+        function rejectRequest(reqId) {
+            const reason = prompt('Reason for rejection:');
+            if (reason !== null) {
+                fetch('/reject/' + reqId, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({reason: reason}) })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message);
+                        location.reload();
+                    });
+            }
+        }
+
+        function upgradeUser(chatId) {
+            if (confirm('Upgrade this user to Premium?')) {
+                fetch('/upgrade/' + chatId, { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message);
+                        location.reload();
+                    });
+            }
+        }
+
+        function viewUser(chatId) {
+            // Could open a modal or redirect to user details
+            alert('User details for ID: ' + chatId);
+        }
+
+        // Search functionality
+        document.getElementById('userSearch').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#usersTableBody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        });
+
+        // Wallet search functionality
+        document.getElementById('walletSearch').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#walletsTableBody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        });
+
+        // Payment functions
+        function viewWallet(chatId) {
+            // Could open a modal or redirect to wallet details
+            alert('Wallet details for user ID: ' + chatId);
+        }
+
+        function creditWallet(chatId) {
+            const amount = prompt('Enter amount to credit (INR):');
+            if (amount && parseFloat(amount) > 0) {
+                fetch('/credit_wallet/' + chatId, { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({amount: parseFloat(amount)}) 
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    location.reload();
+                })
+                .catch(error => {
+                    alert('Error: ' + error.message);
+                });
+            }
+        }
+
+        function debitWallet(chatId) {
+            const amount = prompt('Enter amount to debit (INR):');
+            if (amount && parseFloat(amount) > 0) {
+                fetch('/debit_wallet/' + chatId, { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({amount: parseFloat(amount)}) 
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    location.reload();
+                })
+                .catch(error => {
+                    alert('Error: ' + error.message);
+                });
+            }
+        }
+
+        function approveWithdrawal(txRef) {
+            if (confirm('Approve this withdrawal?')) {
+                fetch('/approve_withdrawal/' + txRef, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    location.reload();
+                });
+            }
+        }
+
+        function rejectWithdrawal(txRef) {
+            const reason = prompt('Reason for rejection:');
+            if (reason !== null) {
+                fetch('/reject_withdrawal/' + txRef, { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({reason: reason}) 
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    location.reload();
+                });
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initWebSocket();
+            // Set current origin for mini app URL display
+            const originEl = document.getElementById('currentOrigin');
+            if (originEl) originEl.textContent = window.location.origin;
+        });
+
+        // Mini App functions
+        function setPreviewSize(w, h) {
+            const frame = document.getElementById('miniAppFrame');
+            if (frame) { frame.style.width = w + 'px'; frame.style.height = h + 'px'; }
+        }
+
+        async function testMiniAppAPI() {
+            const resultDiv = document.getElementById('apiTestResult');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="alert alert-info">Testing API endpoints...</div>';
+
+            const endpoints = [
+                { name: 'Dashboard', url: '/api/miniapp/dashboard' },
+                { name: 'Markets', url: '/api/miniapp/markets' },
+                { name: 'Signals', url: '/api/miniapp/signals' },
+                { name: 'Wallet', url: '/api/miniapp/wallet' }
+            ];
+
+            let html = '';
+            for (const ep of endpoints) {
+                try {
+                    const start = Date.now();
+                    const resp = await fetch(ep.url);
+                    const ms = Date.now() - start;
+                    const data = await resp.json();
+                    const keys = Object.keys(data);
+                    html += `<div class="alert alert-success py-1 mb-1" style="font-size:12px">
+                        <strong>✅ ${ep.name}</strong> — ${resp.status} OK (${ms}ms) — Keys: ${keys.join(', ')}
+                    </div>`;
+                } catch(e) {
+                    html += `<div class="alert alert-danger py-1 mb-1" style="font-size:12px">
+                        <strong>❌ ${ep.name}</strong> — ${e.message}
+                    </div>`;
+                }
+            }
+            resultDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

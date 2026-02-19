@@ -6346,15 +6346,38 @@ def handle_update(update: dict):
             utr = text.split(" ", 1)[1].strip()
             result = verify_deposit(chat_id, utr)
             if result.get("success"):
+                deposit_amount = result['amount']
                 send_message(chat_id,
                     f"✅💰 *DEPOSIT VERIFIED!*\n\n"
-                    f"💵 Amount: ₹{result['amount']:,.2f}\n"
+                    f"💵 Amount: ₹{deposit_amount:,.2f}\n"
                     f"🆔 UTR: `{result['utr']}`\n"
                     f"🆔 Ref: `{result['tx_ref']}`\n"
                     f"💰 New Balance: ₹{result['new_balance']:,.2f}\n\n"
-                    f"🤖 Ab `/autoinvest {int(result['amount'])}` se invest karo!\n"
-                    f"_Auto-verified by JARVIS — no admin needed!_",
+                    f"🤖 *JARVIS AUTO-TRADING SHURU HO RAHA HAI!*\n"
+                    f"_₹{deposit_amount:,.0f} se AI automatically trading karega..._",
                     reply_markup=build_keyboard())
+                
+                # 🔥 AUTO-START TRADING on deposit
+                try:
+                    send_message(chat_id,
+                        f"🤖🔍 *Scanning for gem tokens...*\n"
+                        f"_Finding tokens down ≥5% with 100x potential..._")
+                    invest_result = auto_invest(chat_id, deposit_amount)
+                    msg = format_invest_result(invest_result)
+                    send_message(chat_id, msg, reply_markup=build_keyboard())
+                    
+                    if VOICE_AVAILABLE:
+                        try:
+                            num = invest_result.get("num_tokens", 0)
+                            send_jarvis_voice(chat_id, f"Boss, deposit verified aur auto-invest complete! ₹{deposit_amount:.0f} ke {num} gem tokens mein invest kiya hai. JARVIS 24/7 monitor karega!", intent="investment")
+                        except Exception:
+                            pass
+                except Exception as inv_err:
+                    logger.error(f"Auto-invest after deposit failed: {inv_err}")
+                    send_message(chat_id,
+                        f"💰 Deposit successful! Auto-invest mein issue aaya.\n"
+                        f"Manually try karo: `/autoinvest {int(deposit_amount)}`",
+                        reply_markup=build_keyboard())
             else:
                 send_message(chat_id, f"❌ {result.get('error', 'Verification failed')}", reply_markup=build_keyboard())
         except Exception as e:

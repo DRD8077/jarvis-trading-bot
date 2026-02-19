@@ -422,7 +422,7 @@ async def deposit(request: Request):
         if not _payment or not user_id:
             return {"error": "Payment system unavailable"}
         if amount < 100:
-            return {"error": "Minimum deposit: ₹100"}
+            return {"error": "Minimum deposit: ₹1"}
         if amount > 500000:
             return {"error": "Maximum deposit: ₹5,00,000"}
 

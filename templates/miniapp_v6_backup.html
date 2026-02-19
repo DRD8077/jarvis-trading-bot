@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>JARVIS Trading Platform</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0e17;--card:#111827;--card2:#1a2332;--accent:#00d4aa;--accent2:#6366f1;--accent3:#f59e0b;--red:#ef4444;--green:#10b981;--text:#e5e7eb;--text2:#9ca3af;--border:#1f2937;--shadow:0 2px 15px rgba(0,0,0,.3);font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
+body{background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;padding-bottom:70px}
+.header{background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(10px)}
+.header h1{font-size:18px;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header .regime{font-size:11px;padding:3px 8px;border-radius:10px;font-weight:600}
+.regime.bull{background:#10b98133;color:#10b981}.regime.bear{background:#ef444433;color:#ef4444}.regime.neutral{background:#f59e0b33;color:#f59e0b}
+.tabs{display:flex;overflow-x:auto;background:var(--card);border-bottom:1px solid var(--border);-webkit-overflow-scrolling:touch;scrollbar-width:none;position:sticky;top:46px;z-index:99}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:8px 14px;white-space:nowrap;font-size:12px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:.2s;flex-shrink:0}
+.tab.active{color:var(--accent);border-color:var(--accent);font-weight:600}
+.section{display:none;padding:12px}.section.active{display:block}
+.card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid var(--border)}
+.card-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.ticker-bar{display:flex;overflow-x:auto;gap:10px;padding:10px 0;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.ticker-bar::-webkit-scrollbar{display:none}
+.ticker-item{flex-shrink:0;background:var(--card2);padding:8px 12px;border-radius:10px;min-width:120px;text-align:center;border:1px solid var(--border)}
+.ticker-item .sym{font-size:12px;font-weight:700;color:var(--text)}
+.ticker-item .price{font-size:14px;font-weight:700;margin:2px 0}
+.ticker-item .change{font-size:11px;font-weight:600;padding:2px 6px;border-radius:6px;display:inline-block}
+.up{color:#10b981}.down{color:#ef4444}
+.bg-up{background:#10b98120}.bg-down{background:#ef444420}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.stat-box{background:var(--card2);padding:10px;border-radius:10px;text-align:center;border:1px solid var(--border)}
+.stat-box .label{font-size:10px;color:var(--text2);text-transform:uppercase}
+.stat-box .value{font-size:16px;font-weight:700;margin-top:2px}
+.stat-box .sub{font-size:10px;color:var(--text2);margin-top:2px}
+.btn{padding:10px 16px;border-radius:10px;border:none;font-weight:600;font-size:13px;cursor:pointer;transition:.2s;width:100%;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#059669);color:#000}
+.btn-purple{background:linear-gradient(135deg,var(--accent2),#7c3aed);color:#fff}
+.btn-danger{background:linear-gradient(135deg,var(--red),#dc2626);color:#fff}
+.btn-outline{background:transparent;border:1px solid var(--accent);color:var(--accent)}
+.btn-sm{padding:6px 12px;font-size:11px;width:auto}
+.input{width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:14px;outline:none;transition:.2s}
+.input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,212,170,.2)}
+.list-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.list-item:last-child{border:none}
+.badge{font-size:10px;padding:2px 8px;border-radius:8px;font-weight:600}
+.badge-buy{background:#10b98133;color:#10b981}.badge-sell{background:#ef444433;color:#ef4444}.badge-hold{background:#f59e0b33;color:#f59e0b}
+.signal-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)}
+.signal-row .sym{font-weight:700;font-size:13px;min-width:60px}
+.signal-row .sig{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600}
+.signal-row .conf{font-size:11px;color:var(--text2);margin-left:auto}
+.news-item{padding:10px 0;border-bottom:1px solid var(--border)}
+.news-item .title{font-size:13px;font-weight:600;margin-bottom:3px;cursor:pointer;color:var(--text)}
+.news-item .meta{font-size:10px;color:var(--text2)}
+.chat-box{height:380px;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--card2);border-radius:10px;margin-bottom:8px}
+.chat-msg{max-width:85%;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.5;word-wrap:break-word}
+.chat-msg.user{background:var(--accent2);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.chat-msg.bot{background:var(--card);color:var(--text);align-self:flex-start;border-bottom-left-radius:4px}
+.chat-input-row{display:flex;gap:6px}
+.chat-input-row input{flex:1}
+.phantom-banner{background:linear-gradient(135deg,#ab9ff2,#6366f1);padding:16px;border-radius:14px;text-align:center;margin-bottom:10px}
+.phantom-banner h3{color:#fff;font-size:16px;margin-bottom:4px}
+.phantom-banner p{color:#ffffffcc;font-size:12px;margin-bottom:10px}
+.wallet-addr{font-size:12px;color:var(--accent);word-break:break-all;background:var(--card2);padding:8px;border-radius:8px;margin:8px 0}
+.token-list .token-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.token-row .tk-name{font-weight:600;font-size:13px}.token-row .tk-bal{font-size:12px;color:var(--text2)}
+.token-row .tk-val{margin-left:auto;text-align:right;font-weight:600;font-size:13px}
+.sector-tag{display:inline-block;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:600;margin:3px}
+.loading{text-align:center;padding:40px;color:var(--text2)}
+.spin{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top:2px solid var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);display:flex;z-index:200;padding:4px 0;padding-bottom:env(safe-area-inset-bottom)}
+.nav-btn{flex:1;text-align:center;padding:6px 0;cursor:pointer;transition:.2s}
+.nav-btn .icon{font-size:18px;margin-bottom:1px}
+.nav-btn .lbl{font-size:9px;color:var(--text2)}
+.nav-btn.active .icon,.nav-btn.active .lbl{color:var(--accent)}
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--card2);color:var(--text);padding:10px 20px;border-radius:10px;font-size:13px;z-index:1000;border:1px solid var(--accent);display:none;max-width:90%}
+.sub-tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.sub-tab{padding:5px 12px;border-radius:8px;font-size:11px;cursor:pointer;background:var(--card2);color:var(--text2);border:1px solid var(--border)}
+.sub-tab.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600}
+.chain-table{width:100%;font-size:11px;border-collapse:collapse}
+.chain-table th{text-align:left;padding:6px;color:var(--accent);border-bottom:1px solid var(--border);font-size:10px}
+.chain-table td{padding:6px;border-bottom:1px solid var(--border)}
+.progress-bar{background:var(--card2);border-radius:8px;height:8px;overflow:hidden;margin:4px 0}
+.progress-fill{height:100%;border-radius:8px;transition:.3s}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>JARVIS</h1>
+<span class="regime neutral" id="hdr-regime">LOADING</span>
+</div>
+
+<div class="tabs" id="main-tabs">
+<div class="tab active" data-tab="home">Home</div>
+<div class="tab" data-tab="markets">Markets</div>
+<div class="tab" data-tab="signals">Signals</div>
+<div class="tab" data-tab="india">India</div>
+<div class="tab" data-tab="options">Options</div>
+<div class="tab" data-tab="ai">AI Chat</div>
+<div class="tab" data-tab="sniper">Auto Trade</div>
+<div class="tab" data-tab="wallet">Wallet</div>
+<div class="tab" data-tab="news">News</div>
+<div class="tab" data-tab="airdrops">Airdrops</div>
+<div class="tab" data-tab="global">Global</div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<!-- HOME -->
+<div class="section active" id="sec-home">
+<div class="ticker-bar" id="ticker-bar"></div>
+<div class="grid2" style="margin-bottom:10px">
+<div class="stat-box"><div class="label">Fear/Greed</div><div class="value" id="fg-val">--</div><div class="sub" id="fg-label">Loading</div></div>
+<div class="stat-box"><div class="label">Regime</div><div class="value" id="regime-val">--</div><div class="sub" id="regime-rec">Loading</div></div>
+</div>
+<div class="card"><div class="card-title">Top Signals</div><div id="home-signals"></div></div>
+<div class="card"><div class="card-title">Top Gainers</div><div id="home-gainers"></div></div>
+<div class="card"><div class="card-title">Top Losers</div><div id="home-losers"></div></div>
+<div class="card"><div class="card-title">Latest News</div><div id="home-news"></div></div>
+</div>
+
+<!-- MARKETS -->
+<div class="section" id="sec-markets">
+<div class="sub-tabs" id="mkt-tabs">
+<div class="sub-tab active" data-mt="crypto">Crypto</div>
+<div class="sub-tab" data-mt="trending">Trending</div>
+<div class="sub-tab" data-mt="pumpfun">PumpFun</div>
+<div class="sub-tab" data-mt="coindcx">CoinDCX</div>
+<div class="sub-tab" data-mt="indices">India Indices</div>
+</div>
+<div style="margin-bottom:10px"><input class="input" placeholder="Search token..." id="mkt-search" oninput="debounceSearch(this.value)"></div>
+<div id="mkt-content"><div class="loading"><div class="spin"></div><br>Loading markets...</div></div>
+</div>
+
+<!-- SIGNALS -->
+<div class="section" id="sec-signals">
+<div class="sub-tabs">
+<div class="sub-tab active" onclick="loadSignals('all')">All</div>
+<div class="sub-tab" onclick="loadSignals('crypto')">Crypto</div>
+<div class="sub-tab" onclick="loadSignals('india')">India</div>
+<div class="sub-tab" onclick="loadSignals('web3')">Web3</div>
+</div>
+<div id="sig-content"><div class="loading"><div class="spin"></div></div></div>
+</div>
+
+<!-- INDIA -->
+<div class="section" id="sec-india">
+<div class="sub-tabs" id="india-tabs">
+<div class="sub-tab active" data-it="overview">Overview</div>
+<div class="sub-tab" data-it="fii-dii">FII/DII</div>
+<div class="sub-tab" data-it="sectors">Sectors</div>
+<div class="sub-tab" data-it="prediction">Prediction</div>
+</div>
+<div id="india-content"><div class="loading"><div class="spin"></div></div></div>
+</div>
+
+<!-- OPTIONS -->
+<div class="section" id="sec-options">
+<div class="sub-tabs">
+<div class="sub-tab active" onclick="loadOptions('chain')">Chain</div>
+<div class="sub-tab" onclick="loadOptions('signal')">Signal</div>
+<div class="sub-tab" onclick="loadOptions('traps')">Traps</div>
+<div class="sub-tab" onclick="loadOptions('budget')">Budget</div>
+</div>
+<div style="display:flex;gap:6px;margin-bottom:10px">
+<select class="input" id="opt-symbol" style="width:auto" onchange="loadOptions()"><option>NIFTY</option><option>BANKNIFTY</option></select>
+</div>
+<div id="opt-content"><div class="loading"><div class="spin"></div></div></div>
+</div>
+
+<!-- AI CHAT -->
+<div class="section" id="sec-ai">
+<div class="card">
+<div class="card-title">JARVIS AI</div>
+<div class="chat-box" id="chat-box"></div>
+<div class="chat-input-row">
+<input class="input" id="chat-input" placeholder="Ask about markets, stocks, crypto..." onkeydown="if(event.key==='Enter')sendChat()">
+<button class="btn btn-primary btn-sm" onclick="sendChat()">Send</button>
+</div>
+<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
+<button class="btn btn-outline btn-sm" onclick="quickChat('BTC prediction')">BTC</button>
+<button class="btn btn-outline btn-sm" onclick="quickChat('NIFTY analysis')">NIFTY</button>
+<button class="btn btn-outline btn-sm" onclick="quickChat('Best crypto to buy')">Best Picks</button>
+<button class="btn btn-outline btn-sm" onclick="quickChat('Market sentiment')">Sentiment</button>
+</div>
+</div>
+</div>
+
+<!-- AUTO TRADE -->
+<div class="section" id="sec-sniper">
+<div class="card">
+<div class="card-title">Auto Trader Status</div>
+<div id="trader-status"><div class="loading"><div class="spin"></div></div></div>
+</div>
+<div class="card">
+<div class="card-title">Start Auto Trading</div>
+<select class="input" id="trade-strategy" style="margin-bottom:8px">
+<option value="balanced">Balanced</option><option value="aggressive">Aggressive</option>
+<option value="conservative">Conservative</option><option value="degen">Degen</option>
+</select>
+<input class="input" id="trade-amount" placeholder="Amount (SOL)" type="number" step="0.1" style="margin-bottom:8px">
+<div style="display:flex;gap:8px">
+<button class="btn btn-primary" onclick="startTrader()">Start Trading</button>
+<button class="btn btn-danger" onclick="stopTrader()">Stop</button>
+</div>
+</div>
+<div class="card"><div class="card-title">Sniper Gems</div><div id="sniper-gems"></div></div>
+<div class="card"><div class="card-title">Performance</div><div id="trader-perf"></div></div>
+</div>
+
+<!-- WALLET -->
+<div class="section" id="sec-wallet">
+<div id="wallet-phantom-section">
+<div class="phantom-banner" id="phantom-connect-banner">
+<h3>Phantom Wallet</h3>
+<p>Connect your Solana wallet</p>
+<div id="phantom-status">
+<button class="btn" style="background:#fff;color:#6366f1;font-weight:700" onclick="connectPhantom()">Connect Wallet</button>
+</div>
+</div>
+</div>
+<div id="wallet-connected" style="display:none">
+<div class="card">
+<div class="card-title">Wallet Balance</div>
+<div class="wallet-addr" id="wallet-addr"></div>
+<div class="grid2">
+<div class="stat-box"><div class="label">SOL Balance</div><div class="value" id="w-sol">0.00</div></div>
+<div class="stat-box"><div class="label">USD Value</div><div class="value" id="w-usd">$0</div></div>
+</div>
+</div>
+<div class="card">
+<div class="card-title">SPL Tokens</div>
+<div class="token-list" id="wallet-tokens"><div class="loading"><div class="spin"></div></div></div>
+</div>
+<button class="btn btn-danger" style="margin-top:8px" onclick="disconnectWallet()">Disconnect Wallet</button>
+</div>
+<div class="card" style="margin-top:10px">
+<div class="card-title">Portfolio</div>
+<div class="grid3" style="margin-bottom:8px">
+<div class="stat-box"><div class="label">Invested</div><div class="value" id="p-inv">--</div></div>
+<div class="stat-box"><div class="label">Current</div><div class="value" id="p-cur">--</div></div>
+<div class="stat-box"><div class="label">P&L</div><div class="value" id="p-pnl">--</div></div>
+</div>
+<div id="portfolio-list"></div>
+</div>
+</div>
+
+<!-- NEWS -->
+<div class="section" id="sec-news">
+<div class="sub-tabs">
+<div class="sub-tab active" onclick="loadNews('all')">All</div>
+<div class="sub-tab" onclick="loadNews('crypto')">Crypto</div>
+<div class="sub-tab" onclick="loadNews('india')">India</div>
+</div>
+<div id="news-content"><div class="loading"><div class="spin"></div></div></div>
+</div>
+
+<!-- AIRDROPS -->
+<div class="section" id="sec-airdrops">
+<div class="card"><div class="card-title">Active Airdrops</div><div id="airdrop-list"><div class="loading"><div class="spin"></div></div></div></div>
+<div class="card"><div class="card-title">New Alerts</div><div id="airdrop-alerts"></div></div>
+</div>
+
+<!-- GLOBAL -->
+<div class="section" id="sec-global">
+<div class="sub-tabs">
+<div class="sub-tab active" onclick="loadGlobal('us')">US</div>
+<div class="sub-tab" onclick="loadGlobal('europe')">Europe</div>
+<div class="sub-tab" onclick="loadGlobal('asia')">Asia</div>
+<div class="sub-tab" onclick="loadGlobal('commodities')">Commodities</div>
+</div>
+<div id="global-content"><div class="loading"><div class="spin"></div></div></div>
+</div>
+
+<div class="bottom-nav">
+<div class="nav-btn active" onclick="switchTab('home')"><div class="icon">🏠</div><div class="lbl">Home</div></div>
+<div class="nav-btn" onclick="switchTab('markets')"><div class="icon">📊</div><div class="lbl">Markets</div></div>
+<div class="nav-btn" onclick="switchTab('india')"><div class="icon">🇮🇳</div><div class="lbl">India</div></div>
+<div class="nav-btn" onclick="switchTab('ai')"><div class="icon">🤖</div><div class="lbl">AI</div></div>
+<div class="nav-btn" onclick="switchTab('wallet')"><div class="icon">👛</div><div class="lbl">Wallet</div></div>
+</div>
+
+<script>
+const API='/api/miniapp';
+let userId='0',ws=null,currentTab='home',phantomAddr=null,mktSub='crypto',optView='chain',globalView='us';
+try{
+const tg=window.Telegram?.WebApp;
+if(tg){tg.ready();tg.expand();tg.setHeaderColor('#0a0e17');tg.setBackgroundColor('#0a0e17');userId=tg.initDataUnsafe?.user?.id||'0'}
+}catch(e){}
+userId=userId||localStorage.getItem('jarvis_uid')||'0';
+phantomAddr=localStorage.getItem('phantom_addr');
+
+async function api(path,opts){
+try{const r=await fetch(API+path,{...opts,headers:{'Content-Type':'application/json',...(opts?.headers||{})}});
+if(!r.ok)throw new Error(r.statusText);return await r.json()}
+catch(e){console.error('API:',path,e);return null}}
+
+function toast(m,d=3000){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',d)}
+
+function switchTab(t){
+currentTab=t;
+document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+document.querySelectorAll('.tab').forEach(tb=>tb.classList.remove('active'));
+document.querySelectorAll('.nav-btn').forEach(n=>n.classList.remove('active'));
+const sec=document.getElementById('sec-'+t);if(sec)sec.classList.add('active');
+document.querySelectorAll('.tab').forEach(tb=>{if(tb.dataset.tab===t)tb.classList.add('active')});
+document.querySelectorAll('.nav-btn').forEach(n=>{if(n.onclick&&n.onclick.toString().includes("'"+t+"'"))n.classList.add('active')});
+loadTabData(t);
+}
+
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
+document.querySelectorAll('#mkt-tabs .sub-tab').forEach(t=>t.addEventListener('click',function(){
+document.querySelectorAll('#mkt-tabs .sub-tab').forEach(s=>s.classList.remove('active'));this.classList.add('active');mktSub=this.dataset.mt;renderMarkets()}));
+document.querySelectorAll('#india-tabs .sub-tab').forEach(t=>t.addEventListener('click',function(){
+document.querySelectorAll('#india-tabs .sub-tab').forEach(s=>s.classList.remove('active'));this.classList.add('active');renderIndia(this.dataset.it)}));
+
+let _mktData=null,_indiaData=null,_globalData=null;
+
+function loadTabData(t){
+if(t==='home')loadDashboard();
+else if(t==='markets')loadMarkets();
+else if(t==='signals')loadSignals('all');
+else if(t==='india')loadIndia();
+else if(t==='options')loadOptions();
+else if(t==='sniper')loadTrader();
+else if(t==='wallet')loadWallet();
+else if(t==='news')loadNews('all');
+else if(t==='airdrops')loadAirdrops();
+else if(t==='global')loadGlobal();
+}
+
+async function loadDashboard(){
+const d=await api('/dashboard?user_id='+userId);if(!d)return;
+// Ticker
+const tb=document.getElementById('ticker-bar');
+tb.innerHTML=(d.market_ticker||[]).map(t=>`<div class="ticker-item"><div class="sym">${t.symbol}</div><div class="price ${t.change_24h>=0?'up':'down'}">$${fmtN(t.price_usd)}</div><div class="change ${t.change_24h>=0?'bg-up':'bg-down'}">${t.change_24h>=0?'+':''}${t.change_24h?.toFixed(1)||0}%</div></div>`).join('');
+// FG
+const fg=d.fear_greed||{};document.getElementById('fg-val').textContent=fg.value||'--';document.getElementById('fg-label').textContent=fg.label||fg.value_classification||'';
+// Regime
+const rg=d.regime||{};document.getElementById('regime-val').textContent=rg.regime||'--';document.getElementById('regime-rec').textContent=rg.rec||'';
+const hdr=document.getElementById('hdr-regime');hdr.textContent=rg.regime||'LOADING';
+hdr.className='regime '+(rg.regime?.includes('BULL')?'bull':rg.regime?.includes('BEAR')?'bear':'neutral');
+// Signals
+const sg=document.getElementById('home-signals');
+sg.innerHTML=(d.signals||[]).slice(0,6).map(s=>`<div class="signal-row"><span class="sym">${s.symbol}</span><span class="sig badge-${s.signal?.includes('BUY')?'buy':s.signal?.includes('SELL')?'sell':'hold'}">${s.signal}</span><span style="font-size:12px;color:var(--text2)">$${fmtN(s.price)}</span><span class="conf">${s.confidence}%</span></div>`).join('')||'<div style="color:var(--text2);font-size:12px">No signals</div>';
+// Gainers/Losers
+renderMovers('home-gainers',d.top_movers?.gainers||[]);
+renderMovers('home-losers',d.top_movers?.losers||[]);
+// News
+const nl=document.getElementById('home-news');
+nl.innerHTML=(d.news||[]).slice(0,5).map(n=>`<div class="news-item"><div class="title" onclick="openUrl('${n.url||''}')">${n.title||'News'}</div><div class="meta">${n.source||''} &bull; ${timeAgo(n.published||n.publishedAt||'')}</div></div>`).join('')||'<div style="color:var(--text2)">No news</div>';
+}
+
+function renderMovers(id,items){
+document.getElementById(id).innerHTML=items.slice(0,5).map(c=>`<div class="list-item"><div><div style="font-weight:600;font-size:13px">${c.symbol||c.name||''}</div><div style="font-size:11px;color:var(--text2)">$${fmtN(c.price_usd||c.current_price||0)}</div></div><div class="${(c.change_24h||c.price_change_percentage_24h||0)>=0?'up':'down'}" style="font-weight:700;font-size:13px">${((c.change_24h||c.price_change_percentage_24h||0)>=0?'+':'')}${(c.change_24h||c.price_change_percentage_24h||0).toFixed(1)}%</div></div>`).join('')||'<div style="color:var(--text2);font-size:12px">--</div>';
+}
+
+async function loadMarkets(){
+if(!_mktData){const d=await api('/markets');if(d)_mktData=d}
+renderMarkets();
+}
+function renderMarkets(){
+if(!_mktData)return;
+const el=document.getElementById('mkt-content');
+let items=[];
+if(mktSub==='crypto')items=(_mktData.crypto||[]).map(c=>({name:c.name||c.symbol,sym:c.symbol||'',price:'$'+fmtN(c.current_price||c.price_usd||0),chg:c.price_change_percentage_24h||c.change_24h||0,mcap:c.market_cap}));
+else if(mktSub==='trending')items=(_mktData.trending||[]).map(t=>({name:t.name||t.baseToken?.name||'',sym:t.symbol||t.baseToken?.symbol||'',price:'$'+fmtN(t.priceUsd||t.price_usd||0),chg:t.priceChange?.h24||t.change_24h||0}));
+else if(mktSub==='pumpfun')items=(_mktData.pumpfun||[]).map(t=>({name:t.name||t.symbol||'',sym:t.symbol||'',price:'$'+fmtN(t.price_usd||t.priceUsd||0),chg:t.change_24h||0}));
+else if(mktSub==='coindcx'){const cx=_mktData.coindcx||{};items=(cx.gainers||cx||[]).map?.(c=>({name:c.symbol||'',sym:c.symbol||'',price:'₹'+fmtN(c.price_inr||0),chg:c.change_24h||0}))||[]}
+else if(mktSub==='indices')items=(_mktData.indices||[]).map(i=>({name:i.name||'',sym:'',price:fmtN(i.value||i.price||i.last||0),chg:i.change_pct||i.pChange||0}));
+el.innerHTML=items.length?items.map(i=>`<div class="list-item"><div><div style="font-weight:600;font-size:13px">${i.sym||i.name}</div><div style="font-size:11px;color:var(--text2)">${i.name}</div></div><div style="text-align:right"><div style="font-weight:600;font-size:13px">${i.price}</div><div class="${i.chg>=0?'up':'down'}" style="font-size:11px;font-weight:600">${i.chg>=0?'+':''}${(+i.chg).toFixed(1)}%</div></div></div>`).join(''):'<div style="color:var(--text2);text-align:center;padding:20px">No data</div>';
+}
+
+let _searchTimer=null;
+function debounceSearch(q){clearTimeout(_searchTimer);_searchTimer=setTimeout(()=>searchToken(q),400)}
+async function searchToken(q){
+if(!q||q.length<2)return;
+const d=await api('/search?q='+encodeURIComponent(q));
+if(!d)return;
+const el=document.getElementById('mkt-content');
+el.innerHTML=(d.results||[]).map(p=>`<div class="list-item" onclick="viewToken('${p.pairAddress||p.address||''}')"><div><div style="font-weight:600">${p.baseToken?.symbol||p.symbol||''}</div><div style="font-size:11px;color:var(--text2)">${p.baseToken?.name||p.name||''} / ${p.chainId||''}</div></div><div style="text-align:right"><div style="font-weight:600">$${fmtN(p.priceUsd||0)}</div><div class="${(p.priceChange?.h24||0)>=0?'up':'down'}" style="font-size:11px">${(p.priceChange?.h24||0)>=0?'+':''}${(p.priceChange?.h24||0).toFixed(1)}%</div></div></div>`).join('')||'<div style="color:var(--text2);padding:20px;text-align:center">No results</div>';
+}
+
+async function viewToken(addr){
+toast('Loading token...');
+const d=await api('/token/'+addr);
+if(!d||!d.primary)return toast('Token not found');
+const p=d.primary;
+const rug=d.rug;
+let html=`<div class="card"><div class="card-title">${p.baseToken?.symbol||''} - ${p.baseToken?.name||''}</div>
+<div class="grid2"><div class="stat-box"><div class="label">Price</div><div class="value">$${fmtN(p.priceUsd||0)}</div></div>
+<div class="stat-box"><div class="label">24h Change</div><div class="value ${(p.priceChange?.h24||0)>=0?'up':'down'}">${(p.priceChange?.h24||0)>=0?'+':''}${(p.priceChange?.h24||0).toFixed(1)}%</div></div>
+<div class="stat-box"><div class="label">Liquidity</div><div class="value">$${fmtK(p.liquidity?.usd||0)}</div></div>
+<div class="stat-box"><div class="label">Volume 24h</div><div class="value">$${fmtK(p.volume?.h24||0)}</div></div></div></div>`;
+if(rug){
+const rc=rug.risk_score>70?'down':rug.risk_score>40?'':'up';
+html+=`<div class="card"><div class="card-title">Rug Check</div><div style="font-size:24px;font-weight:700" class="${rc}">${rug.risk_score||0}/100</div><div style="font-size:12px;color:var(--text2)">${rug.verdict||''}</div>
+${(rug.warnings||[]).map(w=>'<div style="font-size:11px;color:var(--red);margin-top:3px">⚠ '+w+'</div>').join('')}</div>`}
+if(d.ai)html+=`<div class="card"><div class="card-title">AI Analysis</div><div style="font-size:12px;white-space:pre-wrap">${typeof d.ai==='string'?d.ai:JSON.stringify(d.ai,null,2)}</div></div>`;
+html+=`<button class="btn btn-outline" onclick="loadMarkets()" style="margin-top:8px">← Back</button>`;
+document.getElementById('mkt-content').innerHTML=html;
+}
+
+async function loadSignals(market){
+document.querySelectorAll('#sec-signals .sub-tab').forEach(t=>t.classList.remove('active'));
+document.querySelectorAll('#sec-signals .sub-tab').forEach(t=>{if(t.textContent.toLowerCase()===market||t.textContent==='All'&&market==='all')t.classList.add('active')});
+const d=await api('/signals?market='+market);
+const el=document.getElementById('sig-content');
+if(!d||!d.signals?.length){el.innerHTML='<div style="color:var(--text2);text-align:center;padding:20px">No signals</div>';return}
+el.innerHTML=d.signals.map(s=>`<div class="signal-row"><span class="sym">${s.symbol}</span><span class="sig badge-${s.signal?.includes('BUY')?'buy':s.signal?.includes('SELL')?'sell':'hold'}">${s.signal}</span><span style="font-size:11px;color:var(--text2)">${s.source||''}</span><span class="conf">${s.confidence}%</span></div>`).join('');
+}
+
+async function loadIndia(){
+if(!_indiaData){const d=await api('/india/dashboard');if(d)_indiaData=d}
+renderIndia('overview');
+}
+function renderIndia(view){
+if(!_indiaData)return;const d=_indiaData;const el=document.getElementById('india-content');
+if(view==='overview'){
+let html=`<div class="grid2" style="margin-bottom:10px">
+<div class="stat-box"><div class="label">NIFTY</div><div class="value">${fmtN(d.nifty?.spot?.price||d.nifty?.spot||0)}</div></div>
+<div class="stat-box"><div class="label">BANKNIFTY</div><div class="value">${fmtN(d.banknifty?.spot?.price||d.banknifty?.spot||0)}</div></div></div>`;
+html+=`<div class="grid3" style="margin-bottom:10px">
+<div class="stat-box"><div class="label">VIX</div><div class="value ${(d.vix?.vix||15)>20?'down':'up'}">${fmtN(d.vix?.vix||d.vix?.value||0)}</div></div>
+<div class="stat-box"><div class="label">PCR</div><div class="value">${(d.pcr?.pcr_oi||d.pcr?.pcr||d.pcr?.value||0).toFixed?.(2)||'--'}</div></div>
+<div class="stat-box"><div class="label">GIFT NIFTY</div><div class="value">${fmtN(d.gift_nifty?.gift_price||d.gift_nifty?.price||d.gift_nifty?.value||0)}</div></div></div>`;
+if(d.prediction){const pDir=d.prediction.direction||d.prediction.verdict||(d.prediction.bullish_count>d.prediction.bearish_count?'BULLISH':'BEARISH');const pConf=d.prediction.confidence||d.prediction.calibrated_confidence||50;html+=`<div class="card"><div class="card-title">AI Prediction</div><div style="font-size:14px"><b>${pDir}</b> &bull; Confidence: ${pConf}%</div></div>`}
+if(d.regime){html+=`<div class="card"><div class="card-title">Market Regime</div><div style="font-size:14px"><b>${d.regime.regime||d.regime.regime_display||'--'}</b> &bull; ${d.regime.recommendation||d.regime.rec||d.regime.trend||''}</div></div>`}
+if(d.indices?.length){html+=`<div class="card"><div class="card-title">Indices</div>${d.indices.slice(0,10).map(i=>`<div class="list-item"><div style="font-weight:600;font-size:12px">${i.name||''}</div><div><span style="font-weight:600">${fmtN(i.value||i.price||i.last||0)}</span> <span class="${(i.pChange||i.change_pct||0)>=0?'up':'down'}" style="font-size:11px">${(i.pChange||i.change_pct||0)>=0?'+':''}${(i.pChange||i.change_pct||0).toFixed?.(1)||0}%</span></div></div>`).join('')}</div>`}
+el.innerHTML=html;
+}else if(view==='fii-dii'){
+const f=d.fii_dii||{};
+el.innerHTML=`<div class="card"><div class="card-title">FII/DII Data</div>
+<div class="grid2"><div class="stat-box"><div class="label">FII Net</div><div class="value ${(f.fii_net||0)>=0?'up':'down'}">₹${fmtK(f.fii_net||0)}Cr</div></div>
+<div class="stat-box"><div class="label">DII Net</div><div class="value ${(f.dii_net||0)>=0?'up':'down'}">₹${fmtK(f.dii_net||0)}Cr</div></div></div>
+<div style="font-size:12px;color:var(--text2);margin-top:8px">FII Buy: ₹${fmtK(f.fii_buy||0)}Cr | Sell: ₹${fmtK(f.fii_sell||0)}Cr<br>DII Buy: ₹${fmtK(f.dii_buy||0)}Cr | Sell: ₹${fmtK(f.dii_sell||0)}Cr</div></div>`;
+}else if(view==='sectors'){
+const s=d.sectors||[];
+el.innerHTML=`<div class="card"><div class="card-title">Sector Heatmap</div><div style="display:flex;flex-wrap:wrap;gap:4px">${s.map(sec=>{const chg=sec.change||sec.pChange||sec.ret_1d||0;return`<div class="sector-tag" style="background:${chg>=0?'#10b98130':'#ef444430'};color:${chg>=0?'#10b981':'#ef4444'}">${sec.name||sec.sector||''} ${chg>=0?'+':''}${typeof chg==='number'?chg.toFixed(1):chg}%</div>`}).join('')}</div></div>`;
+}else if(view==='prediction'){
+el.innerHTML='<div class="loading"><div class="spin"></div></div>';
+const p=await api('/india/prediction?index=NIFTY');
+const ml=await api('/india/ml-prediction?index=NIFTY');
+let html='';
+if(p&&!p.error){const pDir2=p.direction||p.verdict||(p.bullish_count>p.bearish_count?'BULLISH':'BEARISH');const pConf2=p.confidence||p.calibrated_confidence||50;html+=`<div class="card"><div class="card-title">Power Prediction - NIFTY</div><div style="font-size:18px;font-weight:700;margin:6px 0">${pDir2}</div><div class="progress-bar"><div class="progress-fill" style="width:${pConf2}%;background:${pConf2>60?'var(--green)':'var(--accent3)'}"></div></div><div style="font-size:11px;color:var(--text2)">Confidence: ${pConf2}%</div></div>`}
+if(ml&&!ml.error)html+=`<div class="card"><div class="card-title">ML Prediction (LSTM)</div><div style="font-size:14px">${typeof ml==='string'?ml:JSON.stringify(ml.prediction||ml.direction||ml,null,2)}</div></div>`;
+el.innerHTML=html||'<div style="color:var(--text2);text-align:center;padding:20px">Prediction not available</div>';
+}
+}
+
+async function loadOptions(view){
+if(view)optView=view;
+document.querySelectorAll('#sec-options .sub-tab').forEach(t=>t.classList.remove('active'));
+document.querySelectorAll('#sec-options .sub-tab').forEach(t=>{if(t.textContent.toLowerCase()===optView)t.classList.add('active')});
+const sym=document.getElementById('opt-symbol').value;
+const el=document.getElementById('opt-content');
+el.innerHTML='<div class="loading"><div class="spin"></div></div>';
+if(optView==='chain'){
+const d=await api('/options/chain?symbol='+sym);
+if(!d||d.error){el.innerHTML=`<div style="color:var(--text2);text-align:center;padding:20px">${d?.error||'No data'}</div>`;return}
+let html=`<div class="grid3" style="margin-bottom:10px"><div class="stat-box"><div class="label">Spot</div><div class="value">${fmtN(d.spot||0)}</div></div><div class="stat-box"><div class="label">Max Pain</div><div class="value">${fmtN(d.max_pain||0)}</div></div><div class="stat-box"><div class="label">PCR</div><div class="value">${(d.pcr||0).toFixed?.(2)||0}</div></div></div>`;
+html+=`<div style="overflow-x:auto"><table class="chain-table"><tr><th>CE OI</th><th>CE LTP</th><th>Strike</th><th>PE LTP</th><th>PE OI</th></tr>`;
+(d.strikes||[]).forEach(s=>{html+=`<tr><td>${fmtK(s.ce_oi||0)}</td><td>${fmtN(s.ce_ltp||0)}</td><td style="font-weight:700;color:var(--accent)">${s.strike}</td><td>${fmtN(s.pe_ltp||0)}</td><td>${fmtK(s.pe_oi||0)}</td></tr>`});
+html+='</table></div>';el.innerHTML=html;
+}else if(optView==='signal'){
+const d=await api('/options/signal?symbol='+sym);
+el.innerHTML=d&&!d.error?`<div class="card"><div class="card-title">Options Super Signal</div><pre style="font-size:11px;white-space:pre-wrap;color:var(--text)">${typeof d==='string'?d:JSON.stringify(d,null,2)}</pre></div>`:'<div style="color:var(--text2);text-align:center;padding:20px">No signal</div>';
+}else if(optView==='traps'){
+const d=await api('/options/traps?symbol='+sym);
+el.innerHTML=d&&!d.error?`<div class="card"><div class="card-title">OI Trap Detection</div><pre style="font-size:11px;white-space:pre-wrap;color:var(--text)">${typeof d==='string'?d:JSON.stringify(d,null,2)}</pre></div>`:'<div style="color:var(--text2);text-align:center;padding:20px">No traps detected</div>';
+}else if(optView==='budget'){
+const d=await api('/options/budget-plays?symbol='+sym);
+el.innerHTML=d&&d.plays?`<div class="card"><div class="card-title">Budget Plays (₹2-₹30)</div>${(d.plays||[]).map(p=>`<div class="list-item"><div><div style="font-weight:600">${p.strike||''} ${p.type||''}</div><div style="font-size:11px;color:var(--text2)">LTP: ₹${p.ltp||0} | OI: ${fmtK(p.oi||0)}</div></div></div>`).join('')||'No plays'}</div>`:'<div style="color:var(--text2);text-align:center;padding:20px">No budget plays</div>';
+}
+}
+
+async function sendChat(){
+const inp=document.getElementById('chat-input');const msg=inp.value.trim();if(!msg)return;
+const box=document.getElementById('chat-box');
+box.innerHTML+=`<div class="chat-msg user">${escHtml(msg)}</div>`;inp.value='';
+box.innerHTML+=`<div class="chat-msg bot" id="typing"><div class="spin"></div> Thinking...</div>`;
+box.scrollTop=box.scrollHeight;
+const d=await api('/chat',{method:'POST',body:JSON.stringify({message:msg,user_id:userId})});
+const typ=document.getElementById('typing');if(typ)typ.remove();
+box.innerHTML+=`<div class="chat-msg bot">${escHtml(d?.reply||'Error')}</div>`;
+box.scrollTop=box.scrollHeight;
+}
+function quickChat(m){document.getElementById('chat-input').value=m;sendChat()}
+
+async function loadTrader(){
+const[st,perf,gems]=await Promise.all([api('/auto-trader/status?user_id='+userId),api('/auto-trader/performance?user_id='+userId),api('/auto-trader/gems')]);
+const el=document.getElementById('trader-status');
+if(st){const a=st.active||st.is_active;
+el.innerHTML=`<div class="grid2"><div class="stat-box"><div class="label">Status</div><div class="value ${a?'up':'down'}">${a?'ACTIVE':'STOPPED'}</div></div><div class="stat-box"><div class="label">Strategy</div><div class="value">${st.strategy||'--'}</div></div></div>`}
+else el.innerHTML='<div style="color:var(--text2)">Not initialized</div>';
+
+const pe=document.getElementById('trader-perf');
+if(perf&&!perf.error){pe.innerHTML=`<div class="grid2"><div class="stat-box"><div class="label">Total PnL</div><div class="value ${(perf.total_pnl||0)>=0?'up':'down'}">${(perf.total_pnl||0)>=0?'+':''}${(perf.total_pnl||0).toFixed?.(2)||0}%</div></div><div class="stat-box"><div class="label">Win Rate</div><div class="value">${(perf.win_rate||0).toFixed?.(0)||0}%</div></div></div>`}
+else pe.innerHTML='<div style="color:var(--text2);font-size:12px">No performance data</div>';
+
+const ge=document.getElementById('sniper-gems');
+ge.innerHTML=(gems?.gems||[]).slice(0,8).map(g=>`<div class="list-item"><div><div style="font-weight:600;font-size:12px">${g.symbol||g.name||''}</div><div style="font-size:10px;color:var(--text2)">Score: ${g.gem_score||g.score||0}</div></div><div style="font-weight:600;font-size:12px">$${fmtN(g.price_usd||g.priceUsd||0)}</div></div>`).join('')||'<div style="color:var(--text2);font-size:12px">Scanning...</div>';
+}
+
+async function startTrader(){
+const strat=document.getElementById('trade-strategy').value;
+const amt=parseFloat(document.getElementById('trade-amount').value)||0;
+if(amt<=0)return toast('Enter amount');
+const d=await api('/auto-trader/start',{method:'POST',body:JSON.stringify({user_id:userId,amount:amt,strategy:strat})});
+toast(d?.error||'Auto trader started!');loadTrader()
+}
+async function stopTrader(){
+const d=await api('/auto-trader/stop',{method:'POST',body:JSON.stringify({user_id:userId,sell_all:true})});
+toast(d?.error||'Auto trader stopped');loadTrader()
+}
+
+function connectPhantom(){
+const isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+const appUrl=window.location.href;
+if(window.solana?.isPhantom){
+window.solana.connect().then(resp=>{
+const addr=resp.publicKey.toString();phantomAddr=addr;localStorage.setItem('phantom_addr',addr);
+api('/wallet/connect-phantom',{method:'POST',body:JSON.stringify({user_id:userId,wallet_address:addr})});
+toast('Wallet connected!');loadWallet()
+}).catch(e=>toast('Connection rejected'));return}
+if(isMobile){
+const deepLink='https://phantom.app/ul/browse/'+encodeURIComponent(appUrl);
+window.open(deepLink,'_blank');
+setTimeout(()=>{showManualConnect()},2000);return}
+showManualConnect()
+}
+
+function showManualConnect(){
+const el=document.getElementById('phantom-status');
+el.innerHTML=`<div style="margin-bottom:10px">
+<div style="font-size:12px;color:#ffffffcc;margin-bottom:8px">Option 1: <a href="https://phantom.app/download" target="_blank" style="color:#fff;font-weight:700;text-decoration:underline">Download Phantom</a></div>
+<div style="font-size:12px;color:#ffffffcc;margin-bottom:10px">Option 2: Enter wallet address manually</div>
+<input class="input" id="manual-addr" placeholder="Paste Solana address (starts with...)" style="margin-bottom:8px;background:#ffffff20;border:1px solid #ffffff40;color:#fff">
+<button class="btn" style="background:#fff;color:#6366f1;font-weight:700" onclick="manualConnect()">Connect Address</button>
+<button class="btn btn-outline" style="margin-top:6px;color:#fff;border-color:#fff" onclick="connectPhantom()">Try Phantom Again</button>
+</div>`;
+}
+
+async function manualConnect(){
+const addr=document.getElementById('manual-addr')?.value?.trim();
+if(!addr||addr.length<32||addr.length>44){toast('Invalid Solana address');return}
+phantomAddr=addr;localStorage.setItem('phantom_addr',addr);
+await api('/wallet/connect-phantom',{method:'POST',body:JSON.stringify({user_id:userId,wallet_address:addr})});
+toast('Wallet connected!');loadWallet()
+}
+
+async function disconnectWallet(){
+phantomAddr=null;localStorage.removeItem('phantom_addr');
+await api('/wallet/disconnect-phantom',{method:'POST',body:JSON.stringify({user_id:userId})});
+document.getElementById('wallet-connected').style.display='none';
+document.getElementById('phantom-connect-banner').style.display='block';
+document.getElementById('phantom-status').innerHTML='<button class="btn" style="background:#fff;color:#6366f1;font-weight:700" onclick="connectPhantom()">Connect Wallet</button>';
+toast('Wallet disconnected')
+}
+
+async function loadWallet(){
+const wd=await api('/wallet?user_id='+userId);
+if(wd){
+document.getElementById('p-inv').textContent='₹'+fmtK(wd.total_invested||0);
+document.getElementById('p-cur').textContent='₹'+fmtK(wd.balance_inr||0);
+const pnl=wd.total_profit||0;
+document.getElementById('p-pnl').textContent=(pnl>=0?'+':'')+fmtK(pnl);
+document.getElementById('p-pnl').className='value '+(pnl>=0?'up':'down');
+}
+if(phantomAddr){
+document.getElementById('phantom-connect-banner').style.display='none';
+document.getElementById('wallet-connected').style.display='block';
+document.getElementById('wallet-addr').textContent=phantomAddr;
+const bal=await api('/wallet/phantom-balance?address='+phantomAddr);
+if(bal){document.getElementById('w-sol').textContent=(bal.sol_balance||0).toFixed(4);
+document.getElementById('w-usd').textContent='$'+(bal.usd_value||0).toFixed(2)}
+const tokens=await api('/wallet/tokens?address='+phantomAddr);
+const tl=document.getElementById('wallet-tokens');
+if(tokens?.tokens?.length){
+tl.innerHTML=tokens.tokens.map(t=>`<div class="token-row"><div><div class="tk-name">${t.symbol||t.name||'Unknown'}</div><div class="tk-bal">${fmtN(t.amount||t.balance||0)}</div></div><div class="tk-val">${t.value_usd?'$'+fmtN(t.value_usd):''}</div></div>`).join('');
+}else tl.innerHTML='<div style="color:var(--text2);font-size:12px;padding:10px">No tokens found</div>';
+}
+}
+
+async function loadNews(cat){
+document.querySelectorAll('#sec-news .sub-tab').forEach(t=>t.classList.remove('active'));
+document.querySelectorAll('#sec-news .sub-tab').forEach(t=>{if(t.textContent.toLowerCase()===cat||t.textContent==='All'&&cat==='all')t.classList.add('active')});
+const d=await api('/news?category='+cat);
+const el=document.getElementById('news-content');
+if(!d||!d.news?.length){el.innerHTML='<div style="color:var(--text2);text-align:center;padding:20px">No news</div>';return}
+el.innerHTML=(d.news||[]).map(n=>`<div class="news-item"><div class="title" onclick="openUrl('${n.url||''}')">${n.title||'News'}</div><div class="meta">${n.source||''} &bull; ${timeAgo(n.published||n.publishedAt||'')}</div></div>`).join('');
+if(d.sentiment){el.innerHTML=`<div class="card" style="margin-bottom:10px"><div class="card-title">Sentiment</div><div style="font-size:14px;font-weight:600">${d.sentiment.overall||d.sentiment.score||'Neutral'}</div></div>`+el.innerHTML}
+}
+
+async function loadAirdrops(){
+const[drops,alerts]=await Promise.all([api('/airdrops'+(phantomAddr?'?wallet='+phantomAddr:'')),api('/airdrops/new')]);
+document.getElementById('airdrop-list').innerHTML=(drops?.airdrops||[]).map(a=>`<div class="list-item"><div><div style="font-weight:600;font-size:13px">${a.name||a.project||''}</div><div style="font-size:11px;color:var(--text2)">${a.description||a.status||''}</div></div><div><span class="badge badge-buy">${a.est_value||a.reward||'?'}</span></div></div>`).join('')||'<div style="color:var(--text2);font-size:12px;padding:10px">No airdrops found</div>';
+document.getElementById('airdrop-alerts').innerHTML=(alerts?.alerts||[]).map(a=>`<div class="list-item"><div style="font-weight:600;font-size:12px">${a.title||a.name||''}</div></div>`).join('')||'<div style="color:var(--text2);font-size:12px;padding:10px">No new alerts</div>';
+}
+
+async function loadGlobal(view){
+if(view)globalView=view;
+document.querySelectorAll('#sec-global .sub-tab').forEach(t=>t.classList.remove('active'));
+document.querySelectorAll('#sec-global .sub-tab').forEach(t=>{if(t.textContent.toLowerCase()===globalView||t.textContent==='Commodities'&&globalView==='commodities')t.classList.add('active')});
+if(!_globalData){const d=await api('/global/markets');if(d)_globalData=d}
+if(!_globalData)return;
+const items=_globalData[globalView]||[];
+const el=document.getElementById('global-content');
+el.innerHTML=items.length?items.map(m=>`<div class="list-item"><div><div style="font-weight:600;font-size:13px">${m.name||m.symbol||''}</div><div style="font-size:11px;color:var(--text2)">${m.signal||''} &bull; ${m.confidence||0}%</div></div><div style="text-align:right"><div style="font-weight:600">${fmtN(m.price||0)}</div><div class="${(m.change||0)>=0?'up':'down'}" style="font-size:11px">${(m.change||0)>=0?'+':''}${(m.change||0).toFixed?.(1)||0}%</div></div></div>`).join(''):'<div style="color:var(--text2);text-align:center;padding:20px">No data available</div>';
+if(_globalData.overall)el.innerHTML=`<div class="card" style="margin-bottom:10px"><div class="card-title">Overall</div><div style="font-size:13px">${_globalData.overall}</div></div>`+el.innerHTML;
+}
+
+function fmtN(n){if(!n&&n!==0)return'0';n=Number(n);if(isNaN(n))return'0';if(n>=1)return n.toLocaleString('en-IN',{maximumFractionDigits:2});if(n>=0.001)return n.toFixed(4);return n.toFixed(8)}
+function fmtK(n){n=Number(n);if(isNaN(n))return'0';const a=Math.abs(n);if(a>=1e7)return(n/1e7).toFixed(1)+'Cr';if(a>=1e5)return(n/1e5).toFixed(1)+'L';if(a>=1e3)return(n/1e3).toFixed(1)+'K';return n.toFixed(0)}
+function escHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function timeAgo(d){if(!d)return'';const s=Math.floor((Date.now()-new Date(d))/1000);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago'}
+function openUrl(u){if(u)window.open(u,'_blank')}
+
+function initWS(){
+try{
+const proto=location.protocol==='https:'?'wss:':'ws:';
+ws=new WebSocket(proto+'//'+location.host+'/api/miniapp/ws/prices');
+ws.onmessage=e=>{try{const d=JSON.parse(e.data);if(d.type==='ticker'&&d.data&&currentTab==='home'){updateTicker(d.data)}}catch{}};
+ws.onclose=()=>setTimeout(initWS,30000);ws.onerror=()=>{try{ws?.close()}catch{}}
+}catch(e){console.log('WS not available');setTimeout(initWS,60000)}}
+
+function updateTicker(data){
+const tb=document.getElementById('ticker-bar');if(!tb.children.length)return;
+data.forEach(t=>{
+const items=tb.querySelectorAll('.ticker-item');
+items.forEach(item=>{if(item.querySelector('.sym')?.textContent===t.symbol){
+item.querySelector('.price').textContent='$'+fmtN(t.price_usd);
+item.querySelector('.price').className='price '+(t.change_24h>=0?'up':'down');
+item.querySelector('.change').textContent=(t.change_24h>=0?'+':'')+t.change_24h?.toFixed(1)+'%';
+item.querySelector('.change').className='change '+(t.change_24h>=0?'bg-up':'bg-down')}})
+})}
+
+// Init
+loadDashboard();
+initWS();
+if(phantomAddr)setTimeout(loadWallet,1000);
+setInterval(()=>{if(currentTab==='home')loadDashboard()},30000);
+</script>
+</body>
+</html>

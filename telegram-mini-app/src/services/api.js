@@ -58,7 +58,10 @@ export const fetchPumpfunTrending = () => api.get('/pumpfun/trending')
 export const fetchPumpfunNew = () => api.get('/pumpfun/new')
 
 // ═══ AI CHAT ═══
-export const sendChat = (message, context = '') => api.post('/chat', { message, context })
+export const sendChat = (message, context = '', userId = null) => {
+  const uid = userId || window.Telegram?.WebApp?.initDataUnsafe?.user?.id || '0'
+  return api.post('/chat', { message, context, user_id: String(uid) })
+}
 export const clearChat = (userId) => api.post('/chat/clear', { user_id: userId })
 export const fetchChatHistory = (userId) => api.get('/chat/history', { params: { user_id: userId } })
 export const fetchChatModels = () => api.get('/chat/models')
@@ -358,6 +361,55 @@ export const fetchAiVerdict = () => api.get('/india/ai-verdict')
 // ═══ VOICE AI ═══
 export const voiceGenerate = (text) => api.post('/voice/generate', { text })
 export const voiceTranscribe = (audioData) => api.post('/chat', { message: audioData, context: 'transcribe' })
+
+// ═══ 🎙️ HINDI VOICE ASSISTANT ═══
+const VOICE_BASE_URL = API_BASE.replace('/miniapp', '') + '/api/voice'
+const GEMINI_BASE_URL = API_BASE.replace('/miniapp', '') + '/api/gemini'
+const AUTH_BASE_URL = API_BASE.replace('/miniapp', '') + '/api/auth'
+const INTEL_BASE_URL = API_BASE.replace('/miniapp', '') + '/api/intelligence'
+const OTA_BASE_URL = API_BASE.replace('/miniapp', '') + '/api/ota'
+
+export const voiceHindiChat = (message, userId, userName, isOwner) => {
+  const fd = new FormData()
+  fd.append('message', message)
+  fd.append('user_id', userId || '0')
+  fd.append('user_name', userName || '')
+  fd.append('is_owner', isOwner ? 'true' : 'false')
+  return fetch(`${VOICE_BASE_URL}/chat`, { method: 'POST', body: fd }).then(r => r.json())
+}
+export const voiceSpeak = (text) => {
+  const fd = new FormData()
+  fd.append('text', text)
+  return fetch(`${VOICE_BASE_URL}/speak`, { method: 'POST', body: fd }).then(r => r.blob())
+}
+export const voiceTranscribeHindi = (audioBlob) => {
+  const fd = new FormData()
+  fd.append('audio', audioBlob, 'recording.webm')
+  return fetch(`${VOICE_BASE_URL}/transcribe`, { method: 'POST', body: fd }).then(r => r.json())
+}
+
+// ═══ 🧠 GEMINI BRIDGE ═══
+export const geminiChat = (message, userId) => fetch(`${GEMINI_BASE_URL}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, user_id: userId }) }).then(r => r.json())
+export const geminiAnalyze = (query) => fetch(`${GEMINI_BASE_URL}/analyze`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) }).then(r => r.json())
+export const geminiIntent = (message) => fetch(`${GEMINI_BASE_URL}/intent`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message }) }).then(r => r.json())
+export const geminiConfig = () => fetch(`${GEMINI_BASE_URL}/config`).then(r => r.json())
+
+// ═══ 🔐 SMART AUTH ═══
+export const authLogin = (chatId, firstName, lastName, username, isOwner) => fetch(`${AUTH_BASE_URL}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, first_name: firstName, last_name: lastName, username, is_owner: isOwner }) }).then(r => r.json())
+export const authRegister = (chatId, firstName, lastName, username) => fetch(`${AUTH_BASE_URL}/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, first_name: firstName, last_name: lastName, username }) }).then(r => r.json())
+export const authVerify = (token) => fetch(`${AUTH_BASE_URL}/verify`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) }).then(r => r.json())
+export const authProfile = (userId) => fetch(`${AUTH_BASE_URL}/profile/${userId}`).then(r => r.json())
+
+// ═══ 🧠 SUPER INTELLIGENCE ═══
+export const fetchSuperChat = (message, userId) => fetch(`${INTEL_BASE_URL}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, user_id: userId }) }).then(r => r.json())
+export const fetchProactiveInsights = (userId) => fetch(`${INTEL_BASE_URL}/insights?user_id=${userId}`).then(r => r.json())
+export const fetchAccuracy = () => fetch(`${INTEL_BASE_URL}/accuracy`).then(r => r.json())
+export const fetchMarketContext = () => fetch(`${INTEL_BASE_URL}/context`).then(r => r.json())
+export const learnPreference = (userId, key, value) => fetch(`${INTEL_BASE_URL}/learn`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: userId, key, value }) }).then(r => r.json())
+
+// ═══ 🔄 OTA UPDATES ═══
+export const otaCheck = (currentVersion) => fetch(`${OTA_BASE_URL}/check?current_version=${currentVersion}`).then(r => r.json())
+export const otaDownload = (version) => fetch(`${OTA_BASE_URL}/download/${version}`).then(r => r.blob())
 
 // ═══ 🔥 MEGA AI TRADER — Nuclear Autonomous Trading ═══
 export const fetchMegaTraderStatus = (userId) => api.get('/mega-trader/status', { params: { user_id: userId } })

@@ -1,6 +1,6 @@
 {
   "user_info": {
-    "name": "Kya",
+    "name": "Deepak Kumar",
     "chat_id": 5647898018,
     "first_seen": "2026-02-09T07:04:24.751823+05:30",
     "language": "hinglish",
@@ -368,6 +368,24 @@
       "text": "NIFTY ka ML prediction aur candle pattern kya bol raha hai? FII DII data bhi batao",
       "intent": "prediction",
       "timestamp": "2026-02-17T01:54:07.553200+05:30"
+    },
+    {
+      "role": "user",
+      "text": "🤖 AI Chat 💬",
+      "intent": "",
+      "timestamp": "2026-02-18T00:30:42.495321+05:30"
+    },
+    {
+      "role": "user",
+      "text": "💎 SENSEX Calls OTM 🚀",
+      "intent": "",
+      "timestamp": "2026-02-18T03:06:23.762695+05:30"
+    },
+    {
+      "role": "user",
+      "text": "Tell me about nifty call for tomorrow",
+      "intent": "prediction",
+      "timestamp": "2026-02-18T22:29:11.557349+05:30"
     }
   ],
   "positions": [
@@ -441,16 +459,16 @@
     }
   ],
   "facts": {
-    "name": "Kya",
+    "name": "Deepak Kumar",
     "budget": "200",
     "trading_style": "intraday",
     "favorite_symbols": [
-      "NIFTY",
-      "SENSEX"
+      "SENSEX",
+      "NIFTY"
     ]
   },
   "predictions": [],
   "learnings": [],
   "summary": "",
-  "last_active": "2026-02-17T01:54:07.553231+05:30"
+  "last_active": "2026-02-18T22:29:11.557378+05:30"
 }
