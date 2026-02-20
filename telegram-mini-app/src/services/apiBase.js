@@ -17,21 +17,18 @@ export function isNativeApp() {
      (window.location.hostname === 'localhost' && !window.location.port))
 }
 
+const LIVE_SERVER = 'https://jarvis-trading-production.up.railway.app'
+
 function detectServerBase() {
   // 1. Env override (set during build via VITE_API_BASE)
   if (import.meta.env.VITE_API_BASE) {
     return import.meta.env.VITE_API_BASE.replace('/api/miniapp', '')
   }
-  // 2. For native app, use the configured server URL from Capacitor
-  if (isNativeApp() && window.Capacitor?.getServerUrl) {
-    try {
-      const serverUrl = window.Capacitor.getServerUrl()
-      if (serverUrl && !serverUrl.startsWith('file:')) {
-        return serverUrl
-      }
-    } catch (_) { /* ignore */ }
+  // 2. Running inside APK → use live Railway server
+  if (isNativeApp()) {
+    return LIVE_SERVER
   }
-  // 3. Relative path — works when UI & API are on same origin
+  // 3. Same-origin (browser) → relative path
   return ''
 }
 

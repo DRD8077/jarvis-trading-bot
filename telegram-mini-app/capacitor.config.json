@@ -3,6 +3,7 @@
   "appName": "JARVIS AI Agent",
   "webDir": "dist",
   "server": {
+    "url": "https://jarvis-trading-production.up.railway.app",
     "cleartext": true,
     "allowNavigation": ["*"],
     "errorPath": "index.html"
