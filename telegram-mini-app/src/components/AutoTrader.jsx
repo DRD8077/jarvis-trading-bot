@@ -46,6 +46,12 @@ const AutoTrader = () => {
 
   useEffect(() => { loadData() }, [])
 
+  // ⚡ Auto-refresh every 15s
+  useEffect(() => {
+    const iv = setInterval(loadData, 15000)
+    return () => clearInterval(iv)
+  }, [])
+
   const handleStart = async () => {
     if (!selectedStrategy) { addNotification('Select a strategy first', 'error'); return }
     if (!investAmount || parseFloat(investAmount) < 100) { addNotification('Min investment ₹100', 'error'); return }

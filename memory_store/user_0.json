@@ -140,6 +140,18 @@
       "text": "Current nifty and sensex ke bare main batoo market kaisa hai",
       "intent": "nifty",
       "timestamp": "2026-02-19T10:34:11.346309+05:30"
+    },
+    {
+      "role": "assistant",
+      "text": "Current market ke bare mein jaankari prapt karne ke liye, maine latest data ka analysis kiya hai.\n\n**Nifty:**\n* Current Price: ₹25,819.35\n* 50-day moving average: ₹25,511\n* 200-day moving average: ₹25,297\n* RSI (14): 53.6 (Neutral)\n* Market Sentiment: Neutral\n\n**Sensex:**\n* Current Price: ₹83,543.4\n* 50-day moving average: ₹82,934\n* 200-day moving average: ₹82,351\n* RSI (14): 54.2 (Neutral)\n* Market Sentiment: Neutral\n\n**Market Analysis:**\n* Current market mein koi bhi clear trend nahi hai, aur market neutral hai.\n* Nifty aur Sensex dono mein koi bhi significant movement nahi hai, aur market range-bound hai.\n* RSI (14) ki value 50 ke aas-paas hai, jo ki neutral sentiment ko indicate karti hai.\n* Market sentiment bhi neutral hai, aur koi bhi clear direction nahi hai.\n\n**Conclusion:**\n* Current market mein koi bhi clear trend nahi hai, aur market neutral hai.\n* Nifty aur Sensex dono mein koi bhi significant movement nahi hai, aur market range-bound hai.\n* Investors ko apne risk appetite ",
+      "intent": "",
+      "timestamp": "2026-02-19T10:34:11.431922+05:30"
+    },
+    {
+      "role": "user",
+      "text": "hello",
+      "intent": "greeting",
+      "timestamp": "2026-02-19T11:33:09.268624+05:30"
     }
   ],
   "positions": [],
@@ -218,5 +230,5 @@
   ],
   "learnings": [],
   "summary": "",
-  "last_active": "2026-02-19T10:34:11.346339+05:30"
+  "last_active": "2026-02-19T11:33:09.268651+05:30"
 }

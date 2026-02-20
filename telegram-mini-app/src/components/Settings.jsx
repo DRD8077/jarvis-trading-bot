@@ -1,10 +1,15 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   User, Bell, Shield, Globe, Moon, Sun, Volume2, Activity, ChevronRight,
-  Zap, Gem, Search, Brain, Bot, TrendingUp, Wallet, Gift, BarChart3, LogOut
+  Zap, Gem, Search, Brain, Bot, TrendingUp, Wallet, Gift, BarChart3, LogOut,
+  Fingerprint, Wifi, WifiOff, Download, Mic, Database, Trash2
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import pushNotifications from '../services/pushNotifications'
+import biometricAuth from '../services/biometricAuth'
+import offlineCache from '../services/offlineCache'
+import backgroundAlerts from '../services/backgroundAlerts'
 
 const Settings = () => {
   const { user, hapticFeedback } = useApp()
@@ -16,10 +21,44 @@ const Settings = () => {
     language: 'en',
     riskLevel: 'medium'
   })
+  const [biometricEnabled, setBiometricEnabled] = useState(biometricAuth.isEnabled())
+  const [pushEnabled, setPushEnabled] = useState(false)
+  const [cacheStats, setCacheStats] = useState(null)
+  const [alertCount, setAlertCount] = useState(0)
+
+  useEffect(() => {
+    setPushEnabled(typeof Notification !== 'undefined' && Notification.permission === 'granted')
+    offlineCache.getCacheStats().then(setCacheStats)
+    setAlertCount(backgroundAlerts.getActiveAlerts().length)
+  }, [])
 
   const updateSetting = (key, value) => {
     setSettings(prev => ({ ...prev, [key]: value }))
     hapticFeedback('impact')
+  }
+
+  const togglePush = async () => {
+    if (!pushEnabled) {
+      const ok = await pushNotifications.requestPermission()
+      setPushEnabled(ok)
+    }
+  }
+
+  const toggleBiometric = async () => {
+    if (biometricEnabled) {
+      biometricAuth.disable()
+      setBiometricEnabled(false)
+    } else {
+      const ok = await biometricAuth.enable()
+      setBiometricEnabled(ok)
+    }
+    hapticFeedback('impact')
+  }
+
+  const clearCache = async () => {
+    await offlineCache.clearAll()
+    setCacheStats(await offlineCache.getCacheStats())
+    hapticFeedback('success')
   }
 
   const allPages = [
@@ -30,6 +69,7 @@ const Settings = () => {
     { icon: Gem, label: 'Gem Scanner', path: '/gems', color: 'text-pink-400' },
     { icon: Search, label: 'Screener & Futures', path: '/screener', color: 'text-teal-400' },
     { icon: Brain, label: 'Intelligence Hub', path: '/intelligence', color: 'text-indigo-400' },
+    { icon: Mic, label: 'Voice Assistant', path: '/voice', color: 'text-rose-400' },
   ]
 
   return (
@@ -135,6 +175,79 @@ const Settings = () => {
         </div>
       </div>
 
+      {/* 🔐 Security & Notifications */}
+      <div className="mb-5">
+        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Security & Notifications</h3>
+        <div className="space-y-2">
+          {/* Push Notifications */}
+          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Bell size={18} className="text-blue-400" />
+              <div>
+                <p className="text-sm font-medium">Push Notifications</p>
+                <p className="text-xs text-slate-500">{pushEnabled ? 'Enabled — price alerts active' : 'Tap to enable'}</p>
+              </div>
+            </div>
+            <button onClick={togglePush}
+              className={`px-3 py-1 rounded-lg text-xs font-medium ${pushEnabled ? 'bg-emerald-600 text-white' : 'bg-blue-600 text-white'}`}>
+              {pushEnabled ? '✓ ON' : 'Enable'}
+            </button>
+          </div>
+
+          {/* Biometric Auth */}
+          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Fingerprint size={18} className="text-purple-400" />
+              <div>
+                <p className="text-sm font-medium">Biometric Lock</p>
+                <p className="text-xs text-slate-500">{biometricEnabled ? 'Fingerprint/Face ID active' : 'Protect with biometrics'}</p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" className="sr-only peer" checked={biometricEnabled} onChange={toggleBiometric} />
+              <div className="w-11 h-6 bg-slate-700 peer-checked:bg-purple-600 rounded-full
+                after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white 
+                after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+            </label>
+          </div>
+
+          {/* Background Alerts */}
+          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Zap size={18} className="text-amber-400" />
+              <div>
+                <p className="text-sm font-medium">Background Price Alerts</p>
+                <p className="text-xs text-slate-500">{alertCount} active alert{alertCount !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+            <span className="text-xs text-emerald-400 font-medium">Running</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 📦 Data & Storage */}
+      <div className="mb-5">
+        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Data & Storage</h3>
+        <div className="space-y-2">
+          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-3">
+                <Database size={18} className="text-cyan-400" />
+                <div>
+                  <p className="text-sm font-medium">Offline Cache</p>
+                  <p className="text-xs text-slate-500">
+                    {cacheStats ? `${cacheStats.entries} items • ${cacheStats.totalSizeKB || 0} KB` : 'Calculating...'}
+                  </p>
+                </div>
+              </div>
+              <button onClick={clearCache} className="p-2 rounded-lg bg-slate-700 hover:bg-red-600/30 transition-colors">
+                <Trash2 size={14} className="text-slate-400" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Backend Status */}
       <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-5">
         <h3 className="text-sm font-medium mb-2 flex items-center space-x-2">
@@ -164,7 +277,8 @@ const Settings = () => {
       {/* App Info */}
       <div className="bg-gradient-to-r from-slate-800 to-slate-800/50 rounded-xl p-4 border border-slate-700 text-center">
         <p className="gradient-text text-lg font-bold">JARVIS AI Trading Platform</p>
-        <p className="text-xs text-slate-500 mt-1">v3.0.0 • 96 Modules • Fully Connected</p>
+        <p className="text-xs text-slate-500 mt-1">v4.0.0 • 10 Power Features • PWA + APK</p>
+        <p className="text-[10px] text-slate-600 mt-1">Push • Biometric • Offline • Charts • Voice • Alerts • Export • OrderBook</p>
         <p className="text-[10px] text-slate-600 mt-1">© 2024-2026 JARVIS AI</p>
       </div>
     </div>

@@ -25,6 +25,12 @@ const SocialFeed = () => {
 
   useEffect(() => { load() }, [])
 
+  // ⚡ Auto-refresh social feed every 30s
+  useEffect(() => {
+    const iv = setInterval(load, 30000)
+    return () => clearInterval(iv)
+  }, [])
+
   const handleLike = (i) => {
     hapticFeedback('impact')
     setLiked(p => ({ ...p, [i]: !p[i] }))

@@ -1,0 +1,63 @@
+# ═══════════════════════════════════════════════════════════════
+#  JARVIS Trading Platform — Python Project Configuration
+#  SDLC: Build, Test, Lint, Package
+# ═══════════════════════════════════════════════════════════════
+[project]
+name = "jarvis-trading-platform"
+version = "7.0.0"
+description = "JARVIS AI-Powered Trading Platform — Telegram Bot + Android APK + Admin Panel"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "DRD8077"}
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short -q"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+exclude = [
+    "__pycache__",
+    ".venv",
+    "node_modules",
+    "telegram-ai-app",
+    "telegram-mini-app",
+    "jarvis_projects",
+    "*_backup*",
+    "*_old*",
+]
+
+[tool.ruff.lint]
+# Start lenient, tighten over time
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "S",   # flake8-bandit (security)
+]
+ignore = [
+    "E501",  # line too long (will fix gradually)
+    "S101",  # assert in tests is fine
+    "S104",  # binding to 0.0.0.0 is intentional
+    "S105",  # possible hardcoded password (false positives)
+    "S106",  # same
+    "S107",  # same
+    "S311",  # random is fine for non-crypto
+    "B904",  # exception chaining
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["jarvis_*"]

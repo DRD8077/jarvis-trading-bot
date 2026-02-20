@@ -35,9 +35,10 @@ else
     BOT_PID=""
 fi
 
-# Start FastAPI server (foreground)
-echo "  🌐 Starting server on port ${PORT:-8000}..."
-python3 /app/server.py
+# Start FastAPI server (foreground) — unified jarvis_server.py via uvicorn
+echo "  🌐 Starting JARVIS server on port ${PORT:-8000}..."
+cd /app
+uvicorn jarvis_server:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --log-level info
 
 # Cleanup
 [ -n "$BOT_PID" ] && kill $BOT_PID 2>/dev/null

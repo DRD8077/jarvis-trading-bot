@@ -39,6 +39,12 @@ const Screener = () => {
 
   useEffect(() => { loadData() }, [])
 
+  // ⚡ Auto-refresh screener every 15s
+  useEffect(() => {
+    const iv = setInterval(loadData, 15000)
+    return () => clearInterval(iv)
+  }, [filters])
+
   const filteredResults = results.filter(r => {
     if (searchQuery) {
       const q = searchQuery.toLowerCase()

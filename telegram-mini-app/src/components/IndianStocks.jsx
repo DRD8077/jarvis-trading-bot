@@ -118,6 +118,30 @@ const IndianStocks = () => {
 
   useEffect(() => { load() }, [selectedIndex])
 
+  // ⚡ Auto-refresh every 10s for live market data
+  useEffect(() => {
+    const iv = setInterval(() => {
+      // Silent refresh — no loading spinner
+      (async () => {
+        try {
+          const res = await fetchIndiaCombinedDashboard(selectedIndex).catch(() => null)
+          const d = res?.data?.data || {}
+          if (d.dashboard) setDashboard(d.dashboard)
+          if (d.fii_dii) setFiiDii(d.fii_dii)
+          if (d.vix) setVix(d.vix)
+          if (d.pcr) setPcr(d.pcr)
+          if (d.pivots) setPivots(d.pivots)
+          if (d.gift) setGift(d.gift)
+          if (d.sectors?.length) setSectors(d.sectors)
+          if (d.oi) setOi(d.oi)
+          if (d.market_status) setMarketStatus(d.market_status)
+          if (d.snapshot) setSnapshot(d.snapshot)
+        } catch (e) { /* silent */ }
+      })()
+    }, 10000)
+    return () => clearInterval(iv)
+  }, [selectedIndex])
+
   const isOpen = marketStatus?.is_open || false
   const niftyValue = snapshot?.nifty?.price || dashboard?.nifty || 0
   const niftyChange = snapshot?.nifty?.change_pct || dashboard?.nifty_change || 0

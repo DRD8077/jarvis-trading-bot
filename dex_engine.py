@@ -31,7 +31,7 @@ IST = timezone(timedelta(hours=5, minutes=30))
 
 # Rate limiting
 _last_call: Dict[str, float] = {}
-_RATE_LIMIT = 0.3  # seconds between calls per endpoint
+_RATE_LIMIT = 0.15  # seconds between calls per endpoint (fast for real-time)
 
 
 async def _rate_limit(key: str):
@@ -262,19 +262,73 @@ def _compute_gem_score(price, chg5m, chg1h, chg24h, vol, liq, mcap, buys, sells)
 
 
 # ═══════════════════════════════════════════════════════════
-#  COINGECKO — REMOVED (user requested removal)
+#  COINGECKO — Free tier (no API key needed, 10-30 req/min)
 # ═══════════════════════════════════════════════════════════
+COINGECKO_BASE = "https://api.coingecko.com/api/v3"
+
 async def cg_prices(ids: str = "", vs: str = "usd,inr") -> Dict:
-    """CoinGecko REMOVED — returns empty."""
-    return {}
+    """Get prices from CoinGecko (free, no key)."""
+    if not ids:
+        return {}
+    await _rate_limit("coingecko")
+    data = await _fetch(f"{COINGECKO_BASE}/simple/price", params={
+        "ids": ids, "vs_currencies": vs,
+        "include_24hr_change": "true", "include_24hr_vol": "true",
+        "include_market_cap": "true"
+    })
+    return data or {}
 
 async def cg_trending() -> List[Dict]:
-    """CoinGecko REMOVED — returns empty."""
-    return []
+    """Get trending coins from CoinGecko."""
+    await _rate_limit("coingecko_trending")
+    data = await _fetch(f"{COINGECKO_BASE}/search/trending")
+    if not data or "coins" not in data:
+        return []
+    results = []
+    for item in data["coins"][:15]:
+        c = item.get("item", {})
+        results.append({
+            "symbol": c.get("symbol", ""),
+            "name": c.get("name", ""),
+            "market_cap_rank": c.get("market_cap_rank", 0),
+            "price_btc": c.get("price_btc", 0),
+            "thumb": c.get("thumb", ""),
+            "source": "coingecko_trending",
+        })
+    return results
 
 async def cg_market_data(limit: int = 50) -> List[Dict]:
-    """CoinGecko REMOVED — returns empty."""
-    return []
+    """Get top coins market data from CoinGecko."""
+    await _rate_limit("coingecko_markets")
+    data = await _fetch(f"{COINGECKO_BASE}/coins/markets", params={
+        "vs_currency": "usd", "order": "market_cap_desc",
+        "per_page": str(limit), "page": "1",
+        "sparkline": "false", "price_change_percentage": "1h,24h,7d"
+    })
+    if not data or not isinstance(data, list):
+        return []
+    results = []
+    for c in data:
+        results.append({
+            "id": c.get("id", ""),
+            "symbol": (c.get("symbol", "") or "").upper(),
+            "name": c.get("name", ""),
+            "price_usd": c.get("current_price", 0),
+            "current_price": c.get("current_price", 0),
+            "change_1h": c.get("price_change_percentage_1h_in_currency", 0),
+            "change_24h": c.get("price_change_percentage_24h", 0),
+            "price_change_percentage_24h": c.get("price_change_percentage_24h", 0),
+            "change_7d": c.get("price_change_percentage_7d_in_currency", 0),
+            "market_cap": c.get("market_cap", 0),
+            "volume_24h": c.get("total_volume", 0),
+            "circulating_supply": c.get("circulating_supply", 0),
+            "total_supply": c.get("total_supply", 0),
+            "ath": c.get("ath", 0),
+            "ath_change_percentage": c.get("ath_change_percentage", 0),
+            "image": c.get("image", ""),
+            "source": "coingecko",
+        })
+    return results
 
 
 async def cg_fear_greed() -> Dict:

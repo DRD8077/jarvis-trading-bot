@@ -1,0 +1,80 @@
+{
+  "testuser": {
+    "user_id": "testuser",
+    "name": "wrongpassword",
+    "phone": "",
+    "password_hash": "",
+    "role": "user",
+    "is_premium": false,
+    "is_blocked": false,
+    "created_at": "2026-02-21T01:31:57.520138+05:30",
+    "last_login": "2026-02-21T02:37:51.475055+05:30",
+    "login_count": 14,
+    "telegram": {}
+  },
+  "route_test": {
+    "user_id": "route_test",
+    "name": "User_route_test",
+    "phone": "",
+    "password_hash": "",
+    "role": "user",
+    "is_premium": false,
+    "is_blocked": false,
+    "created_at": "2026-02-21T01:38:39.801234+05:30",
+    "last_login": "2026-02-21T02:24:12.424242+05:30",
+    "login_count": 5,
+    "telegram": {}
+  },
+  "bad": {
+    "user_id": "bad",
+    "name": "User_bad",
+    "phone": "",
+    "password_hash": "",
+    "role": "user",
+    "is_premium": false,
+    "is_blocked": false,
+    "created_at": "2026-02-21T01:38:39.829569+05:30",
+    "last_login": "2026-02-21T02:24:12.436983+05:30",
+    "login_count": 5,
+    "telegram": {}
+  },
+  "bcrypt_test": {
+    "user_id": "bcrypt_test",
+    "name": "BCryptTest",
+    "phone": "",
+    "password_hash": "$2b$12$rkvZ7WyN0eIyOAZC2LozZ.rFCiO0.WZjDwZawp6Qln68bMNN4X1VS",
+    "role": "user",
+    "is_premium": false,
+    "is_blocked": false,
+    "created_at": "2026-02-21T02:01:36.074364+05:30",
+    "last_login": "2026-02-21T02:01:36.074389+05:30",
+    "login_count": 1,
+    "telegram": {}
+  },
+  "newtest99": {
+    "user_id": "newtest99",
+    "name": "Test",
+    "phone": "",
+    "password_hash": "$2b$12$DjkDFgt0o4rE.rQMf6ArFulNRoykW1oyYfUpO7t0b5N7U6tz2XZ7i",
+    "role": "user",
+    "is_premium": false,
+    "is_blocked": false,
+    "created_at": "2026-02-21T02:07:19.721769+05:30",
+    "last_login": "2026-02-21T02:07:19.721791+05:30",
+    "login_count": 1,
+    "telegram": {}
+  },
+  "unit_test_user": {
+    "user_id": "unit_test_user",
+    "name": "test1234",
+    "phone": "",
+    "password_hash": "$2b$12$NZhC3j9heQIF0ACFvPXvhOxcOPpNugzecScKOm.QCuxkztwusptwq",
+    "role": "user",
+    "is_premium": false,
+    "is_blocked": false,
+    "created_at": "2026-02-21T02:36:52.365939+05:30",
+    "last_login": "2026-02-21T02:37:49.439934+05:30",
+    "login_count": 3,
+    "telegram": {}
+  }
+}

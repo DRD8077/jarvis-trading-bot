@@ -30,6 +30,12 @@ const CopyTrading = () => {
 
   useEffect(() => { load() }, [])
 
+  // ⚡ Auto-refresh signals every 15s
+  useEffect(() => {
+    const iv = setInterval(load, 15000)
+    return () => clearInterval(iv)
+  }, [])
+
   const handleCopy = (signal) => {
     hapticFeedback('impact')
     setCopying(p => ({ ...p, [signal.id || signal.symbol]: true }))

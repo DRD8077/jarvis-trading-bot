@@ -1,25 +1,30 @@
 import axios from 'axios'
+import realtime from './realtime'
+import { API_BASE } from './apiBase'
 
-// Base API — connects to JARVIS backend v6
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/miniapp'
+// Initialize real-time engine
+realtime.init(API_BASE)
 
 const api = axios.create({
   baseURL: API_BASE,
-  timeout: 15000,
+  timeout: 30000,
   headers: { 'Content-Type': 'application/json' }
 })
 
-// Telegram user data auto-inject
+// User data auto-inject from Gmail auth
 api.interceptors.request.use((config) => {
-  const tg = window.Telegram?.WebApp
-  if (tg?.initData) config.headers['X-Telegram-Init-Data'] = tg.initData
-  if (tg?.initDataUnsafe?.user) {
-    config.params = {
-      ...config.params,
-      user_id: tg.initDataUnsafe.user.id,
-      username: tg.initDataUnsafe.user.username
+  try {
+    const savedUser = JSON.parse(localStorage.getItem('jarvis_gmail_user') || 'null')
+    if (savedUser) {
+      config.params = {
+        ...config.params,
+        user_id: savedUser.id,
+        username: savedUser.name || savedUser.email || 'user'
+      }
+      const token = localStorage.getItem('jarvis_gmail_token')
+      if (token) config.headers['Authorization'] = `Bearer ${token}`
     }
-  }
+  } catch(e) {}
   return config
 })
 
@@ -31,6 +36,8 @@ api.interceptors.response.use(
 // ═══ DASHBOARD ═══
 export const fetchDashboard = () => api.get('/dashboard')
 export const fetchHealth = () => api.get('/health')
+export const fetchTicker = () => api.get('/ticker')
+export const fetchFastPrice = (symbol) => api.get(`/price/${symbol}`)
 
 // ═══ MARKETS ═══
 export const fetchMarkets = () => api.get('/markets')
@@ -59,7 +66,8 @@ export const fetchPumpfunNew = () => api.get('/pumpfun/new')
 
 // ═══ AI CHAT ═══
 export const sendChat = (message, context = '', userId = null) => {
-  const uid = userId || window.Telegram?.WebApp?.initDataUnsafe?.user?.id || '0'
+  const savedUser = JSON.parse(localStorage.getItem('jarvis_gmail_user') || '{}')
+  const uid = userId || savedUser?.id || '0'
   return api.post('/chat', { message, context, user_id: String(uid) })
 }
 export const clearChat = (userId) => api.post('/chat/clear', { user_id: userId })
@@ -199,7 +207,11 @@ export const fetchScreener = (filters) => api.get('/screener/full', { params: fi
 // ═══ COPY TRADING & SOCIAL ═══
 export const fetchCopyTradingSignals = () => api.get('/signals')
 export const fetchCopyTradingLeaderboard = () => api.get('/auto-trader/performance')
-export const fetchSocialFeed = () => api.get('/news')
+export const fetchSocialFeed = (limit = 20, offset = 0) => fetch(`${API_BASE.replace('/miniapp', '')}/api/social/feed?limit=${limit}&offset=${offset}`).then(r => r.json()).catch(() => ({ signals: [] }))
+export const shareSignal = (data) => fetch(`${API_BASE.replace('/miniapp', '')}/api/social/share`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json())
+export const likeSignal = (signalId, userId) => fetch(`${API_BASE.replace('/miniapp', '')}/api/social/like/${signalId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: userId }) }).then(r => r.json())
+export const fetchLeaderboard = (limit = 20) => fetch(`${API_BASE.replace('/miniapp', '')}/api/social/leaderboard?limit=${limit}`).then(r => r.json()).catch(() => ({ leaders: [] }))
+export const followTrader = (traderId, userId) => fetch(`${API_BASE.replace('/miniapp', '')}/api/social/follow/${traderId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: userId }) }).then(r => r.json())
 
 // ═══ WHALE ═══
 export const fetchWhaleAlert = (token) => api.get('/whale/token', { params: { address: token } })
@@ -423,3 +435,53 @@ export const megaSell = (userId, mint, sellPct = 100) => api.post('/mega-trader/
 export const megaTransfer = (userId, destination, solAmount) => api.post('/mega-trader/transfer', { user_id: userId, destination, sol_amount: solAmount })
 export const fetchMegaTransfers = (userId) => api.get('/mega-trader/transfers', { params: { user_id: userId } })
 export const megaRugCheck = (mint, chain = 'solana') => api.get('/mega-trader/rug-check', { params: { mint, chain } })
+
+// ═══════════════════════════════════════════════════════════
+//  🚀 POWER-UP v6.0 — New Module APIs
+// ═══════════════════════════════════════════════════════════
+const POWER_BASE = API_BASE.replace('/miniapp', '') + '/api'
+
+// --- SSE Real-time Signals ---
+export const connectSSE = (channel = 'all', onMessage) => {
+  const es = new EventSource(`${POWER_BASE}/sse/${channel}`)
+  es.onmessage = (e) => { try { onMessage(JSON.parse(e.data)) } catch {} }
+  es.onerror = () => { console.warn('SSE reconnecting...') }
+  return es
+}
+
+// --- Task Queue ---
+export const enqueueTask = (taskType, params = {}, userId = 'system') =>
+  fetch(`${POWER_BASE}/tasks/enqueue`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task_type: taskType, params, user_id: userId }) }).then(r => r.json())
+export const fetchTaskStatus = (taskId) => fetch(`${POWER_BASE}/tasks/${taskId}`).then(r => r.json())
+export const fetchAllTasks = () => fetch(`${POWER_BASE}/tasks`).then(r => r.json())
+
+// --- DexTools ---
+export const fetchDextoolsSummary = () => fetch(`${POWER_BASE}/dextools/summary`).then(r => r.json()).catch(() => ({}))
+export const fetchDextoolsHotPairs = (chain = 'ethereum') => fetch(`${POWER_BASE}/dextools/hot/${chain}`).then(r => r.json()).catch(() => ({ pairs: [] }))
+
+// --- Birdeye (Solana DEX Intel) ---
+export const fetchBirdeyeSummary = () => fetch(`${POWER_BASE}/birdeye/summary`).then(r => r.json()).catch(() => ({}))
+export const fetchBirdeyeTrending = () => fetch(`${POWER_BASE}/birdeye/trending`).then(r => r.json()).catch(() => ({ tokens: [] }))
+
+// --- Notifications ---
+export const subscribePush = (chatId, prefs) =>
+  fetch(`${POWER_BASE}/notifications/subscribe`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, preferences: prefs }) }).then(r => r.json())
+export const unsubscribePush = (chatId) =>
+  fetch(`${POWER_BASE}/notifications/unsubscribe`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId }) }).then(r => r.json())
+
+// --- JWT Auth v2 ---
+export const jwtRegister = (username, password, chatId) =>
+  fetch(`${POWER_BASE}/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password, chat_id: chatId }) }).then(r => r.json())
+export const jwtLogin = (username, password) =>
+  fetch(`${POWER_BASE}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) }).then(r => r.json())
+export const jwtRefresh = (refreshToken) =>
+  fetch(`${POWER_BASE}/auth/refresh`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: refreshToken }) }).then(r => r.json())
+
+// --- System Metrics / Admin ---
+export const fetchSystemOverview = () => fetch(`${POWER_BASE}/system/overview`).then(r => r.json()).catch(() => ({}))
+export const fetchSystemMetrics = () => fetch(`${POWER_BASE}/metrics`).then(r => r.json()).catch(() => ({}))
+export const fetchAdminApiKeys = () => fetch(`${POWER_BASE}/admin/api-keys`).then(r => r.json()).catch(() => ({ keys: [] }))
+export const setAdminApiKey = (keyName, keyValue) =>
+  fetch(`${POWER_BASE}/admin/api-keys`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key_name: keyName, key_value: keyValue }) }).then(r => r.json())
+export const fetchAdminErrors = () => fetch(`${POWER_BASE}/admin/errors`).then(r => r.json()).catch(() => ({}))
+export const fetchEngineHealth = () => fetch(`${POWER_BASE}/admin/engine-health`).then(r => r.json()).catch(() => ({ engines: {} }))

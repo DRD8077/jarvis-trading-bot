@@ -20,8 +20,15 @@ services:
       - PORT=8000
       - HOST=0.0.0.0
       - WATCHLIST=NIFTY,SENSEX
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://jarvis:jarvis@postgres:5432/jarvis
     volumes:
       - jarvis-data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     logging:
       driver: "json-file"
       options:
@@ -33,5 +40,38 @@ services:
       timeout: 10s
       retries: 3
 
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: jarvis
+      POSTGRES_PASSWORD: jarvis
+      POSTGRES_DB: jarvis
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jarvis"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 volumes:
   jarvis-data:
+  redis-data:
+  postgres-data:

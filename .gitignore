@@ -7,8 +7,33 @@ __pycache__/
 *.deb
 last_chat_id.txt
 .env
+.env.*
 telegram_bot_backup.py
 jarvis_semantic_memory.json
 jarvis_feedback.json
 jarvis_predictions.json
 jarvis_accuracy_stats.json
+
+# Security — NEVER commit these
+*.keystore
+*.jks
+*.p12
+*_encrypted.json
+jarvis_trader_wallets*.json
+jarvis_stopped_users.json
+jarvis_memory.json
+
+# Build artifacts
+*.apk
+*.aab
+build/
+dist/
+*.egg-info/
+node_modules/
+build_report_*.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

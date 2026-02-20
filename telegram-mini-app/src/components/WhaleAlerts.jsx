@@ -33,6 +33,12 @@ const WhaleAlerts = () => {
 
   useEffect(() => { load() }, [])
 
+  // ⚡ Auto-refresh whale alerts every 15s
+  useEffect(() => {
+    const iv = setInterval(load, 15000)
+    return () => clearInterval(iv)
+  }, [])
+
   const filteredAlerts = filter === 'all' ? alerts :
     alerts.filter(a => (a.type || a.direction || '').toLowerCase().includes(filter))
 

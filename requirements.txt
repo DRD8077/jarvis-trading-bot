@@ -29,7 +29,43 @@ edge-tts
 nltk
 google-generativeai
 google-genai
+
 # Real Solana Trading
 solana>=0.36
 solders>=0.27
 base58>=2.1
+
+# ═══ Power-Up Dependencies ═══
+# Redis caching
+redis>=5.0
+hiredis>=2.0
+
+# PostgreSQL async
+asyncpg>=0.29
+
+# JWT authentication
+PyJWT>=2.8
+passlib[bcrypt]>=1.7
+bcrypt>=4.0,<5.0
+
+# Rate limiting
+slowapi>=0.1.9
+
+# SSE (Server-Sent Events)
+sse-starlette>=1.6
+
+# Prometheus metrics
+prometheus-client>=0.19
+
+# Background tasks
+arq>=0.25
+
+# Telegram notifications
+aiohttp>=3.9
+
+# System monitoring
+psutil>=5.9
+
+# Security
+python-multipart>=0.0.6
+cryptography>=41.0

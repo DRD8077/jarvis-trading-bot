@@ -39,6 +39,20 @@ export default function OptionsProLive() {
     }
   }, [tab, symbol, load])
 
+  // ⚡ Auto-refresh active tab every 10s
+  useEffect(() => {
+    const iv = setInterval(() => {
+      if (tab === 'chain') {
+        load('chain', () => fetchChainSummary(symbol))
+      } else if (tab === 'fno') {
+        load('fno', () => fetchFuturesDashboard(symbol))
+      } else if (tab === 'correlations') {
+        load('corr', fetchCorrelationsScan)
+      }
+    }, 10000)
+    return () => clearInterval(iv)
+  }, [tab, symbol, load])
+
   const lookupStrike = () => {
     if (!strike) return
     load('strike', () => fetchStrikePrice(symbol, parseInt(strike), optType))

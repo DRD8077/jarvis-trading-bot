@@ -7,20 +7,40 @@ android {
         applicationId "com.jarvis.trading"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 4
+        versionName "4.0-power"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
+        // NDK filter for llama.cpp native libs
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64'
+        }
+    }
+    signingConfigs {
+        release {
+            storeFile file('../jarvis-release.keystore')
+            storePassword 'jarvis2024'
+            keyAlias 'jarvis'
+            keyPassword 'jarvis2024'
+        }
     }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
+    }
+    // Allow large model files in assets
+    aaptOptions {
+        noCompress "gguf", "bin", "model"
+    }
+    packagingOptions {
+        pickFirst 'lib/*/libc++_shared.so'
     }
 }
 
@@ -36,6 +56,14 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    
+    // ═══ JARVIS AI Agent Dependencies ═══
+    // Vosk — Offline Speech-to-Text
+    implementation 'com.alphacephei:vosk-android:0.3.47'
+    
+    // OkHttp for LLM server communication
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

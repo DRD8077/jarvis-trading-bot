@@ -4,20 +4,20 @@ import {
   Home, TrendingUp, Wallet, Bot, Zap, MoreHorizontal, X,
   Globe, Copy, Users, Activity, PieChart, Waves, FlaskConical,
   BarChart3, Settings, Search, Brain, Mic, Flame, Layers, LineChart, Gauge,
-  Crosshair, Puzzle, ShieldCheck, ScanLine, Rocket
+  Crosshair, Puzzle, ShieldCheck, ScanLine, Rocket, Crown, LogOut
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 
 const Navigation = () => {
   const location = useLocation()
-  const { hapticFeedback } = useApp()
+  const { hapticFeedback, isAdmin, handleLogout, user } = useApp()
   const [showMore, setShowMore] = useState(false)
 
   const mainNav = [
     { path: '/', icon: Home, label: 'Home' },
     { path: '/trading', icon: TrendingUp, label: 'Trade' },
+    { path: '/ai-agent', icon: Brain, label: 'AI Agent' },
     { path: '/chat', icon: Bot, label: 'AI Chat' },
-    { path: '/wallet', icon: Wallet, label: 'Wallet' },
     { path: '/more', icon: MoreHorizontal, label: 'More', isMenu: true },
   ]
 
@@ -42,6 +42,9 @@ const Navigation = () => {
     { path: '/gems', icon: Search, label: 'Gem Scanner', color: 'from-emerald-500 to-green-500', desc: 'Find hidden gems' },
     { path: '/screener', icon: BarChart3, label: 'Screener', color: 'from-blue-500 to-indigo-500', desc: 'Market screener' },
     { path: '/intelligence', icon: Brain, label: 'Intelligence', color: 'from-purple-500 to-pink-500', desc: 'AI market intel' },
+    { path: '/ai-agent', icon: Brain, label: '🧠 AI Agent', color: 'from-violet-600 to-purple-600', desc: 'Offline AI — Voice + LLM + Commands' },
+    { path: '/voice', icon: Mic, label: 'Hindi Voice', color: 'from-pink-500 to-rose-600', desc: 'Hindi voice assistant' },
+    ...(isAdmin ? [{ path: '/admin', icon: Crown, label: '👑 Admin Panel', color: 'from-amber-500 to-orange-500', desc: 'System admin' }] : []),
     { path: '/settings', icon: Settings, label: 'Settings', color: 'from-slate-500 to-slate-600', desc: 'Preferences' },
   ]
 

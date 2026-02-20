@@ -26,7 +26,7 @@ const MegaTrader = () => {
   const [rugCheckMint, setRugCheckMint] = useState('')
   const [rugResult, setRugResult] = useState(null)
   const [actionLoading, setActionLoading] = useState('')
-  const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || '0'
+  const userId = JSON.parse(localStorage.getItem('jarvis_gmail_user') || '{}'  ).id || '0'
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -46,9 +46,9 @@ const MegaTrader = () => {
 
   useEffect(() => { loadData() }, [loadData])
 
-  // Auto-refresh every 30s
+  // ⚡ Auto-refresh every 10s (was 30s)
   useEffect(() => {
-    const timer = setInterval(loadData, 30000)
+    const timer = setInterval(loadData, 10000)
     return () => clearInterval(timer)
   }, [loadData])
 

@@ -1,0 +1,110 @@
+[
+  {
+    "id": "stock_analysis",
+    "name": "\ud83d\udcca Stock Analysis",
+    "category": "Stock",
+    "enabled": false
+  },
+  {
+    "id": "stock_prediction",
+    "name": "\ud83e\udd16 ML Prediction",
+    "category": "Stock",
+    "enabled": true
+  },
+  {
+    "id": "option_chain",
+    "name": "\ud83d\udcc8 Option Chain",
+    "category": "Stock",
+    "enabled": true
+  },
+  {
+    "id": "candle_patterns",
+    "name": "\ud83d\udd6f\ufe0f Candle Patterns",
+    "category": "Stock",
+    "enabled": true
+  },
+  {
+    "id": "crypto_gems",
+    "name": "\ud83d\udc8e Crypto Gems",
+    "category": "Crypto",
+    "enabled": true
+  },
+  {
+    "id": "pump_fun",
+    "name": "\ud83d\ude80 Pump.fun Scanner",
+    "category": "Crypto",
+    "enabled": true
+  },
+  {
+    "id": "whale_alerts",
+    "name": "\ud83d\udc0b Whale Alerts",
+    "category": "Crypto",
+    "enabled": true
+  },
+  {
+    "id": "rug_detector",
+    "name": "\ud83d\udd0d Rug Detector",
+    "category": "Crypto",
+    "enabled": true
+  },
+  {
+    "id": "ai_chat",
+    "name": "\ud83e\udd16 AI Chat",
+    "category": "AI",
+    "enabled": true
+  },
+  {
+    "id": "jarvis_nlu",
+    "name": "\ud83e\udde0 JARVIS NLU",
+    "category": "AI",
+    "enabled": true
+  },
+  {
+    "id": "morning_brief",
+    "name": "\ud83c\udf05 Morning Brief",
+    "category": "AI",
+    "enabled": true
+  },
+  {
+    "id": "auto_alerts",
+    "name": "\ud83d\udd14 Auto Alerts",
+    "category": "Alert",
+    "enabled": true
+  },
+  {
+    "id": "price_alerts",
+    "name": "\ud83d\udcb0 Price Alerts",
+    "category": "Alert",
+    "enabled": true
+  },
+  {
+    "id": "portfolio",
+    "name": "\ud83d\udcbc Portfolio Tracker",
+    "category": "Portfolio",
+    "enabled": true
+  },
+  {
+    "id": "hindi_mode",
+    "name": "\ud83c\uddee\ud83c\uddf3 Hindi Mode",
+    "category": "Global",
+    "enabled": true
+  },
+  {
+    "id": "social_trading",
+    "name": "\ud83c\udf10 Social Trading",
+    "category": "Social",
+    "enabled": true
+  },
+  {
+    "id": "backtester",
+    "name": "\ud83d\udcc8 Backtester",
+    "category": "Analysis",
+    "enabled": true
+  },
+  {
+    "id": "telegram_push",
+    "name": "\ud83d\udcf2 Telegram Push",
+    "category": "Alert",
+    "enabled": true
+  }
+]

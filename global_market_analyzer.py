@@ -47,8 +47,8 @@ def fetch_global_market_data(lookback_days: int = 30) -> Dict:
                 print(f"  {name}: No data")
                 continue
             
-            opening = data['Close'].iloc[0]
-            closing = data['Close'].iloc[-1]
+            opening = float(data['Close'].iloc[0])
+            closing = float(data['Close'].iloc[-1])
             
             if opening == 0 or closing == 0:
                 print(f"  {name}: Invalid prices")
@@ -61,10 +61,10 @@ def fetch_global_market_data(lookback_days: int = 30) -> Dict:
             
             results[name] = {
                 "direction": direction,
-                "pct_change": pct_change,
-                "strength": strength,
-                "price": closing,
-                "opening": opening,
+                "pct_change": float(pct_change),
+                "strength": float(strength),
+                "price": float(closing),
+                "opening": float(opening),
             }
             print(f"  ✓ {name}: {direction} {pct_change:.2f}%")
         except Exception as e:
@@ -160,17 +160,17 @@ def get_indian_market_direction_forecast() -> Dict:
                 hist = tick.history(period="30d")
                 
                 if len(hist) >= 2:
-                    opening = hist['Close'].iloc[0]
-                    closing = hist['Close'].iloc[-1]
+                    opening = float(hist['Close'].iloc[0])
+                    closing = float(hist['Close'].iloc[-1])
                     
                     if opening > 0 and closing > 0:
-                        pct_change = ((closing - opening) / opening) * 100
+                        pct_change = float(((closing - opening) / opening) * 100)
                         direction = "📈 UP" if pct_change > 0 else "📉 DOWN"
                         
                         market_data[name] = {
                             "direction": direction,
                             "pct_change": pct_change,
-                            "strength": abs(pct_change),
+                            "strength": float(abs(pct_change)),
                             "price": closing,
                         }
                         print(f"✓ {name}: {direction} {pct_change:.2f}%")

@@ -550,8 +550,8 @@ async function loadAT(f){if(_L.autotrade&&!f)return;_L.autotrade=1;
   if(Object.keys(ts).length){h+='<div style="font-size:10px;font-weight:800;color:var(--p);margin:8px 0 5px">🤖 TRADER STRATEGIES</div>';Object.entries(ts).forEach(([k,v])=>{h+=`<div style="padding:5px 0;border-bottom:1px solid var(--bdr);font-size:10px;display:flex;justify-content:space-between"><span style="font-weight:700">${k}</span><span style="color:var(--g4);font-family:var(--m);font-size:9px">${typeof v==='object'?JSON.stringify(v).slice(0,35):v}</span></div>`})}
   $('at-strats').innerHTML=h||empH('list-check','No strategies')}
   toast('🤖 AutoTrader loaded')}
-async function startAT(){const a=+$('at-amt').value;const s=$('at-str').value;if(!a||a<1){toast('⚠️ Enter amount');return}const r=await api('/auto-trader/start');toast(r?'🚀 AutoTrader started!':'❌ Failed');loadAT(1)}
-async function stopAT(){const r=await api('/auto-trader/stop');toast(r?'⏹️ Stopped':'❌ Error');loadAT(1)}
+async function startAT(){const a=+$('at-amt').value;const s=$('at-str').value;if(!a||a<1){toast('⚠️ Enter amount');return}try{const r=await fetch(A+'/auto-trader/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid,amount:a,strategy:s})});const d=await r.json();toast(d&&!d.error?'🚀 AutoTrader started!':'❌ '+(d?.error||'Failed'))}catch(e){toast('❌ '+e.message)}loadAT(1)}
+async function stopAT(){try{const r=await fetch(A+'/auto-trader/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid})});const d=await r.json();toast(d&&!d.error?'⏹️ Stopped':'❌ '+(d?.error||'Error'))}catch(e){toast('❌ '+e.message)}loadAT(1)}
 
 /* ======= INDIA ======= */
 async function loadIndia(f){if(_L.india&&!f)return;_L.india=1;
@@ -609,6 +609,42 @@ async function loadPort(f){if(_L.portfolio&&!f)return;_L.portfolio=1;
   const bal=d.balance_inr||0,pr=d.total_profit||0,inv=d.total_invested||0,pos=d.portfolio?.positions||[];
   $('pt-stats').innerHTML=`<div class="sc"><div class="sc-l">Value</div><div class="sc-v grd">${fR(bal)}</div></div><div class="sc"><div class="sc-l">P&L</div><div class="sc-v ${pr>=0?'up':'dn'}">${fR(pr)}</div></div><div class="sc"><div class="sc-l">Invested</div><div class="sc-v grd">${fR(inv)}</div></div><div class="sc"><div class="sc-l">Positions</div><div class="sc-v grd">${pos.length}</div></div>`;
   $('pt-data').innerHTML=pos.length?'<div class="tl">'+pos.map((p,i)=>`<div class="tr"><span class="tr-n">${i+1}</span>${mkI(p.symbol||p.name,'',i)}<div class="tr-i"><div class="tr-nm">${p.symbol||p.name||'--'}</div><div class="tr-mt">Qty: ${p.quantity||p.qty||0}</div></div><div class="tr-r"><div class="tr-p">${fR(p.current_value||p.value||0)}</div><div class="tr-c">${fC(p.pnl||p.pnl_pct||0)}</div></div></div>`).join('')+'</div>':empH('wallet','No holdings');toast('💼 Portfolio loaded')}
+
+/* WEBSOCKET LIVE PRICES */
+let _ws=null,_wsRetry=0;
+function connectWS(){
+  try{
+    const proto=location.protocol==='https:'?'wss:':'ws:';
+    _ws=new WebSocket(proto+'//'+location.host+'/ws/ticker');
+    _ws.onopen=()=>{_wsRetry=0;console.log('WS connected')};
+    _ws.onmessage=e=>{
+      try{
+        const d=JSON.parse(e.data);
+        if(d.prices||d.market_ticker){
+          const tks=d.prices||d.market_ticker||[];
+          if(tks.length&&_D.dash){
+            _D.dash.market_ticker=tks;
+            updGS(_D.dash);
+          }
+        }
+      }catch(ex){}
+    };
+    _ws.onclose=()=>{if(_wsRetry<10)setTimeout(()=>{_wsRetry++;connectWS()},Math.min(3000*_wsRetry,15000))};
+    _ws.onerror=()=>_ws.close();
+  }catch(e){console.log('WS not available')}
+}
+connectWS();
+
+/* LOGIN CHECK */
+if(uid==='0'){
+  const saved=localStorage.getItem('jarvis_uid');
+  if(saved)uid=saved;
+}
+function doLogin(name,phone){
+  fetch(A+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,phone:phone})})
+  .then(r=>r.json()).then(d=>{if(d.user_id){uid=String(d.user_id);localStorage.setItem('jarvis_uid',uid);toast('✅ Logged in!');loadDash(1)}else toast('❌ '+(d.error||'Login failed'))})
+  .catch(e=>toast('❌ '+e.message));
+}
 
 /* INIT */
 loadDash();

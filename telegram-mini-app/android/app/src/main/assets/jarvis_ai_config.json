@@ -1,0 +1,84 @@
+{
+  "app_name": "JARVIS AI Agent",
+  "version": "3.0.0-ai",
+  "ai_engine": {
+    "type": "local",
+    "no_internet_required": true,
+    "no_api_key_required": true,
+    "llm": {
+      "engine": "llama.cpp",
+      "format": "GGUF",
+      "default_model": "auto",
+      "recommended_models": [
+        {
+          "name": "TinyLlama 1.1B",
+          "filename": "tinyllama-1.1b-chat-Q4_K_M.gguf",
+          "url": "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
+          "size_mb": 670,
+          "min_ram_gb": 3,
+          "quality": "good",
+          "speed": "fast"
+        },
+        {
+          "name": "Llama 3.2 1B",
+          "filename": "llama-3.2-1b-instruct-Q4_K_M.gguf",
+          "url": "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+          "size_mb": 700,
+          "min_ram_gb": 3,
+          "quality": "very_good",
+          "speed": "fast"
+        },
+        {
+          "name": "Phi-3 Mini",
+          "filename": "phi-3-mini-4k-instruct-q4.gguf",
+          "url": "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf/resolve/main/Phi-3-mini-4k-instruct-q4.gguf",
+          "size_mb": 2300,
+          "min_ram_gb": 6,
+          "quality": "excellent",
+          "speed": "medium"
+        }
+      ],
+      "settings": {
+        "threads": 4,
+        "context_size": 2048,
+        "temperature": 0.7,
+        "max_tokens": 512
+      }
+    },
+    "stt": {
+      "engine": "vosk",
+      "models": {
+        "en-us": "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip",
+        "hi": "https://alphacephei.com/vosk/models/vosk-model-small-hi-0.22.zip",
+        "en-in": "https://alphacephei.com/vosk/models/vosk-model-small-en-in-0.4.zip"
+      },
+      "default_language": "en-us",
+      "sample_rate": 16000
+    },
+    "tts": {
+      "engine": "android_builtin",
+      "default_language": "hi-IN",
+      "offline_voices": true,
+      "rate": 1.0,
+      "pitch": 1.0
+    }
+  },
+  "device_commands": {
+    "battery": true,
+    "network": true,
+    "calls": true,
+    "sms": true,
+    "volume": true,
+    "vibrate": true,
+    "apps": true,
+    "settings": true,
+    "flashlight": true
+  },
+  "personality": {
+    "name": "JARVIS",
+    "creator": "DRD (Mahadev)",
+    "style": "friendly_hindi_english",
+    "wake_word": "jarvis",
+    "greeting": "Jai Mahadev! Main JARVIS hoon, aapka AI assistant! 🙏"
+  }
+}

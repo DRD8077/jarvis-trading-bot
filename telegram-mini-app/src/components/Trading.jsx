@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, lazy, Suspense } from 'react'
 import {
   TrendingUp, TrendingDown, BarChart3, Target, Zap, RefreshCw,
   ChevronDown, AlertTriangle, Eye, Clock
@@ -6,6 +6,8 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import { fetchSignals, fetchMarkets, fetchCandlePatternsOld as fetchCandlePatterns, fetchUltraPredict, sellPosition } from '../services/api'
 import { useApp } from '../context/AppContext'
+
+const TradingViewChart = lazy(() => import('../services/TradingViewChart'))
 
 const Trading = () => {
   const { addNotification, hapticFeedback } = useApp()
@@ -43,6 +45,24 @@ const Trading = () => {
 
   useEffect(() => { loadData() }, [])
 
+  // ⚡ Auto-refresh signals & markets every 15s
+  useEffect(() => {
+    const iv = setInterval(async () => {
+      try {
+        const [sigRes, mktRes] = await Promise.all([
+          fetchSignals().catch(() => null),
+          fetchMarkets().catch(() => null)
+        ])
+        const sigData = sigRes?.data?.data || sigRes?.data?.signals || sigRes?.data || []
+        if (Array.isArray(sigData) && sigData.length) setSignals(sigData)
+        const mktData = mktRes?.data?.data || mktRes?.data?.markets || mktRes?.data || []
+        if (Array.isArray(mktData) && mktData.length) setMarkets(mktData)
+        else if (mktData?.crypto) setMarkets([...(mktData.crypto || []), ...(mktData.indian || [])])
+      } catch (e) { /* silent */ }
+    }, 15000)
+    return () => clearInterval(iv)
+  }, [])
+
   const handleExecuteTrade = async (signal) => {
     hapticFeedback('impact')
     addNotification(`Executing ${signal.signal || signal.type} on ${signal.symbol}...`, 'info')
@@ -59,7 +79,8 @@ const Trading = () => {
 
   const tabs = [
     { id: 'signals', label: 'AI Signals', icon: Zap },
-    { id: 'markets', label: 'Markets', icon: BarChart3 },
+    { id: 'chart', label: 'Charts', icon: BarChart3 },
+    { id: 'markets', label: 'Markets', icon: TrendingUp },
     { id: 'predict', label: 'Predictions', icon: Target },
   ]
 
@@ -101,6 +122,22 @@ const Trading = () => {
           )
         })}
       </div>
+
+      {/* CHART TAB */}
+      {activeTab === 'chart' && (
+        <div className="space-y-3">
+          <Suspense fallback={<div className="h-[400px] bg-slate-800 rounded-xl animate-pulse flex items-center justify-center text-slate-500 text-sm">Loading chart...</div>}>
+            <TradingViewChart symbol="BTCUSDT" height={350} />
+          </Suspense>
+          <div className="grid grid-cols-2 gap-2">
+            {['ETHUSDT', 'SOLUSDT'].map(sym => (
+              <Suspense key={sym} fallback={<div className="h-[200px] bg-slate-800 rounded-xl animate-pulse" />}>
+                <TradingViewChart symbol={sym} height={200} />
+              </Suspense>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* SIGNALS TAB */}
       {activeTab === 'signals' && (

@@ -14,12 +14,40 @@
       "text": "hello",
       "intent": "greeting",
       "timestamp": "2026-02-19T02:08:17.744606+05:30"
+    },
+    {
+      "role": "user",
+      "text": "nifty prediction",
+      "intent": "prediction",
+      "timestamp": "2026-02-19T11:44:12.612600+05:30"
+    },
+    {
+      "role": "user",
+      "text": "hello",
+      "intent": "greeting",
+      "timestamp": "2026-02-19T12:21:33.224719+05:30"
+    },
+    {
+      "role": "assistant",
+      "text": "नमस्ते! आपने NIFTY prediction के बारे में पूछा है।\n\nमेरे पास अभी जो लाइव मार्केट डेटा है, उसके अनुसार NIFTY 50: 0 दिखा रहा है।\n\n**NIFTY Prediction:**\nइस समय, मेरे पास NIFTY के लिए सक्रिय डेटा पॉइंट्स (जैसे OI analysis, PCR, Max Pain, ML predictions, pivot levels) उपलब्ध नहीं हैं क्योंकि लाइव फीड में NIFTY 50 का मान 0 है।\n\nएक सटीक और एक्शनएबल prediction देने के लिए मुझे इन महत्वपूर्ण डेटा पॉइंट्स की ज़रूरत होगी। जैसे ही NIFTY का रियल-टाइम डेटा अपडेट होता है, मैं आपको तुरंत एक विस्तृत analysis और prediction दूँगा।\n\nक्या आप किसी और चीज़ के बारे में जानना चाहेंगे, जैसे Crypto मार्केट (ETH, BTC, SOL) या कोई और स्टॉक? उनके लिए मेरे पास लाइव डेटा उपलब्ध है।",
+      "intent": "",
+      "timestamp": "2026-02-19T12:21:33.230311+05:30"
+    },
+    {
+      "role": "user",
+      "text": "hello",
+      "intent": "greeting",
+      "timestamp": "2026-02-19T12:22:12.992978+05:30"
     }
   ],
   "positions": [],
-  "facts": {},
+  "facts": {
+    "favorite_symbols": [
+      "NIFTY"
+    ]
+  },
   "predictions": [],
   "learnings": [],
   "summary": "",
-  "last_active": "2026-02-19T02:08:17.744639+05:30"
+  "last_active": "2026-02-19T12:22:12.993009+05:30"
 }

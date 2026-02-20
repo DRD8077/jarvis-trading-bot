@@ -1,8 +1,8 @@
-// JARVIS Trading — Bulletproof Service Worker v5
-// Makes the old APK work even when Codespace is OFF
+// JARVIS Trading — Bulletproof Service Worker v6
+// PWA + Push Notifications + Background Sync + Offline Cache
 // Strategy: Cache everything on first load, use Railway as fallback origin
 
-const CACHE_NAME = 'jarvis-v5';
+const CACHE_NAME = 'jarvis-v6';
 const RAILWAY = 'https://jarvis-trading-production.up.railway.app';
 
 // ─── INSTALL: Precache shell + fetch Railway version as backup ───
@@ -110,5 +110,119 @@ self.addEventListener('message', (e) => {
         }
       } catch(e) {}
     })();
+  }
+});
+
+// ─── PUSH NOTIFICATIONS: Handle incoming push messages ───
+self.addEventListener('push', (e) => {
+  let data = { title: 'JARVIS Alert', body: 'New update available', icon: '/miniapp/icons/icon-192.png' };
+  
+  try {
+    if (e.data) {
+      const payload = e.data.json();
+      data = { ...data, ...payload };
+    }
+  } catch {
+    if (e.data) {
+      data.body = e.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body || data.message || '',
+    icon: data.icon || '/miniapp/icons/icon-192.png',
+    badge: '/miniapp/icons/icon-96.png',
+    image: data.image || undefined,
+    vibrate: [200, 100, 200, 100, 200],
+    tag: data.tag || 'jarvis-notification',
+    renotify: true,
+    requireInteraction: data.urgent || false,
+    data: {
+      url: data.url || '/miniapp',
+      symbol: data.symbol,
+      alertId: data.alertId,
+      type: data.type || 'general',
+    },
+    actions: [
+      { action: 'open', title: '📱 Open JARVIS' },
+      { action: 'dismiss', title: '✖ Dismiss' },
+    ],
+  };
+
+  e.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+// ─── NOTIFICATION CLICK: Open app on notification tap ───
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+
+  if (e.action === 'dismiss') return;
+
+  const url = e.notification.data?.url || '/miniapp';
+
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Focus existing window if available
+      for (const client of clientList) {
+        if (client.url.includes('/miniapp') && 'focus' in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      // Open new window
+      return clients.openWindow(url);
+    })
+  );
+});
+
+// ─── BACKGROUND SYNC: Retry failed requests when back online ───
+self.addEventListener('sync', (e) => {
+  if (e.tag === 'jarvis-sync-alerts') {
+    e.waitUntil(syncPriceAlerts());
+  }
+  if (e.tag === 'jarvis-sync-trades') {
+    e.waitUntil(syncPendingTrades());
+  }
+});
+
+async function syncPriceAlerts() {
+  try {
+    const res = await fetch(RAILWAY + '/api/miniapp/ticker');
+    if (res.ok) {
+      const data = await res.json();
+      // Notify all clients about fresh data
+      const allClients = await clients.matchAll();
+      for (const client of allClients) {
+        client.postMessage({ type: 'PRICE_UPDATE', data: data.data || data });
+      }
+    }
+  } catch {}
+}
+
+async function syncPendingTrades() {
+  // Retry any queued trade executions
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    const pendingResp = await cache.match('__pending_trades__');
+    if (pendingResp) {
+      const trades = await pendingResp.json();
+      for (const trade of trades) {
+        try {
+          await fetch(RAILWAY + '/api/miniapp/trade/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(trade),
+          });
+        } catch {}
+      }
+      await cache.delete('__pending_trades__');
+    }
+  } catch {}
+}
+
+// ─── PERIODIC SYNC: Background price check (where supported) ───
+self.addEventListener('periodicsync', (e) => {
+  if (e.tag === 'jarvis-price-check') {
+    e.waitUntil(syncPriceAlerts());
   }
 });

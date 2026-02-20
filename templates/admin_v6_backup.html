@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS Admin Panel — Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<style>
+:root{--bg:#0a0e1a;--bg2:#111827;--bg3:#1e293b;--card:#141c2e;--border:#1e3a5f;--primary:#3b82f6;--primary-glow:#3b82f640;--accent:#10b981;--accent2:#8b5cf6;--danger:#ef4444;--warn:#f59e0b;--text:#f1f5f9;--text2:#94a3b8;--text3:#64748b;--gold:#fbbf24;--cyan:#06b6d4;--pink:#ec4899;--gradient:linear-gradient(135deg,#3b82f6,#8b5cf6,#ec4899)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:radial-gradient(ellipse at 20% 50%,#1e3a5f20 0%,transparent 50%),radial-gradient(ellipse at 80% 20%,#8b5cf610 0%,transparent 50%);pointer-events:none;z-index:0}
+.particles{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:hidden}
+.particle{position:absolute;width:2px;height:2px;background:#3b82f6;border-radius:50%;animation:float linear infinite}
+@keyframes float{0%{transform:translateY(100vh);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-10vh);opacity:0}}
+.navbar{position:sticky;top:0;z-index:100;background:rgba(10,14,26,0.85);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--border);padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between}
+.nav-brand{display:flex;align-items:center;gap:12px}
+.nav-brand .logo{width:40px;height:40px;background:var(--gradient);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;animation:pulse-glow 2s ease-in-out infinite}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 20px #3b82f640}50%{box-shadow:0 0 40px #3b82f680,0 0 80px #8b5cf640}}
+.nav-brand h1{font-size:20px;font-weight:800;background:var(--gradient);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.nav-brand span{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:2px;text-transform:uppercase}
+.nav-actions{display:flex;align-items:center;gap:12px}
+.nav-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:8px 12px;border-radius:10px;cursor:pointer;font-size:13px;transition:all .3s;display:flex;align-items:center;gap:6px;text-decoration:none}
+.nav-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary);transform:translateY(-1px)}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.main-container{display:flex;min-height:calc(100vh - 64px);position:relative;z-index:1}
+.sidebar{width:260px;background:rgba(17,24,39,0.6);backdrop-filter:blur(10px);border-right:1px solid var(--border);padding:20px 12px;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+.sidebar-section{margin-top:16px;margin-bottom:6px;padding:0 12px;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3)}
+.sidebar-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;cursor:pointer;transition:all .2s;color:var(--text2);font-size:13px;font-weight:500;position:relative}
+.sidebar-item:hover{background:var(--bg3);color:var(--text)}
+.sidebar-item.active{background:linear-gradient(135deg,#3b82f620,#8b5cf620);color:var(--primary);border:1px solid #3b82f630}
+.sidebar-item.active::before{content:'';position:absolute;left:0;top:25%;height:50%;width:3px;background:var(--primary);border-radius:0 3px 3px 0}
+.sidebar-item i{width:20px;text-align:center;font-size:14px}
+.sidebar-item .badge{margin-left:auto;background:var(--danger);color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700}
+.content{flex:1;padding:24px;overflow-y:auto}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;position:relative;overflow:hidden;transition:all .3s}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gradient);opacity:0;transition:opacity .3s}
+.stat-card:hover{transform:translateY(-4px);box-shadow:0 20px 40px rgba(0,0,0,.3)}
+.stat-card:hover::before{opacity:1}
+.stat-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:14px}
+.stat-icon.blue{background:#3b82f620;color:#3b82f6}.stat-icon.green{background:#10b98120;color:#10b981}.stat-icon.purple{background:#8b5cf620;color:#8b5cf6}.stat-icon.gold{background:#fbbf2420;color:#fbbf24}.stat-icon.cyan{background:#06b6d420;color:#06b6d4}.stat-icon.pink{background:#ec489920;color:#ec4899}.stat-icon.red{background:#ef444420;color:#ef4444}
+.stat-label{font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.stat-value{font-size:28px;font-weight:800;background:var(--gradient);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;line-height:1.2}
+.stat-change{font-size:12px;margin-top:6px;display:flex;align-items:center;gap:4px;color:var(--accent)}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.section-title{font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
+.section-title i{color:var(--primary)}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px;margin-bottom:24px}
+.panel-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;transition:all .3s;margin-bottom:16px}
+.panel-card:hover{border-color:var(--primary);box-shadow:0 0 30px var(--primary-glow)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.data-table{width:100%;border-collapse:separate;border-spacing:0}
+.data-table th{text-align:left;padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);background:var(--bg2);border-bottom:1px solid var(--border)}
+.data-table th:first-child{border-radius:8px 0 0 0}.data-table th:last-child{border-radius:0 8px 0 0}
+.data-table td{padding:12px 14px;font-size:13px;border-bottom:1px solid #ffffff08;color:var(--text2)}
+.data-table tr:hover td{background:var(--bg3);color:var(--text)}
+.activity-feed{display:flex;flex-direction:column;gap:10px;max-height:400px;overflow-y:auto}
+.activity-item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;background:var(--bg2);border:1px solid transparent;transition:all .2s}
+.activity-item:hover{border-color:var(--border);transform:translateX(4px)}
+.activity-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.activity-text{font-size:13px;color:var(--text2);line-height:1.4}.activity-text strong{color:var(--text);font-weight:600}
+.activity-time{font-size:11px;color:var(--text3);margin-left:auto;white-space:nowrap}
+.bot-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.bot-btn{padding:14px 18px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);color:var(--text);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;transition:all .3s;font-family:'Inter',sans-serif}
+.bot-btn:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.bot-btn.primary{background:linear-gradient(135deg,#3b82f6,#2563eb);border-color:#3b82f6}
+.bot-btn.success{background:linear-gradient(135deg,#10b981,#059669);border-color:#10b981}
+.bot-btn.danger{background:linear-gradient(135deg,#ef4444,#dc2626);border-color:#ef4444}
+.bot-btn.warning{background:linear-gradient(135deg,#f59e0b,#d97706);border-color:#f59e0b}
+.bot-btn i{font-size:16px}
+.terminal{background:#0d1117;border:1px solid #30363d;border-radius:12px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;max-height:300px;overflow-y:auto}
+.terminal-line{padding:2px 0;color:#c9d1d9}.terminal-line .prompt{color:var(--accent)}.terminal-line .cmd{color:var(--cyan)}.terminal-line .success{color:var(--accent)}.terminal-line .error{color:var(--danger)}.terminal-line .output{color:var(--text3)}
+.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
+.feature-item{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px}
+.feature-name{font-size:13px;font-weight:600}.feature-cat{font-size:10px;color:var(--text3);text-transform:uppercase}
+.toggle{width:44px;height:24px;border-radius:12px;background:var(--bg3);border:1px solid var(--border);cursor:pointer;position:relative;transition:all .3s}
+.toggle.on{background:var(--accent);border-color:var(--accent)}
+.toggle::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:2px;left:2px;transition:all .3s}
+.toggle.on::after{left:22px}
+.toast{position:fixed;top:16px;right:16px;z-index:9999;background:var(--card);border:1px solid var(--accent);border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:10px;box-shadow:0 20px 50px rgba(0,0,0,.5);animation:toastIn .4s ease;max-width:360px;font-size:13px}
+@keyframes toastIn{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:900px){.sidebar{display:none}.stats-grid{grid-template-columns:1fr 1fr}.cards-grid{grid-template-columns:1fr}}
+@media(max-width:600px){.stats-grid{grid-template-columns:1fr}.content{padding:16px}}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="particles" id="particles"></div>
+<nav class="navbar">
+  <div class="nav-brand"><div class="logo">🤖</div><div><h1>JARVIS Admin</h1><span>Command Center v6.0</span></div></div>
+  <div class="nav-actions">
+    <div class="nav-btn"><div class="status-dot"></div> System Online</div>
+    <div class="nav-btn" onclick="refreshAll()"><i class="fas fa-sync-alt"></i> Refresh</div>
+    <a class="nav-btn" href="/miniapp"><i class="fas fa-rocket"></i> Mini App</a>
+    <a class="nav-btn" href="/health"><i class="fas fa-heartbeat"></i> Health</a>
+  </div>
+</nav>
+<div class="main-container">
+  <aside class="sidebar">
+    <div class="sidebar-section">Main</div>
+    <div class="sidebar-item active" onclick="showSection('dashboard',this)"><i class="fas fa-th-large"></i> Dashboard</div>
+    <div class="sidebar-item" onclick="showSection('users',this)"><i class="fas fa-users"></i> Users <span class="badge">{{ stats.total_users }}</span></div>
+    <div class="sidebar-item" onclick="showSection('features',this)"><i class="fas fa-toggle-on"></i> Features</div>
+    <div class="sidebar-item" onclick="showSection('trading',this)"><i class="fas fa-chart-line"></i> Trading</div>
+    <div class="sidebar-section">Bot Controls</div>
+    <div class="sidebar-item" onclick="showSection('bot',this)"><i class="fas fa-robot"></i> Bot Manager</div>
+    <div class="sidebar-item" onclick="showSection('broadcast',this)"><i class="fas fa-bullhorn"></i> Broadcast</div>
+    <div class="sidebar-item" onclick="showSection('wallets',this)"><i class="fas fa-wallet"></i> Wallets</div>
+    <div class="sidebar-section">AI & Analytics</div>
+    <div class="sidebar-item" onclick="showSection('ai',this)"><i class="fas fa-brain"></i> AI Engine</div>
+    <div class="sidebar-item" onclick="showSection('voice',this)"><i class="fas fa-microphone"></i> Voice Assistant 💕</div>
+    <div class="sidebar-item" onclick="showSection('gemini',this)"><i class="fas fa-gem"></i> Gemini Bridge</div>
+    <div class="sidebar-item" onclick="showSection('intelligence',this)"><i class="fas fa-atom"></i> Super Intelligence</div>
+    <div class="sidebar-item" onclick="showSection('engines',this)"><i class="fas fa-cogs"></i> All Engines</div>
+    <div class="sidebar-item" onclick="showSection('logs',this)"><i class="fas fa-terminal"></i> System Logs</div>
+    <div class="sidebar-section">Updates & Auth</div>
+    <div class="sidebar-item" onclick="showSection('ota',this)"><i class="fas fa-download"></i> OTA Updates</div>
+    <div class="sidebar-item" onclick="showSection('auth',this)"><i class="fas fa-shield-alt"></i> Smart Auth</div>
+    <div class="sidebar-section">🚀 Power-Ups v6</div>
+    <div class="sidebar-item" onclick="showSection('apikeys',this)"><i class="fas fa-key"></i> API Keys</div>
+    <div class="sidebar-item" onclick="showSection('sysmetrics',this)"><i class="fas fa-chart-area"></i> System Metrics</div>
+    <div class="sidebar-item" onclick="showSection('taskqueue',this)"><i class="fas fa-tasks"></i> Task Queue</div>
+    <div class="sidebar-item" onclick="showSection('soctrading',this)"><i class="fas fa-users-cog"></i> Social Trading</div>
+    <div class="sidebar-item" onclick="showSection('errorlog',this)"><i class="fas fa-exclamation-triangle"></i> Error Log</div>
+    <div class="sidebar-section">Settings</div>
+    <div class="sidebar-item" onclick="showSection('settings',this)"><i class="fas fa-cog"></i> Configuration</div>
+  </aside>
+  <main class="content">
+    <!-- Dashboard -->
+    <div id="sec-dashboard" class="section">
+      <div class="section-header">
+        <div class="section-title"><i class="fas fa-th-large"></i> Dashboard Overview</div>
+        <div style="font-size:12px;color:var(--text3)">Admin: {{ admin_name }} | ID: {{ admin_chat_id }} | <span id="last-update">{{ stats.last_update }}</span></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-users"></i></div><div class="stat-label">Total Users</div><div class="stat-value" id="s-users">{{ stats.total_users }}</div><div class="stat-change"><i class="fas fa-database"></i> Database</div></div>
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-user-clock"></i></div><div class="stat-label">Active Today</div><div class="stat-value" id="s-active">{{ stats.active_today }}</div><div class="stat-change"><i class="fas fa-check-circle"></i> Live</div></div>
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-crown"></i></div><div class="stat-label">Premium</div><div class="stat-value">{{ stats.premium_users }}</div><div class="stat-change"><i class="fas fa-star"></i> Verified</div></div>
+        <div class="stat-card"><div class="stat-icon cyan"><i class="fas fa-robot"></i></div><div class="stat-label">Bot</div><div class="stat-value" style="font-size:20px">ONLINE</div><div class="stat-change"><i class="fas fa-circle"></i> 24/7</div></div>
+        <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-brain"></i></div><div class="stat-label">AI Engine</div><div class="stat-value" style="font-size:20px">ACTIVE</div><div class="stat-change"><i class="fas fa-microchip"></i> Multi-AI</div></div>
+        <div class="stat-card"><div class="stat-icon pink"><i class="fas fa-exchange-alt"></i></div><div class="stat-label">Deposits</div><div class="stat-value">${{ payment_stats.total_deposits }}</div><div class="stat-change"><i class="fas fa-wallet"></i> Total</div></div>
+      </div>
+      <div class="cards-grid">
+        <div class="panel-card">
+          <div class="card-header"><div class="card-title"><i class="fas fa-heartbeat" style="color:var(--danger)"></i> System Engines</div></div>
+          <table class="data-table"><thead><tr><th>Engine</th><th>Status</th><th>Type</th></tr></thead><tbody id="engine-table-body">
+            <tr data-engine="dex"><td>⚡ DEX Engine</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>DEX</td></tr>
+            <tr data-engine="brain"><td>🧠 JARVIS Brain v5</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>AI</td></tr>
+            <tr data-engine="sniper"><td>🚀 Auto Sniper</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>Trade</td></tr>
+            <tr data-engine="crypto"><td>💎 Crypto Engine</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>Crypto</td></tr>
+            <tr data-engine="ai_signals"><td>📊 AI Signals</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>Signal</td></tr>
+            <tr data-engine="ml"><td>📈 ML Predictor</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>ML</td></tr>
+            <tr data-engine="candle"><td>🕯️ Candle Analyzer</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>Analysis</td></tr>
+            <tr data-engine="news"><td>📰 News Brain</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>AI</td></tr>
+            <tr data-engine="rug"><td>🔍 Rug Detector</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>Security</td></tr>
+            <tr data-engine="nifty_brain"><td>🇮🇳 Nifty Super Brain</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>India</td></tr>
+            <tr data-engine="portfolio"><td>💼 Portfolio</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>Portfolio</td></tr>
+            <tr data-engine="options"><td>📈 Options Engine</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>Options</td></tr>
+            <tr data-engine="india_stock"><td>🇮🇳 India Stock</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>Stock</td></tr>
+            <tr data-engine="regime"><td>🎯 Market Regime</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>Analysis</td></tr>
+            <tr data-engine="intel"><td>🧠 Crypto Intel</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>Intelligence</td></tr>
+            <tr data-engine="coindcx"><td>💰 CoinDCX</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>Exchange</td></tr>
+            <tr data-engine="airdrops"><td>🎁 Airdrops</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>Scanner</td></tr>
+            <tr data-engine="global"><td>🌍 Global Markets</td><td class="engine-status"><span style="color:var(--text3)">● Checking...</span></td><td>Global</td></tr>
+          </tbody></table>
+        </div>
+        <div class="panel-card">
+          <div class="card-header"><div class="card-title"><i class="fas fa-stream" style="color:var(--accent)"></i> Live Activity</div></div>
+          <div class="activity-feed" id="activity-feed"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Users -->
+    <div id="sec-users" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-users"></i> User Management ({{ stats.total_users }} users)</div></div>
+      <div class="panel-card">
+        <table class="data-table"><thead><tr><th>Chat ID</th><th>Name</th><th>Status</th><th>Tier</th><th>Last Active</th><th>Actions</th></tr></thead><tbody>
+          {% for user in users %}
+          {% set uid = user.chat_id if user.chat_id is defined else '' %}
+          <tr>
+            <td style="font-family:'JetBrains Mono',monospace">{{ user.chat_id if user.chat_id is defined else user.get('id','--') }}</td>
+            <td>{{ user.name if user.name is defined else user.get('first_name','User') }}</td>
+            <td style="color:var(--accent)">● Active</td>
+            <td>{{ user.tier if user.tier is defined else 'free' }}</td>
+            <td>{{ user.last_active if user.last_active is defined else '--' }}</td>
+            <td>
+              <button class="bot-btn" style="padding:4px 10px;font-size:11px" data-action="block" data-uid="{{ uid }}" onclick="userAction(this.dataset.action,this.dataset.uid)"><i class="fas fa-ban"></i></button>
+              <button class="bot-btn primary" style="padding:4px 10px;font-size:11px" data-action="msg" data-uid="{{ uid }}" onclick="userAction(this.dataset.action,this.dataset.uid)"><i class="fas fa-paper-plane"></i></button>
+            </td>
+          </tr>
+          {% endfor %}
+          {% if not users %}<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:30px">No users yet — users appear when they interact with @David_crew_bot</td></tr>{% endif %}
+        </tbody></table>
+      </div>
+    </div>
+    <!-- Features -->
+    <div id="sec-features" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-toggle-on"></i> Feature Toggles</div><button class="bot-btn success" onclick="loadFeatures()"><i class="fas fa-sync"></i> Refresh</button></div>
+      <div class="feature-grid" id="feature-grid"></div>
+    </div>
+    <!-- Trading -->
+    <div id="sec-trading" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-chart-line"></i> Trading Engines</div></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-chart-bar"></i></div><div class="stat-label">Active Engines</div><div class="stat-value">12+</div></div>
+        <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-bolt"></i></div><div class="stat-label">AI Signals</div><div class="stat-value" style="font-size:20px">Active</div></div>
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-crosshairs"></i></div><div class="stat-label">Auto Sniper</div><div class="stat-value" style="font-size:20px">ON</div></div>
+        <div class="stat-card"><div class="stat-icon cyan"><i class="fas fa-robot"></i></div><div class="stat-label">Conqueror</div><div class="stat-value" style="font-size:20px">LIVE</div></div>
+      </div>
+      <div class="panel-card">
+        <div class="card-title" style="margin-bottom:12px"><i class="fas fa-list" style="color:var(--primary)"></i> All Trading Engines</div>
+        <table class="data-table"><thead><tr><th>Engine</th><th>File</th><th>Description</th><th>Status</th></tr></thead><tbody>
+          <tr><td>🚀 Auto Trader</td><td>auto_trader.py</td><td>Automated trade execution</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>⚡ Auto Sniper</td><td>auto_sniper.py</td><td>Token sniping (5 strategies)</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>💰 Buy/Sell</td><td>buy_sell_engine.py</td><td>Smart buy/sell signals</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🔥 Conqueror</td><td>jarvis_conqueror_trader.py</td><td>25-factor AI trader</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>💎 Real Trader</td><td>jarvis_real_trader.py</td><td>Jupiter DEX auto-trade</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🧠 Mega Trader</td><td>jarvis_mega_trader.py</td><td>Multi-strategy mega brain</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>📊 AI Signals</td><td>ai_signals.py</td><td>Technical analysis signals</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🕯️ Candle</td><td>candle_analyzer.py</td><td>Multi-TF pattern scan</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>📉 Index</td><td>live_index_engine.py</td><td>NIFTY/SENSEX tracking</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🇮🇳 Options</td><td>options_engine.py</td><td>NSE option chain</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🐋 Whale</td><td>whale_alert.py</td><td>Large TX monitor</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🔍 Rug Detector</td><td>rug_detector.py</td><td>Smart contract safety</td><td style="color:var(--accent)">● Active</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+    <!-- Bot Manager -->
+    <div id="sec-bot" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-robot"></i> Bot Manager — @David_crew_bot</div></div>
+      <div class="bot-controls">
+        <button class="bot-btn primary" onclick="botCmd('start')"><i class="fas fa-play"></i> Start Bot</button>
+        <button class="bot-btn danger" onclick="botCmd('stop')"><i class="fas fa-stop"></i> Stop Bot</button>
+        <button class="bot-btn warning" onclick="botCmd('restart')"><i class="fas fa-redo"></i> Restart</button>
+        <button class="bot-btn success" onclick="botCmd('status')"><i class="fas fa-info-circle"></i> Status</button>
+        <button class="bot-btn" onclick="botCmd('health')"><i class="fas fa-heartbeat"></i> Health</button>
+        <button class="bot-btn" onclick="botCmd('logs')"><i class="fas fa-terminal"></i> Logs</button>
+      </div>
+      <div class="panel-card" style="margin-top:20px">
+        <div class="card-title" style="margin-bottom:12px"><i class="fas fa-terminal" style="color:var(--accent)"></i> Bot Console</div>
+        <div class="terminal" id="bot-terminal">
+          <div class="terminal-line"><span class="prompt">jarvis@bot:~$</span> <span class="output">Bot: @David_crew_bot | Admin: {{ admin_chat_id }}</span></div>
+          <div class="terminal-line"><span class="success">Ready for commands...</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- Broadcast -->
+    <div id="sec-broadcast" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-bullhorn"></i> Broadcast</div></div>
+      <div class="panel-card">
+        <div style="margin-bottom:12px;font-size:13px;color:var(--text2)">Send message to all {{ stats.total_users }} users:</div>
+        <textarea id="broadcast-msg" rows="5" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--text);font-family:Inter;resize:vertical;font-size:13px" placeholder="Type broadcast message..."></textarea>
+        <div style="display:flex;gap:10px;margin-top:12px"><button class="bot-btn primary" onclick="sendBroadcast()"><i class="fas fa-paper-plane"></i> Send</button><button class="bot-btn" onclick="document.getElementById('broadcast-msg').value=''"><i class="fas fa-eraser"></i> Clear</button></div>
+      </div>
+    </div>
+    <!-- Wallets -->
+    <div id="sec-wallets" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-wallet"></i> Wallets</div></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-arrow-down"></i></div><div class="stat-label">Deposits</div><div class="stat-value">${{ payment_stats.total_deposits }}</div></div>
+        <div class="stat-card"><div class="stat-icon red"><i class="fas fa-arrow-up"></i></div><div class="stat-label">Withdrawals</div><div class="stat-value">${{ payment_stats.total_withdrawals }}</div></div>
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-hourglass-half"></i></div><div class="stat-label">Pending</div><div class="stat-value">{{ payment_stats.pending_withdrawals }}</div></div>
+        <div class="stat-card"><div class="stat-icon cyan"><i class="fas fa-wallet"></i></div><div class="stat-label">Active</div><div class="stat-value">{{ payment_stats.active_wallets }}</div></div>
+      </div>
+    </div>
+    <!-- AI Engine -->
+    <div id="sec-ai" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-brain"></i> AI Engine</div></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-microchip"></i></div><div class="stat-label">Brain</div><div class="stat-value" style="font-size:18px">v5 Nuclear</div></div>
+        <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-cloud"></i></div><div class="stat-label">Groq</div><div class="stat-value" style="font-size:18px">✅ Active</div></div>
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-robot"></i></div><div class="stat-label">OpenAI</div><div class="stat-value" style="font-size:18px">✅ Active</div></div>
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-gem"></i></div><div class="stat-label">Gemini</div><div class="stat-value" style="font-size:18px">✅ Active</div></div>
+      </div>
+      <div class="panel-card">
+        <div class="card-title" style="margin-bottom:12px"><i class="fas fa-list" style="color:var(--accent2)"></i> AI Engines</div>
+        <table class="data-table"><thead><tr><th>Engine</th><th>File</th><th>Capabilities</th></tr></thead><tbody>
+          <tr><td>🧠 Brain v5</td><td>jarvis_brain.py</td><td>Multi-AI, memory, NLU, intent</td></tr>
+          <tr><td>💬 AI Chat</td><td>ai_chat.py</td><td>Conversational AI</td></tr>
+          <tr><td>🤖 JARVIS AI</td><td>jarvis_ai.py</td><td>Intent classification</td></tr>
+          <tr><td>🧠 Super Brain</td><td>jarvis_super_brain.py</td><td>News intelligence</td></tr>
+          <tr><td>📊 ML Predictor</td><td>ml_predictor.py</td><td>Price prediction</td></tr>
+          <tr><td>💹 Market Brain</td><td>jarvis_market_brain.py</td><td>NIFTY/SENSEX analysis</td></tr>
+          <tr><td>⚡ Ultra AI</td><td>jarvis_ultra_ai.py</td><td>Next-gen processing</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+    <!-- All Engines -->
+    <div id="sec-engines" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-cogs"></i> All Project Engines</div></div>
+      <div class="panel-card">
+        <table class="data-table"><thead><tr><th>File</th><th>Purpose</th><th>Status</th></tr></thead><tbody>
+          <tr><td>telegram_bot.py</td><td>Telegram Bot (10K+ lines)</td><td style="color:var(--accent)">● Core</td></tr>
+          <tr><td>server.py</td><td>FastAPI Server</td><td style="color:var(--accent)">● Running</td></tr>
+          <tr><td>jarvis_brain.py</td><td>AI Brain v5</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>admin_panel.py</td><td>Admin Control</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>miniapp_api.py</td><td>Mini App API v6</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>auto_trader.py</td><td>Auto Trading</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>auto_sniper.py</td><td>Token Sniping</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>crypto_engine.py</td><td>Crypto Analysis</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>dex_engine.py</td><td>DEX Trading</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>ai_signals.py</td><td>Signal Generator</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>candle_analyzer.py</td><td>Pattern Scanner</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>ml_predictor.py</td><td>ML Predictor</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>jarvis_monitor.py</td><td>System Monitor</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>jarvis_conqueror_trader.py</td><td>25-Factor AI</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>jarvis_real_trader.py</td><td>Jupiter DEX Trade</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>whale_alert.py</td><td>Whale Monitor</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>rug_detector.py</td><td>Contract Safety</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>solana_engine.py</td><td>Solana Monitor</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>alerter.py</td><td>Alert System</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>data_store.py</td><td>Database</td><td style="color:var(--accent)">● Active</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+    <!-- Logs -->
+    <div id="sec-logs" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-terminal"></i> System Logs</div><button class="bot-btn primary" onclick="loadLogs()"><i class="fas fa-sync"></i> Refresh</button></div>
+      <div class="terminal" id="system-logs" style="height:500px">
+        <div class="terminal-line"><span class="prompt">[STARTUP]</span> <span class="success">🤖 JARVIS v5.0 started</span></div>
+        <div class="terminal-line"><span class="prompt">[INFO]</span> <span class="output">Admin: {{ admin_name }} ({{ admin_chat_id }})</span></div>
+        <div class="terminal-line"><span class="prompt">[INFO]</span> <span class="output">Users: {{ stats.total_users }}</span></div>
+        <div class="terminal-line"><span class="prompt">[INFO]</span> <span class="success">All systems online</span></div>
+      </div>
+    </div>
+    <!-- Settings -->
+    <div id="sec-settings" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-cog"></i> Configuration</div></div>
+      <div class="panel-card">
+        <table class="data-table"><thead><tr><th>Setting</th><th>Value</th><th>Source</th></tr></thead><tbody>
+          <tr><td>Admin Chat ID</td><td style="font-family:'JetBrains Mono'">{{ admin_chat_id }}</td><td>.env</td></tr>
+          <tr><td>Bot</td><td>@David_crew_bot</td><td>Telegram</td></tr>
+          <tr><td>Server Port</td><td>8000</td><td>server.py</td></tr>
+          <tr><td>AI Providers</td><td>Groq, OpenAI, Gemini, Anthropic</td><td>.env</td></tr>
+          <tr><td>Mini App</td><td>/miniapp</td><td>server.py</td></tr>
+          <tr><td>Database</td><td>SQLite + JSON</td><td>admin_panel.py</td></tr>
+          <tr><td>Voice Engine</td><td>Hindi Sweet Voice (Gemini TTS, Edge TTS)</td><td>jarvis_hindi_voice.py</td></tr>
+          <tr><td>OTA System</td><td>Live Delta Updates</td><td>jarvis_ota_update.py</td></tr>
+          <tr><td>Auth System</td><td>Owner/Admin/Premium/Free tiers</td><td>jarvis_smart_auth.py</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+
+    <!-- 🎙️ Hindi Voice Assistant -->
+    <div id="sec-voice" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-microphone"></i> 🎙️ Hindi Voice Assistant — Sweet & Smiling 💕</div></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon pink"><i class="fas fa-microphone"></i></div><div class="stat-label">Voice Engine</div><div class="stat-value" style="font-size:18px">ACTIVE 💕</div><div class="stat-change"><i class="fas fa-check"></i> Hindi Sweet</div></div>
+        <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-language"></i></div><div class="stat-label">Language</div><div class="stat-value" style="font-size:18px">Hindi 🇮🇳</div><div class="stat-change"><i class="fas fa-globe"></i> Hinglish</div></div>
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-smile"></i></div><div class="stat-label">Personality</div><div class="stat-value" style="font-size:18px">Sweet 😊</div><div class="stat-change"><i class="fas fa-heart"></i> Always Smiling</div></div>
+        <div class="stat-card"><div class="stat-icon cyan"><i class="fas fa-volume-up"></i></div><div class="stat-label">TTS Chain</div><div class="stat-value" style="font-size:14px">Gemini→Edge</div><div class="stat-change"><i class="fas fa-link"></i> 3-layer fallback</div></div>
+      </div>
+      <div class="panel-card">
+        <div class="card-title" style="margin-bottom:12px"><i class="fas fa-cogs" style="color:var(--pink)"></i> Voice Features</div>
+        <table class="data-table"><thead><tr><th>Feature</th><th>Tech</th><th>Status</th></tr></thead><tbody>
+          <tr><td>🗣️ Hindi Sweet Voice</td><td>Gemini Kore + Edge TTS SwaraNeural</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🎤 Voice-to-Text</td><td>Groq Whisper + OpenAI Whisper</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>😊 Mood Detection</td><td>Keyword + Sentiment Analysis</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🎯 Voice Commands</td><td>buy, sell, market, portfolio, predict</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>💕 Sweet Personality</td><td>Hindi system prompt, emoji, warmth</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🔊 Auto Voice Reply</td><td>Real-time TTS response</td><td style="color:var(--accent)">● Active</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+
+    <!-- 💎 Gemini Bridge -->
+    <div id="sec-gemini" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-gem"></i> 💎 Gemini Bridge — Deep Android Integration</div></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-cloud"></i></div><div class="stat-label">Cloud Gemini</div><div class="stat-value" style="font-size:18px">ACTIVE</div><div class="stat-change"><i class="fas fa-check"></i> 2.5 Flash</div></div>
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-mobile-alt"></i></div><div class="stat-label">On-Device</div><div class="stat-value" style="font-size:18px">READY</div><div class="stat-change"><i class="fas fa-microchip"></i> Gemini Nano</div></div>
+        <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-route"></i></div><div class="stat-label">Smart Routing</div><div class="stat-value" style="font-size:18px">AUTO</div><div class="stat-change"><i class="fas fa-bolt"></i> Complexity-based</div></div>
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-image"></i></div><div class="stat-label">Vision</div><div class="stat-value" style="font-size:18px">ENABLED</div><div class="stat-change"><i class="fas fa-eye"></i> Chart analysis</div></div>
+      </div>
+      <div class="panel-card">
+        <div class="card-title" style="margin-bottom:12px"><i class="fas fa-route" style="color:var(--primary)"></i> API Endpoints</div>
+        <table class="data-table"><thead><tr><th>Route</th><th>Method</th><th>Purpose</th></tr></thead><tbody>
+          <tr><td>/api/gemini/chat</td><td>POST</td><td>Smart Gemini chat (auto-routes)</td></tr>
+          <tr><td>/api/gemini/analyze</td><td>POST</td><td>Deep market analysis</td></tr>
+          <tr><td>/api/gemini/intent</td><td>POST</td><td>Intent understanding</td></tr>
+          <tr><td>/api/gemini/image</td><td>POST</td><td>Chart/image analysis</td></tr>
+          <tr><td>/api/gemini/config</td><td>GET</td><td>On-device config</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+
+    <!-- 🧠 Super Intelligence -->
+    <div id="sec-intelligence" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-atom"></i> 🧠 Super Intelligence — Multi-AI Brain</div></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-brain"></i></div><div class="stat-label">Multi-AI</div><div class="stat-value" style="font-size:18px">3 AIs</div><div class="stat-change"><i class="fas fa-check"></i> Gemini+Groq+OpenAI</div></div>
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-chart-line"></i></div><div class="stat-label">Self-Learning</div><div class="stat-value" style="font-size:18px">ACTIVE</div><div class="stat-change"><i class="fas fa-database"></i> Logs predictions</div></div>
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-bullseye"></i></div><div class="stat-label">Accuracy</div><div class="stat-value" id="intel-accuracy" style="font-size:18px">Tracking</div><div class="stat-change"><i class="fas fa-percentage"></i> Verified</div></div>
+        <div class="stat-card"><div class="stat-icon cyan"><i class="fas fa-lightbulb"></i></div><div class="stat-label">Proactive</div><div class="stat-value" style="font-size:18px">ENABLED</div><div class="stat-change"><i class="fas fa-bolt"></i> Auto-insights</div></div>
+      </div>
+      <div class="panel-card">
+        <div class="card-title" style="margin-bottom:12px"><i class="fas fa-cogs" style="color:var(--accent2)"></i> Intelligence Features</div>
+        <table class="data-table"><thead><tr><th>Feature</th><th>Description</th><th>Status</th></tr></thead><tbody>
+          <tr><td>🤖 Multi-AI Consensus</td><td>Queries 3 AIs, builds consensus for decisions</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>📊 Self-Learning</td><td>Logs & verifies predictions, improves over time</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>💡 Proactive Insights</td><td>Generates insights based on time, session, user</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🎯 User Preferences</td><td>Learns what each user likes, adapts responses</td><td style="color:var(--accent)">● Active</td></tr>
+          <tr><td>🕐 Market Context</td><td>IST-aware, session detection, weekend logic</td><td style="color:var(--accent)">● Active</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+
+    <!-- 🔄 OTA Updates -->
+    <div id="sec-ota" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-download"></i> 🔄 OTA Live Updates — No Reinstall</div></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-download"></i></div><div class="stat-label">OTA Engine</div><div class="stat-value" style="font-size:18px">ACTIVE</div><div class="stat-change"><i class="fas fa-check"></i> Delta updates</div></div>
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-file-archive"></i></div><div class="stat-label">Bundles</div><div class="stat-value" id="ota-bundles" style="font-size:18px">Ready</div><div class="stat-change"><i class="fas fa-box"></i> Versioned</div></div>
+        <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-undo"></i></div><div class="stat-label">Rollback</div><div class="stat-value" style="font-size:18px">ENABLED</div><div class="stat-change"><i class="fas fa-history"></i> Any version</div></div>
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-wifi"></i></div><div class="stat-label">Silent Update</div><div class="stat-value" style="font-size:18px">ON</div><div class="stat-change"><i class="fas fa-eye-slash"></i> Background</div></div>
+      </div>
+      <div class="panel-card">
+        <div class="card-title" style="margin-bottom:12px"><i class="fas fa-code-branch" style="color:var(--primary)"></i> How OTA Works</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8">
+          <p>✅ App checks <code>/api/ota/check</code> on every launch</p>
+          <p>✅ Only changed files are downloaded (delta updates)</p>
+          <p>✅ Update applies instantly — no APK download needed</p>
+          <p>✅ Rollback to any previous version if needed</p>
+          <p>✅ Build new OTA bundle: <code>POST /api/ota/create</code></p>
+        </div>
+      </div>
+      <div class="bot-controls" style="margin-top:16px">
+        <button class="bot-btn primary" onclick="createOTA()"><i class="fas fa-plus"></i> Create OTA Bundle</button>
+        <button class="bot-btn success" onclick="checkOTA()"><i class="fas fa-search"></i> Check Latest</button>
+        <button class="bot-btn warning" onclick="rollbackOTA()"><i class="fas fa-undo"></i> Rollback</button>
+      </div>
+    </div>
+
+    <!-- 🔐 Smart Auth -->
+    <div id="sec-auth" class="section" style="display:none">
+      <div class="section-header"><div class="section-title"><i class="fas fa-shield-alt"></i> 🔐 Smart Auth — Owner & User System</div></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-crown"></i></div><div class="stat-label">Owner</div><div class="stat-value" style="font-size:18px">{{ admin_name }}</div><div class="stat-change"><i class="fas fa-star"></i> Full access</div></div>
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-users"></i></div><div class="stat-label">Registered</div><div class="stat-value" id="auth-users">{{ stats.total_users }}</div><div class="stat-change"><i class="fas fa-user-plus"></i> Users</div></div>
+        <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-key"></i></div><div class="stat-label">Sessions</div><div class="stat-value" style="font-size:18px">Active</div><div class="stat-change"><i class="fas fa-clock"></i> JWT tokens</div></div>
+        <div class="stat-card"><div class="stat-icon cyan"><i class="fas fa-fingerprint"></i></div><div class="stat-label">Device ID</div><div class="stat-value" style="font-size:18px">ON</div><div class="stat-change"><i class="fas fa-mobile"></i> Fingerprint</div></div>
+      </div>
+      <div class="panel-card">
+        <div class="card-title" style="margin-bottom:12px"><i class="fas fa-sitemap" style="color:var(--gold)"></i> Access Tiers</div>
+        <table class="data-table"><thead><tr><th>Tier</th><th>Access Level</th><th>Permissions</th></tr></thead><tbody>
+          <tr><td>👑 OWNER</td><td>100%</td><td>Everything + Admin + Ban/Unban + Broadcast</td></tr>
+          <tr><td>🛡️ ADMIN</td><td>90%</td><td>All features + user management</td></tr>
+          <tr><td>⭐ PREMIUM</td><td>80%</td><td>All features + priority signals</td></tr>
+          <tr><td>👤 FREE</td><td>50%</td><td>Basic features + limited signals</td></tr>
+          <tr><td>🚫 BANNED</td><td>0%</td><td>No access</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- 🚀 Power-Up Sections (injected outside main for clarity) -->
+<!-- These are hidden and shown via JS just like existing sections -->
+
+<script>
+// Inject power-up sections into the content area
+const _content = document.querySelector('.content');
+_content.insertAdjacentHTML('beforeend', `
+
+  <!-- 🔑 API Keys -->
+  <div id="sec-apikeys" class="section" style="display:none">
+    <div class="section-header"><div class="section-title"><i class="fas fa-key"></i> API Key Management</div><button class="bot-btn primary" onclick="loadApiKeys()"><i class="fas fa-sync"></i> Refresh</button></div>
+    <div class="panel-card">
+      <table class="data-table"><thead><tr><th>Key Name</th><th>Value</th><th>Status</th></tr></thead><tbody id="apikeys-table"><tr><td colspan="3" style="text-align:center;color:var(--text3)">Loading...</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- 📊 System Metrics -->
+  <div id="sec-sysmetrics" class="section" style="display:none">
+    <div class="section-header"><div class="section-title"><i class="fas fa-chart-area"></i> System Metrics & Health</div><button class="bot-btn primary" onclick="loadSysMetrics()"><i class="fas fa-sync"></i> Refresh</button></div>
+    <div class="stats-grid" id="metrics-grid"></div>
+    <div class="panel-card" style="margin-top:16px">
+      <div class="card-title" style="margin-bottom:12px"><i class="fas fa-plug" style="color:var(--accent)"></i> Module Status</div>
+      <div id="modules-status" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px"></div>
+    </div>
+  </div>
+
+  <!-- ⚡ Task Queue -->
+  <div id="sec-taskqueue" class="section" style="display:none">
+    <div class="section-header"><div class="section-title"><i class="fas fa-tasks"></i> Background Task Queue</div><button class="bot-btn primary" onclick="loadTasks()"><i class="fas fa-sync"></i> Refresh</button></div>
+    <div class="stats-grid" id="tasks-grid"></div>
+    <div class="panel-card" style="margin-top:16px">
+      <div class="card-title" style="margin-bottom:12px"><i class="fas fa-list" style="color:var(--accent2)"></i> Recent Tasks</div>
+      <div id="tasks-list" style="font-size:13px;color:var(--text2)">No tasks yet</div>
+    </div>
+  </div>
+
+  <!-- 🌐 Social Trading -->
+  <div id="sec-soctrading" class="section" style="display:none">
+    <div class="section-header"><div class="section-title"><i class="fas fa-users-cog"></i> Social Trading Dashboard</div><button class="bot-btn primary" onclick="loadSocial()"><i class="fas fa-sync"></i> Refresh</button></div>
+    <div class="stats-grid" id="social-grid"></div>
+    <div class="panel-card" style="margin-top:16px">
+      <div class="card-title" style="margin-bottom:12px"><i class="fas fa-trophy" style="color:var(--gold)"></i> Top Traders</div>
+      <table class="data-table"><thead><tr><th>Trader</th><th>Win Rate</th><th>PnL</th><th>Signals</th><th>Followers</th></tr></thead><tbody id="leaderboard-table"><tr><td colspan="5" style="text-align:center;color:var(--text3)">Loading...</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- ⚠️ Error Log -->
+  <div id="sec-errorlog" class="section" style="display:none">
+    <div class="section-header"><div class="section-title"><i class="fas fa-exclamation-triangle"></i> Error Log & Engine Health</div><button class="bot-btn primary" onclick="loadErrors()"><i class="fas fa-sync"></i> Refresh</button></div>
+    <div class="stats-grid" id="errors-grid"></div>
+    <div class="panel-card" style="margin-top:16px">
+      <div class="card-title" style="margin-bottom:12px"><i class="fas fa-bug" style="color:var(--danger)"></i> Recent Errors</div>
+      <div id="errors-list" class="terminal" style="max-height:400px"><div class="terminal-line"><span class="success">No errors logged</span></div></div>
+    </div>
+  </div>
+`);
+</script>
+<script>
+!function(){const p=document.getElementById('particles');for(let i=0;i<40;i++){const d=document.createElement('div');d.className='particle';d.style.left=Math.random()*100+'%';d.style.animationDuration=(10+Math.random()*20)+'s';d.style.animationDelay=Math.random()*20+'s';d.style.width=d.style.height=(1+Math.random()*3)+'px';d.style.background=['#3b82f6','#8b5cf6','#10b981','#06b6d4'][Math.floor(Math.random()*4)];p.appendChild(d)}}();
+
+/* ═══ Section Navigation ═══ */
+function showSection(name,el){document.querySelectorAll('.section').forEach(s=>s.style.display='none');document.getElementById('sec-'+name).style.display='block';document.querySelectorAll('.sidebar-item').forEach(s=>s.classList.remove('active'));if(el)el.classList.add('active');if(name==='features')loadFeatures();}
+
+/* ═══ Toast Notification ═══ */
+function showToast(m,type='success'){const o=document.querySelector('.toast');if(o)o.remove();const t=document.createElement('div');t.className='toast';const border=type==='error'?'var(--danger)':type==='warn'?'var(--warn)':'var(--accent)';t.style.borderColor=border;t.innerHTML=m;document.body.appendChild(t);setTimeout(()=>t.remove(),3500);}
+
+/* ═══ API Helper ═══ */
+async function apiCall(url,opts={}){try{const r=await fetch(url,{headers:{'Content-Type':'application/json'},...opts});return await r.json();}catch(e){console.error('API Error:',url,e);return{error:e.message};}}
+async function apiPost(url,body={}){return apiCall(url,{method:'POST',body:JSON.stringify(body)});}
+
+/* ═══ Refresh All — Real API Data ═══ */
+async function refreshAll(){
+  showToast('🔄 Refreshing...');
+  const d=await apiCall('/api/admin/overview');
+  if(d.total_users!==undefined){document.getElementById('s-users').textContent=d.total_users;document.getElementById('s-active').textContent=d.active_today||0;}
+  document.getElementById('last-update').textContent=new Date().toLocaleTimeString();
+  // Refresh engine status
+  await refreshEngineStatus();
+  showToast('✅ Dashboard refreshed with live data');
+}
+
+/* ═══ Engine Status — Real Check ═══ */
+async function refreshEngineStatus(){
+  const d=await apiCall('/api/admin/engines');
+  if(d && d.engines){
+    const rows=document.querySelectorAll('#engine-table-body tr');
+    rows.forEach(row=>{
+      const engineName=row.dataset.engine;
+      if(engineName && d.engines[engineName]){
+        const statusCell=row.querySelector('.engine-status');
+        const isActive=d.engines[engineName]==='active';
+        if(statusCell){statusCell.innerHTML=isActive?'<span style="color:var(--accent)">● Online</span>':'<span style="color:var(--danger)">● Offline</span>';}
+      }
+    });
+  }
+}
+
+/* ═══ Bot Commands — Real API Calls ═══ */
+async function botCmd(cmd){
+  const t=document.getElementById('bot-terminal');
+  t.innerHTML+=`<div class="terminal-line"><span class="prompt">jarvis@bot:~$</span> <span class="cmd">${cmd}</span></div>`;
+  t.innerHTML+=`<div class="terminal-line"><span class="output">⏳ Executing ${cmd}...</span></div>`;
+  t.scrollTop=t.scrollHeight;
+  const d=await apiPost('/api/admin/bot',{command:cmd});
+  if(d.error){
+    t.innerHTML+=`<div class="terminal-line"><span class="error">❌ ${d.error}</span></div>`;
+  }else if(cmd==='status'){
+    t.innerHTML+=`<div class="terminal-line"><span class="success">✅ Status: ${d.status} | Bot: @${d.bot||'unknown'} | Name: ${d.name||'JARVIS'}</span></div>`;
+  }else if(cmd==='health'){
+    t.innerHTML+=`<div class="terminal-line"><span class="success">✅ CPU: ${d.cpu||0}% | RAM: ${d.memory||0}% | AI Keys: ${d.ai_keys||0} | Bot Token: ${d.bot_token?'✅':'❌'}</span></div>`;
+  }else if(cmd==='logs'){
+    const logs=(d.logs||'No logs').split('\n').slice(-10);
+    logs.forEach(l=>{t.innerHTML+=`<div class="terminal-line"><span class="output">${l}</span></div>`;});
+  }else{
+    t.innerHTML+=`<div class="terminal-line"><span class="success">✅ ${d.message||d.status||JSON.stringify(d)}</span></div>`;
+  }
+  t.scrollTop=t.scrollHeight;
+}
+
+/* ═══ Broadcast — Real API ═══ */
+async function sendBroadcast(){
+  const msg=document.getElementById('broadcast-msg').value.trim();
+  if(!msg){showToast('⚠️ Enter a message first','warn');return;}
+  showToast('📤 Broadcasting to all users...');
+  const d=await apiPost('/api/admin/broadcast',{message:msg});
+  if(d.error){showToast('❌ '+d.error,'error');}
+  else{showToast(`✅ Broadcast sent! ${d.sent}/${d.total} delivered`);}
+}
+
+/* ═══ Feature Toggles — Real API ═══ */
+async function loadFeatures(){
+  const g=document.getElementById('feature-grid');
+  g.innerHTML='<div style="color:var(--text3);padding:20px;text-align:center">Loading features...</div>';
+  const d=await apiCall('/api/admin/features');
+  if(d.features && d.features.length>0){
+    g.innerHTML=d.features.map(f=>`<div class="feature-item"><div><div class="feature-name">${f.name}</div><div class="feature-cat">${f.category}</div></div><div class="toggle ${f.enabled?'on':''}" data-fid="${f.id}" onclick="toggleFeature(this)"></div></div>`).join('');
+  }else{
+    // Fallback: local feature list
+    const fl=[{id:'stock_analysis',n:'📊 Stock Analysis',c:'Stock'},{id:'stock_prediction',n:'🤖 ML Prediction',c:'Stock'},{id:'option_chain',n:'📈 Option Chain',c:'Stock'},{id:'candle_patterns',n:'🕯️ Candle Patterns',c:'Stock'},{id:'crypto_gems',n:'💎 Crypto Gems',c:'Crypto'},{id:'pump_fun',n:'🚀 Pump.fun',c:'Crypto'},{id:'whale_alerts',n:'🐋 Whale Alerts',c:'Crypto'},{id:'rug_detector',n:'🔍 Rug Detector',c:'Crypto'},{id:'ai_chat',n:'🤖 AI Chat',c:'AI'},{id:'jarvis_nlu',n:'🧠 JARVIS NLU',c:'AI'},{id:'morning_brief',n:'🌅 Morning Brief',c:'AI'},{id:'auto_alerts',n:'🔔 Auto Alerts',c:'Alert'},{id:'price_alerts',n:'💰 Price Alerts',c:'Alert'},{id:'portfolio',n:'💼 Portfolio',c:'Portfolio'},{id:'hindi_mode',n:'🇮🇳 Hindi Mode',c:'Global'}];
+    g.innerHTML=fl.map(x=>`<div class="feature-item"><div><div class="feature-name">${x.n}</div><div class="feature-cat">${x.c}</div></div><div class="toggle on" data-fid="${x.id}" onclick="toggleFeature(this)"></div></div>`).join('');
+  }
+}
+async function toggleFeature(el){
+  const fid=el.dataset.fid;
+  const nowOn=el.classList.contains('on');
+  const newState=!nowOn;
+  el.classList.toggle('on');
+  const d=await apiPost('/api/admin/features/toggle',{feature_id:fid,enabled:newState});
+  if(d.success){showToast(d.message||`Feature ${fid} ${newState?'enabled':'disabled'}`);}
+  else{el.classList.toggle('on');showToast('❌ '+(d.error||d.message),'error');}
+}
+
+/* ═══ User Actions — Real API ═══ */
+async function userAction(action,uid){
+  if(!uid){showToast('⚠️ No user ID','warn');return;}
+  if(action==='block'){
+    if(!confirm(`Block user ${uid}?`))return;
+    const d=await apiPost('/api/admin/user/block',{chat_id:uid});
+    showToast(d.message||d.error||'Done');
+  }else if(action==='unblock'){
+    const d=await apiPost('/api/admin/user/unblock',{chat_id:uid});
+    showToast(d.message||d.error||'Done');
+  }else if(action==='msg'){
+    const msg=prompt(`Message to user ${uid}:`);
+    if(!msg)return;
+    const d=await apiPost('/api/admin/user/message',{chat_id:uid,message:msg});
+    if(d.success)showToast('✅ Message sent!');
+    else showToast('❌ '+(d.error||'Failed'),'error');
+  }
+}
+
+/* ═══ Activity Feed ═══ */
+function addActivity(icon,text,ts){const f=document.getElementById('activity-feed');const c={rocket:'#3b82f6',check:'#10b981',bolt:'#f59e0b',brain:'#8b5cf6',user:'#06b6d4'}[icon]||'#3b82f6';f.innerHTML=`<div class="activity-item"><div class="activity-icon" style="background:${c}20;color:${c}"><i class="fas fa-${icon}"></i></div><div class="activity-text">${text}</div><div class="activity-time">${ts}</div></div>`+f.innerHTML;if(f.children.length>20)f.removeChild(f.lastChild);}
+
+/* ═══ System Logs — Real API ═══ */
+async function loadLogs(){
+  const l=document.getElementById('system-logs');
+  l.innerHTML+=`<div class="terminal-line"><span class="prompt">[${new Date().toLocaleTimeString()}]</span> <span class="output">Refreshing live data...</span></div>`;
+  // Health check
+  try{
+    const h=await apiCall('/health');
+    l.innerHTML+=`<div class="terminal-line"><span class="prompt">[HEALTH]</span> <span class="success">Status: ${h.status} | ${h.platform||'JARVIS'} v${h.version||'5.0'}</span></div>`;
+  }catch(e){}
+  // Engine health
+  try{
+    const e=await apiCall('/api/miniapp/health');
+    l.innerHTML+=`<div class="terminal-line"><span class="prompt">[ENGINES]</span> <span class="success">${e.engines_loaded||0}/${e.engines_total||0} engines active | WS clients: ${e.ws||0}</span></div>`;
+    if(e.engines){
+      const active=Object.entries(e.engines).filter(([k,v])=>v==='active').map(([k])=>k);
+      const off=Object.entries(e.engines).filter(([k,v])=>v!=='active').map(([k])=>k);
+      l.innerHTML+=`<div class="terminal-line"><span class="success">✅ Active: ${active.join(', ')}</span></div>`;
+      if(off.length)l.innerHTML+=`<div class="terminal-line"><span class="error">❌ Offline: ${off.join(', ')}</span></div>`;
+    }
+  }catch(e){}
+  // Bot check
+  try{
+    const b=await apiPost('/api/admin/bot',{command:'status'});
+    l.innerHTML+=`<div class="terminal-line"><span class="prompt">[BOT]</span> <span class="${b.status==='online'?'success':'error'}">${b.status==='online'?'✅':'❌'} @${b.bot||'unknown'}: ${b.status}</span></div>`;
+  }catch(e){}
+  l.scrollTop=l.scrollHeight;
+}
+
+/* ═══ OTA Functions — Real API ═══ */
+async function createOTA(){
+  showToast('📦 Creating OTA bundle...');
+  const d=await apiPost('/api/ota/create');
+  if(d.version)showToast('✅ OTA Bundle created: v'+d.version);
+  else showToast('⚠️ '+(d.error||d.message||'OTA create returned no version'),'warn');
+}
+async function checkOTA(){
+  const d=await apiCall('/api/miniapp/ota/check?current_version=0.0.0');
+  if(d.update_available)showToast('🔄 Update available: v'+d.version);
+  else if(d.version)showToast('✅ Already on latest: v'+d.version);
+  else showToast('⚠️ OTA check: '+(d.error||'no response'),'warn');
+}
+function rollbackOTA(){showToast('⏪ Rollback feature requires version number. Use API: POST /api/ota/rollback','warn');}
+
+/* ═══ Auto-Refresh — Real-Time Dashboard ═══ */
+let _refreshInterval=null;
+function startAutoRefresh(){
+  if(_refreshInterval)clearInterval(_refreshInterval);
+  _refreshInterval=setInterval(async()=>{
+    try{
+      const d=await apiCall('/api/admin/overview');
+      if(d.total_users!==undefined){
+        document.getElementById('s-users').textContent=d.total_users;
+        document.getElementById('s-active').textContent=d.active_today||0;
+      }
+      document.getElementById('last-update').textContent=new Date().toLocaleTimeString();
+    }catch(e){}
+  },15000); // Refresh every 15 seconds
+}
+
+/* ═══ Initialize ═══ */
+addActivity('rocket','<strong>Server</strong> FastAPI started on :8000','now');
+addActivity('check','<strong>Admin Panel</strong> loaded with real data','now');
+addActivity('brain','<strong>JARVIS Brain v5</strong> connected','now');
+addActivity('bolt','<strong>All engines</strong> initialized','now');
+addActivity('user','<strong>{{ stats.total_users }} users</strong> in database','now');
+loadFeatures();
+startAutoRefresh();
+
+/* ═══ 🚀 Power-Up Functions ═══ */
+
+/* API Keys */
+async function loadApiKeys(){
+  const t=document.getElementById('apikeys-table');
+  t.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--text3)">Loading...</td></tr>';
+  const d=await apiCall('/api/admin/api-keys');
+  if(d.keys&&d.keys.length){
+    t.innerHTML=d.keys.map(k=>`<tr><td style="font-family:'JetBrains Mono'">${k.key_name}</td><td style="font-family:'JetBrains Mono';color:var(--text3)">${k.masked_value||'—'}</td><td>${k.is_set?'<span style="color:var(--accent)">● Set</span>':'<span style="color:var(--danger)">● Missing</span>'}</td></tr>`).join('');
+  }else{t.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--text3)">No keys found</td></tr>';}
+}
+
+/* System Metrics */
+async function loadSysMetrics(){
+  const d=await apiCall('/api/system/overview');
+  const g=document.getElementById('metrics-grid');
+  if(d.server){
+    g.innerHTML=`
+      <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-microchip"></i></div><div class="stat-label">CPU</div><div class="stat-value">${d.server.cpu_percent||0}%</div></div>
+      <div class="stat-card"><div class="stat-icon green"><i class="fas fa-memory"></i></div><div class="stat-label">Memory</div><div class="stat-value">${d.server.memory_percent||0}%</div></div>
+      <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-hdd"></i></div><div class="stat-label">Disk</div><div class="stat-value">${d.server.disk_percent||0}%</div></div>
+      <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-code-branch"></i></div><div class="stat-label">Version</div><div class="stat-value" style="font-size:18px">v${d.server.version||'6.0'}</div></div>
+    `;
+  }
+  const ms=document.getElementById('modules-status');
+  if(d.modules){
+    ms.innerHTML=Object.entries(d.modules).map(([k,v])=>`<div style="padding:8px 12px;background:var(--bg2);border-radius:8px;border:1px solid var(--border);font-size:12px;display:flex;justify-content:space-between"><span>${k.replace(/_/g,' ')}</span><span style="color:${v?'var(--accent)':'var(--danger)'}">● ${v?'ON':'OFF'}</span></div>`).join('');
+  }
+}
+
+/* Task Queue */
+async function loadTasks(){
+  const d=await apiCall('/api/tasks');
+  const g=document.getElementById('tasks-grid');
+  g.innerHTML=`
+    <div class="stat-card"><div class="stat-icon cyan"><i class="fas fa-layer-group"></i></div><div class="stat-label">Queued</div><div class="stat-value">${d.queued||0}</div></div>
+    <div class="stat-card"><div class="stat-icon green"><i class="fas fa-check-circle"></i></div><div class="stat-label">Completed</div><div class="stat-value">${d.completed||0}</div></div>
+    <div class="stat-card"><div class="stat-icon red"><i class="fas fa-times-circle"></i></div><div class="stat-label">Failed</div><div class="stat-value">${d.failed||0}</div></div>
+    <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-cog fa-spin"></i></div><div class="stat-label">Workers</div><div class="stat-value">${d.workers||0}</div></div>
+  `;
+  const tl=document.getElementById('tasks-list');
+  if(d.recent&&d.recent.length){
+    tl.innerHTML=d.recent.map(t=>`<div style="padding:6px 0;border-bottom:1px solid var(--border)"><strong>${t.task_type}</strong> — ${t.status} — ${t.created_at||''}</div>`).join('');
+  }else{tl.textContent='No tasks yet';}
+}
+
+/* Social Trading */
+async function loadSocial(){
+  const d=await apiCall('/api/social/stats');
+  const g=document.getElementById('social-grid');
+  g.innerHTML=`
+    <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-signal"></i></div><div class="stat-label">Signals</div><div class="stat-value">${d.total_signals||0}</div></div>
+    <div class="stat-card"><div class="stat-icon green"><i class="fas fa-users"></i></div><div class="stat-label">Traders</div><div class="stat-value">${d.total_traders||0}</div></div>
+    <div class="stat-card"><div class="stat-icon pink"><i class="fas fa-heart"></i></div><div class="stat-label">Likes</div><div class="stat-value">${d.total_likes||0}</div></div>
+    <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-user-friends"></i></div><div class="stat-label">Follows</div><div class="stat-value">${d.total_follows||0}</div></div>
+  `;
+  const lb=document.getElementById('leaderboard-table');
+  if(d.top_traders&&d.top_traders.length){
+    lb.innerHTML=d.top_traders.map(t=>`<tr><td>${t.username||t.user_id}</td><td>${t.win_rate||0}%</td><td style="color:${t.total_pnl>=0?'var(--accent)':'var(--danger)'}">${t.total_pnl>=0?'+':''}${t.total_pnl||0}%</td><td>${t.total_signals||0}</td><td>${t.followers||0}</td></tr>`).join('');
+  }else{lb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3)">No traders yet</td></tr>';}
+}
+
+/* Error Log */
+async function loadErrors(){
+  const d=await apiCall('/api/admin/errors');
+  const g=document.getElementById('errors-grid');
+  g.innerHTML=`
+    <div class="stat-card"><div class="stat-icon red"><i class="fas fa-bug"></i></div><div class="stat-label">Total Errors</div><div class="stat-value">${d.total_errors||0}</div></div>
+    <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-clock"></i></div><div class="stat-label">Last Hour</div><div class="stat-value">${d.errors_last_hour||0}</div></div>
+    <div class="stat-card"><div class="stat-icon cyan"><i class="fas fa-plug"></i></div><div class="stat-label">Import Errors</div><div class="stat-value">${Object.keys(d.import_errors||{}).length}</div></div>
+    <div class="stat-card"><div class="stat-icon green"><i class="fas fa-heartbeat"></i></div><div class="stat-label">Engines</div><div class="stat-value">${Object.keys(d.engine_health||{}).length}</div></div>
+  `;
+  const el=document.getElementById('errors-list');
+  if(d.recent_errors&&d.recent_errors.length){
+    el.innerHTML=d.recent_errors.map(e=>`<div class="terminal-line"><span class="prompt">[${e.severity||'error'}]</span> <span class="${e.severity==='error'?'error':'output'}">[${e.category}] ${e.module}: ${e.message}</span> <span style="color:var(--text3);font-size:10px">${e.timestamp||''}</span></div>`).join('');
+  }else{el.innerHTML='<div class="terminal-line"><span class="success">✅ No errors</span></div>';}
+}
+
+// Initial engine check on page load
+setTimeout(async()=>{
+  try{
+    const e=await apiCall('/api/miniapp/health');
+    if(e&&e.engines_loaded){addActivity('check',`<strong>${e.engines_loaded} engines</strong> verified active (real-time check)`,new Date().toLocaleTimeString());}
+  }catch(e){}
+  try{
+    const b=await apiPost('/api/admin/bot',{command:'status'});
+    if(b.status==='online')addActivity('rocket',`<strong>@${b.bot}</strong> bot is ONLINE`,new Date().toLocaleTimeString());
+  }catch(e){}
+},2000);
+</script>
+</body>
+</html>

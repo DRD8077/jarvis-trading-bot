@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import {
   PieChart, LineChart, TrendingUp, TrendingDown, DollarSign,
   RefreshCw, Plus, ArrowUpRight, ArrowDownLeft, BarChart3,
-  Calculator, Wallet, Target, ShieldCheck, Percent
+  Calculator, Wallet, Target, ShieldCheck, Percent, Download, FileText
 } from 'lucide-react'
 import { PieChart as RechartsP, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts'
 import {
@@ -10,6 +10,7 @@ import {
   addPortfolioHolding, sellPortfolioHolding
 } from '../services/api'
 import { useApp } from '../context/AppContext'
+import exportEngine from '../services/exportEngine'
 
 const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#84cc16']
 
@@ -40,6 +41,12 @@ const PortfolioAnalytics = () => {
   }
 
   useEffect(() => { load() }, [])
+
+  // ⚡ Auto-refresh portfolio every 20s
+  useEffect(() => {
+    const iv = setInterval(load, 20000)
+    return () => clearInterval(iv)
+  }, [])
 
   const handleAdd = async () => {
     if (!addForm.symbol || !addForm.quantity) { addNotification('Fill symbol & quantity', 'error'); return }
@@ -93,6 +100,20 @@ const PortfolioAnalytics = () => {
           <p className="text-slate-400 text-sm">Cross-asset analytics</p>
         </div>
         <div className="flex items-center space-x-2">
+          <button onClick={() => {
+            exportEngine.exportPortfolio(holdings)
+            hapticFeedback('success')
+            addNotification('Portfolio CSV downloading...', 'success')
+          }} className="p-2 bg-emerald-600 rounded-full" title="Export CSV">
+            <Download size={16} />
+          </button>
+          <button onClick={() => {
+            const report = exportEngine.generatePnLSummary(holdings, [])
+            exportEngine.exportPDF(report)
+            hapticFeedback('success')
+          }} className="p-2 bg-blue-600 rounded-full" title="PDF Report">
+            <FileText size={16} />
+          </button>
           <button onClick={() => setShowAdd(!showAdd)} className="p-2 bg-violet-600 rounded-full">
             <Plus size={18} />
           </button>

@@ -97,7 +97,7 @@ _otm_atm=_si("otm_atm_engine",["get_live_spot","get_atm_options","get_otm_option
 _live_idx=_si("live_index_engine",["get_live_price","generate_index_option_chain","calculate_investment_options","analyze_2min_candle"])
 _cdcx_mega=_si("coindcx_mega_scanner",["mega_scan_all","scan_volume_breakout","scan_bullish_patterns","scan_momentum_plays"])
 _dextools=_si("dextools_engine",["get_token_info","get_token_price","get_hot_pairs","search_pairs","get_pair_info"])
-_global_mkt=_si("global_market_analyzer",["analyze_global_markets","get_global_summary","predict_india_from_global"])
+_global_mkt=_si("global_market_analyzer",["fetch_global_market_data","analyze_global_sentiment","get_indian_market_direction_forecast","get_market_trend_analysis"])
 _angel=_si("angelone_engine",["login_angel","get_ltp","place_order","get_positions","get_holdings","get_order_book"])
 _ml_pipe=_si("ml_pipeline",["predict_for_symbol","train_model","get_model_accuracy"])
 _mem_pro=_si("jarvis_memory_pro",["remember","recall","get_all_memories","clear_memories","search_memories","get_memory_summary"])
@@ -132,7 +132,7 @@ async def ws_prices(ws:WebSocket):
                 if d:await ws.send_json({"type":"ticker","data":d,"ts":datetime.now(IST).isoformat()})
             except Exception:pass
             try:
-                msg=await asyncio.wait_for(ws.receive_text(),timeout=20.0)
+                msg=await asyncio.wait_for(ws.receive_text(),timeout=8.0)
                 cmd=json.loads(msg)
                 if cmd.get("type")=="subscribe":
                     syms=cmd.get("symbols",[])
@@ -159,7 +159,7 @@ def _parse_dex(p,sym):
     return{"symbol":sym,"name":nm,"price_usd":pu,"price_inr":pu*90.5,"change_24h":float(ch or 0),"volume_24h":float(vol or 0),"market_cap":0}
 
 async def _get_ticker()->List[Dict]:
-    c=_cached("ws_ticker",60)
+    c=_cached("ws_ticker",4)
     if c:return c
     t=[]
     # Try CoinGecko first
@@ -208,6 +208,81 @@ async def health():
     active=sum(1 for v in engines.values() if v=="active")
     return{"status":"ok","version":"v6.0-mega","engines_loaded":active,"engines_total":len(engines),"engines":engines,"ws":len(_ws_clients),"ts":datetime.now(IST).isoformat()}
 
+# ═══ LIGHTWEIGHT TICKER — No dashboard overhead ═══
+@router.get("/ticker")
+async def ticker_fast():
+    """Ultra-fast ticker — returns ONLY prices, no news/signals/portfolio."""
+    c=_cached("fast_ticker",5)
+    if c:return c
+    t=await _get_ticker()
+    result={"ticker":t,"ts":datetime.now(IST).isoformat()}
+    _set_cache("fast_ticker",result)
+    return result
+
+# ═══ FAST PRICES — Individual symbol lookup ═══
+@router.get("/price/{symbol}")
+async def price_fast(symbol:str):
+    """Get live price for one symbol — ultra-low latency."""
+    c=_cached(f"px_{symbol}",4)
+    if c:return c
+    sfn=_f(_dex,"dex_search")
+    if sfn:
+        try:
+            pairs=await sfn(symbol,1)
+            if pairs and isinstance(pairs,list)and pairs[0]:
+                r=_parse_dex(pairs[0],symbol)
+                if r:_set_cache(f"px_{symbol}",r);return r
+        except:pass
+    return{"symbol":symbol,"price_usd":0,"error":"unavailable"}
+
+# ═══ AUTH — Gmail/App Login ═══
+import json as _json
+_USERS_FILE=os.path.join(os.path.dirname(__file__),"jarvis_app_users.json")
+def _load_app_users():
+    try:
+        with open(_USERS_FILE,"r")as f:return _json.load(f)
+    except:return[]
+def _save_app_users(u):
+    try:
+        with open(_USERS_FILE,"w")as f:_json.dump(u,f,indent=2)
+    except:pass
+
+ADMIN_NAMES=["deepak kumar","deepak"]
+OWNER_ID="5647898018"
+
+@router.post("/auth/login")
+async def auth_login(request:Request):
+    """Register/login a user from APK Gmail auth."""
+    try:
+        body=await request.json()
+        name=body.get("name","").strip()
+        email=body.get("email","").strip()
+        device_id=body.get("deviceId","")
+        if not name:return{"error":"Name is required"}
+        is_admin=name.lower()in ADMIN_NAMES
+        users=_load_app_users()
+        # Check if user exists (by email or deviceId)
+        existing=None
+        for u in users:
+            if(email and u.get("email")==email)or(device_id and u.get("deviceId")==device_id):
+                existing=u;break
+        if existing:
+            existing["name"]=name
+            existing["lastLogin"]=datetime.now(IST).isoformat()
+            existing["isAdmin"]=is_admin
+            if email:existing["email"]=email
+        else:
+            users.append({"name":name,"email":email,"deviceId":device_id,"isAdmin":is_admin,"createdAt":datetime.now(IST).isoformat(),"lastLogin":datetime.now(IST).isoformat()})
+        _save_app_users(users)
+        return{"success":True,"isAdmin":is_admin,"name":name,"totalUsers":len(users)}
+    except Exception as e:
+        return{"error":str(e)}
+
+@router.get("/auth/users")
+async def auth_users():
+    """Admin: Get all registered users."""
+    return{"users":_load_app_users(),"total":len(_load_app_users())}
+
 def _det_regime(fg,vx):
     fv=fg.get("value",50)if isinstance(fg,dict)else 50
     vv=vx.get("vix",15)if isinstance(vx,dict)else 15
@@ -220,7 +295,7 @@ def _det_regime(fg,vx):
 
 @router.get("/dashboard")
 async def dashboard(user_id:Optional[str]=None):
-    c=_cached("dashboard",30)
+    c=_cached("dashboard",5)
     if c:return c
     tasks=[]
     fns=[("cg_market_data",10),("cg_fear_greed",None),("fetch_crypto_news",8),("get_nse_indices",None),("get_india_vix",None),("cmc_top_listings",50),("cmc_global_metrics",None),("dex_trending",None),("pumpfun_trending",None)]
@@ -271,13 +346,17 @@ async def dashboard(user_id:Optional[str]=None):
 
 @router.get("/markets")
 async def markets(category:Optional[str]=None):
-    c=_cached("markets",10)
+    c=_cached("markets",5)
     if c:return c
     tasks=[]
     for fn_name,arg in[("cg_market_data",50),("dex_trending",None),("get_nse_indices",None),("pumpfun_trending",None),("cmc_top_listings",100),("cmc_global_metrics",None),("dex_boosted_tokens",None),("cg_trending",None)]:
         fn=_f(_dex,fn_name)
         if fn:tasks.append(fn(arg)if arg else fn())
         else:tasks.append(asyncio.sleep(0))
+    # CoinDCX in parallel too
+    cdx_fn=_f(_coindcx,"get_web3_gainers_losers")
+    if cdx_fn:tasks.append(asyncio.wait_for(_t(cdx_fn),timeout=8))
+    else:tasks.append(asyncio.sleep(0))
     results=await asyncio.gather(*tasks,return_exceptions=True)
     crypto=results[0]if isinstance(results[0],list)else[]
     trending=results[1]if isinstance(results[1],list)else[]
@@ -287,11 +366,7 @@ async def markets(category:Optional[str]=None):
     cmc_global=results[5]if isinstance(results[5],dict)else{}
     boosted=results[6]if isinstance(results[6],list)else[]
     cg_trend=results[7]if isinstance(results[7],list)else[]
-    cdx=[]
-    fn=_f(_coindcx,"get_web3_gainers_losers")
-    if fn:
-        try:cdx=await _t(fn)
-        except:pass
+    cdx=results[8]if len(results)>8 and isinstance(results[8],list)else[]
     result={"crypto":crypto,"trending":trending[:20],"indices":indices,"pumpfun":pf[:15],
             "cmc":cmc,"cmc_global":cmc_global,"boosted":boosted[:15],"cg_trending":cg_trend[:15],
             "coindcx":cdx,"total":len(crypto)+len(cmc),"ts":datetime.now(IST).isoformat()}
@@ -300,35 +375,43 @@ async def markets(category:Optional[str]=None):
 
 @router.get("/signals")
 async def signals(market:str="all"):
-    c=_cached(f"sig_{market}",15)
+    c=_cached(f"sig_{market}",10)
     if c:return c
     sigs=[]
+    stasks=[]
     if market in("all","crypto"):
-        fn=_f(_dex,"cg_market_data")
-        if fn:
+        async def _crypto_sigs():
+            fn=_f(_dex,"cg_market_data")
+            if not fn:return
             try:
-                coins=await fn(30)
+                coins=await asyncio.wait_for(fn(30),timeout=10)
                 for item in(coins or[]):
                     chg=item.get("change_24h",0)or 0
                     if abs(chg)>2:
                         st="STRONG BUY"if chg<-10 else"BUY"if chg<-5 else"SELL"if chg>10 else"HOLD"
                         sigs.append({"symbol":item.get("symbol","?"),"signal":st,"confidence":min(95,int(abs(chg)*2.5+30)),"price":item.get("price_usd",0),"change_24h":chg,"source":"crypto","market":"crypto"})
             except:pass
+        stasks.append(_crypto_sigs())
     if market in("all","stock","india"):
-        fn=_f(_bse,"scan_nifty_signals")
-        if fn:
+        async def _india_sigs():
+            fn=_f(_bse,"scan_nifty_signals")
+            if not fn:return
             try:
-                ss=await _t(fn,15)
+                ss=await asyncio.wait_for(_t(fn,10),timeout=15)
                 for s in(ss or[]):
                     sigs.append({"symbol":getattr(s,"symbol",""),"signal":str(getattr(s,"signal_type","HOLD")),"confidence":getattr(s,"confidence",50),"price":getattr(s,"price",0),"change_24h":getattr(s,"price_change_pct",0),"source":"nifty","market":"india"})
             except:pass
+        stasks.append(_india_sigs())
     if market in("all","web3"):
-        fn=_f(_coindcx,"scan_all_web3_signals")
-        if fn:
+        async def _web3_sigs():
+            fn=_f(_coindcx,"scan_all_web3_signals")
+            if not fn:return
             try:
-                w3=await _t(fn,10)
+                w3=await asyncio.wait_for(_t(fn,10),timeout=12)
                 for s in(w3 or[]):sigs.append({"symbol":s.get("symbol",""),"signal":s.get("signal","HOLD"),"confidence":s.get("confidence",50),"price":s.get("price_inr",0),"change_24h":s.get("change_24h",0),"source":"coindcx","market":"web3"})
             except:pass
+        stasks.append(_web3_sigs())
+    await asyncio.gather(*stasks,return_exceptions=True)
     sigs.sort(key=lambda x:x.get("confidence",0),reverse=True)
     result={"signals":sigs[:40],"count":len(sigs),"ts":datetime.now(IST).isoformat()}
     _set_cache(f"sig_{market}",result)
@@ -337,7 +420,7 @@ async def signals(market:str="all"):
 @router.get("/gems")
 async def gems(source:str="all",min_score:int=40,filter:str="all"):
     ck=f"gems_{source}_{filter}"
-    c=_cached(ck,30)
+    c=_cached(ck,10)
     if c:return c
     tasks=[]
     # Always fetch these for "all"
@@ -563,7 +646,7 @@ async def chat_stream(request:Request):
 
 @router.get("/news")
 async def news(category:str="all",limit:int=20):
-    c=_cached(f"news_{category}",120)
+    c=_cached(f"news_{category}",30)
     if c:return c
     tasks=[]
     if category in("all","crypto")and _f(_dex,"fetch_crypto_news"):tasks.append(_f(_dex,"fetch_crypto_news")(limit))
@@ -752,7 +835,7 @@ async def at_gems(strategy:str="balanced"):
 
 @router.get("/india/dashboard")
 async def india_dashboard():
-    c=_cached("india_dash",120)
+    c=_cached("india_dash",15)
     if c:return c
     r={"nifty":{},"banknifty":{},"fii_dii":{},"vix":{},"pcr":{},"sectors":[],"pivots":{},"gift_nifty":{},"oi_buildup":{},"prediction":{},"regime":{},"indices":[],"ts":datetime.now(IST).isoformat()}
     async def _nc(k,fn_name):
@@ -800,7 +883,7 @@ async def india_dashboard():
 
 @router.get("/india/indices")
 async def india_indices():
-    c=_cached("india_idx",120)
+    c=_cached("india_idx",30)
     if c:return c
     fn=_f(_dex,"get_nse_indices")
     d=await fn()if fn else[]
@@ -814,7 +897,7 @@ async def india_vix():
 
 @router.get("/india/fii-dii")
 async def india_fii_dii():
-    c=_cached("india_fii",300)
+    c=_cached("india_fii",60)
     if c:return c
     fn=_f(_nifty,"get_fii_dii_data")
     r=(await _t(fn))if fn else{"error":"N/A"}
@@ -828,7 +911,7 @@ async def india_pcr(symbol:str="NIFTY"):
 
 @router.get("/india/sectors")
 async def india_sectors():
-    c=_cached("india_sec",120)
+    c=_cached("india_sec",30)
     if c:return c
     fn=_f(_nifty,"get_sector_heatmap")
     r={"sectors":(await _t(fn))if fn else[]}
@@ -850,14 +933,16 @@ async def india_super(query:str="",budget:float=2000):
 
 @router.get("/india/prediction")
 async def india_prediction(index:str="NIFTY"):
-    c=_cached(f"ipred_{index}",60)
+    c=_cached(f"ipred_{index}",180)
     if c:return c
     fn=_f(_power,"power_predict")
     if fn:
         try:
-            r=await _t(fn,index)
+            r=await asyncio.wait_for(_t(fn,index),timeout=20)
             _set_cache(f"ipred_{index}",r)
             return r
+        except asyncio.TimeoutError:
+            return{"error":"Prediction timed out — try again (cached next time)","index":index,"direction":"COMPUTING","confidence":0}
         except Exception as e:return{"error":str(e)}
     return{"error":"N/A"}
 
@@ -877,18 +962,19 @@ async def india_ml(index:str="NIFTY"):
 
 @router.get("/options/chain")
 async def options_chain(symbol:str="NIFTY"):
-    c=_cached(f"oc_{symbol}",30)
+    c=_cached(f"oc_{symbol}",15)
     if c:return c
     fn=_f(_nse,"fetch_live_option_chain")
     if fn:
         try:
-            ch=await _t(fn,symbol)
+            ch=await asyncio.wait_for(_t(fn,symbol),timeout=10)
             if ch:
                 r={"symbol":symbol,"spot":ch.spot,"expiry":ch.expiry_dates,"max_pain":ch.max_pain,"pcr":ch.pcr_oi,
                    "total_ce_oi":ch.total_ce_oi,"total_pe_oi":ch.total_pe_oi,
                    "strikes":[{"strike":s.strike,"ce_ltp":s.ce_ltp,"pe_ltp":s.pe_ltp,"ce_oi":s.ce_oi,"pe_oi":s.pe_oi,"ce_iv":s.ce_iv,"pe_iv":s.pe_iv}for s in ch.strikes[:30]]}
                 _set_cache(f"oc_{symbol}",r)
                 return r
+        except asyncio.TimeoutError:return{"error":"Chain fetch timed out","symbol":symbol}
         except Exception as e:return{"error":str(e)}
     return{"error":"N/A"}
 
@@ -902,7 +988,7 @@ async def options_analysis(symbol:str="NIFTY",budget:float=2000):
 
 @router.get("/options/signal")
 async def options_signal(symbol:str="NIFTY"):
-    c=_cached(f"os_{symbol}",30)
+    c=_cached(f"os_{symbol}",10)
     if c:return c
     fn=_f(_oi,"get_options_super_signal")
     if fn:
@@ -1049,7 +1135,7 @@ async def risk_plan(capital:float=10000,risk_level:str="moderate"):
 
 @router.get("/intelligence")
 async def intelligence():
-    c=_cached("intl",300)
+    c=_cached("intl",60)
     if c:return c
     fn=_f(_dex,"get_full_market_snapshot")
     snap=await fn()if fn else{}
@@ -1074,12 +1160,12 @@ async def watchlist(user_id:str="0"):
 
 @router.get("/regime")
 async def regime_ep(symbol:str="^NSEI"):
-    c=_cached(f"reg_{symbol}",120)
+    c=_cached(f"reg_{symbol}",180)
     if c:return c
     fn=_f(_regime,"get_regime_quick")
     if fn:
         try:
-            r=await _t(fn,symbol)
+            r=await asyncio.wait_for(_t(fn,symbol),timeout=10)
             _set_cache(f"reg_{symbol}",r)
             return r
         except:pass
@@ -1103,7 +1189,7 @@ async def predictions():
 
 @router.get("/dex/trending")
 async def dex_trending_ep():
-    c=_cached("dxt",30)
+    c=_cached("dxt",5)
     if c:return c
     fn=_f(_dex,"dex_trending")
     d=await fn()if fn else[]
@@ -1117,7 +1203,7 @@ async def dex_new_ep(chain:str="solana"):
 
 @router.get("/pumpfun/trending")
 async def pumpfun_trending_ep():
-    c=_cached("pft",30)
+    c=_cached("pft",5)
     if c:return c
     fn=_f(_dex,"pumpfun_trending")
     d=await fn()if fn else[]
@@ -1146,7 +1232,7 @@ async def analyze(symbol:str=Query(...)):
 
 @router.get("/sentiment")
 async def sentiment():
-    c=_cached("sent",120)
+    c=_cached("sent",10)
     if c:return c
     fn=_f(_dex,"cg_fear_greed")
     fg=await fn()if fn else{"value":50,"label":"Neutral"}
@@ -1155,7 +1241,7 @@ async def sentiment():
 
 @router.get("/futures")
 async def futures_ep():
-    c=_cached("fut",60)
+    c=_cached("fut",20)
     if c:return c
     tasks=[]
     if _f(_dex,"get_india_vix"):tasks.append(_f(_dex,"get_india_vix")())
@@ -1333,7 +1419,7 @@ async def sol_txns(wallet:str="",limit:int=10):
 # ── SUNCRYPTO / INR PRICES ──
 @router.get("/inr/prices")
 async def inr_prices():
-    c=_cached("inr_prices",30)
+    c=_cached("inr_prices",5)
     if c:return c
     fn=_f(_suncrypto,"get_all_inr_prices")
     if fn:
@@ -1421,7 +1507,7 @@ async def pnl_close(request:Request):
 # ── SCREENER PRO ──
 @router.get("/screener/full")
 async def screener_full():
-    c=_cached("screener_full",60)
+    c=_cached("screener_full",20)
     if c:return c
     fn=_f(_screener,"run_full_screener")
     if fn:
@@ -1444,7 +1530,7 @@ async def screener_filter(type:str="oversold"):
 # ── INTRADAY SCANNER ──
 @router.get("/intraday/scan")
 async def intraday_scan():
-    c=_cached("intra_scan",30)
+    c=_cached("intra_scan",10)
     if c:return c
     fn=_f(_intraday,"run_intraday_scan")
     if fn:
@@ -1494,7 +1580,7 @@ async def chart(symbol:str=Query(...),timeframe:str="1d"):
 # ── FUTURES BRAIN ──
 @router.get("/futures/dashboard")
 async def futures_dash():
-    c=_cached("futures_dash",30)
+    c=_cached("futures_dash",10)
     if c:return c
     r={}
     tasks=[]
@@ -1589,7 +1675,7 @@ async def briefing():
 
 @router.get("/market-intel")
 async def market_intel():
-    c=_cached("mkt_intel",60)
+    c=_cached("mkt_intel",20)
     if c:return c
     fn=_f(_super_brain,"get_market_intelligence")
     if fn:
@@ -1603,9 +1689,14 @@ async def market_intel():
 # ── ATM/OTM ENGINE ──
 @router.get("/options/atm-otm")
 async def atm_otm(symbol:str="NIFTY"):
+    c=_cached(f"atm_otm_{symbol}",60)
+    if c:return c
     fn=_f(_otm_atm,"get_full_atm_otm_analysis")
     if fn:
-        try:return await _t(fn,symbol)
+        try:
+            r=await asyncio.wait_for(_t(fn,symbol),timeout=10)
+            _set_cache(f"atm_otm_{symbol}",r)
+            return r
         except:pass
     return{"error":"N/A"}
 
@@ -1681,17 +1772,30 @@ async def dextools_search(q:str=Query(...)):
 async def global_analysis():
     c=_cached("global_analysis",120)
     if c:return c
-    fn=_f(_global_mkt,"analyze_global_markets")
-    fn2=_f(_global_mkt,"get_global_summary")
+    fn=_f(_global_mkt,"fetch_global_market_data")
+    fn2=_f(_global_mkt,"get_market_trend_analysis")
     if fn:
         try:
-            r=await _t(fn)
+            mkt_data=await asyncio.wait_for(_t(fn),timeout=30)
+            sfn=_f(_global_mkt,"analyze_global_sentiment")
+            sentiment=None
+            if sfn and mkt_data:
+                try:
+                    s=await _t(sfn,mkt_data)
+                    sentiment={"label":s[0],"confidence":s[1],"reasoning":s[2]} if isinstance(s,tuple) else s
+                except:pass
+            trend=None
+            if fn2:
+                try:trend=await asyncio.wait_for(_t(fn2),timeout=15)
+                except:pass
+            r={"market_data":mkt_data,"sentiment":sentiment,"trend":trend,"ts":datetime.now(IST).isoformat()}
             _set_cache("global_analysis",r)
             return r
-        except:pass
+        except Exception as e:
+            logger.warning(f"Global analysis error: {e}")
     if fn2:
         try:
-            r=await _t(fn2)
+            r={"trend":await asyncio.wait_for(_t(fn2),timeout=15),"ts":datetime.now(IST).isoformat()}
             _set_cache("global_analysis",r)
             return r
         except:pass
@@ -1699,10 +1803,16 @@ async def global_analysis():
 
 @router.get("/global/india-impact")
 async def global_india():
-    fn=_f(_global_mkt,"predict_india_from_global")
+    c=_cached("global_india_impact",120)
+    if c:return c
+    fn=_f(_global_mkt,"get_indian_market_direction_forecast")
     if fn:
-        try:return await _t(fn)
-        except:pass
+        try:
+            r=await asyncio.wait_for(_t(fn),timeout=30)
+            _set_cache("global_india_impact",r)
+            return r
+        except Exception as e:
+            logger.warning(f"Global india-impact error: {e}")
     return{"error":"N/A"}
 
 # ── MEMORY PRO ──
@@ -1726,11 +1836,30 @@ async def memory_recall(user_id:str="0",key:str=""):
 # ── ML PIPELINE ──
 @router.get("/ml/predict")
 async def ml_predict_ep(symbol:str="NIFTY"):
+    c=_cached(f"ml_pred_{symbol}",180)
+    if c:return c
     fn=_f(_ml_pipe,"predict_for_symbol")
+    train_fn=_f(_ml_pipe,"train_model")
     if fn:
-        try:return{"prediction":await _t(fn,symbol),"ts":datetime.now(IST).isoformat()}
+        try:
+            pred=await asyncio.wait_for(_t(fn,symbol),timeout=15)
+            if pred:
+                r={"prediction":pred,"ts":datetime.now(IST).isoformat()}
+                _set_cache(f"ml_pred_{symbol}",r)
+                return r
         except:pass
-    return{"prediction":{},"error":"N/A"}
+    # Fallback to ml_predictor.predict_with_regime
+    fn2=_f(_ml,"predict_with_regime")
+    if fn2:
+        try:
+            sm={"NIFTY":"^NSEI","BANKNIFTY":"^NSEBANK","SENSEX":"^BSESN"}
+            pred=await asyncio.wait_for(_t(fn2,sm.get(symbol,symbol),symbol),timeout=15)
+            if pred:
+                r={"prediction":pred,"ts":datetime.now(IST).isoformat()}
+                _set_cache(f"ml_pred_{symbol}",r)
+                return r
+        except:pass
+    return{"prediction":None,"error":"ML model not available"}
 
 # ── ANGELONE ──
 @router.get("/angelone/ltp")
@@ -2031,4 +2160,102 @@ async def conqueror_sell(request:Request):
         try:return await _t(fn,uid,mint,pct)
         except Exception as e:return{"error":str(e)}
     return{"error":"Sell not available"}
+
+# ═══ OTA Update Check ═══
+CURRENT_APP_VERSION = "4.0.0"
+
+@router.get("/ota/check")
+async def ota_check(current_version: str = "1.0.0"):
+    """Check if APK/web app needs an update."""
+    if current_version < CURRENT_APP_VERSION:
+        return {
+            "update_available": True,
+            "version": CURRENT_APP_VERSION,
+            "current": current_version,
+            "auto_apply": True,
+            "message": f"Update to v{CURRENT_APP_VERSION} available"
+        }
+    return {
+        "update_available": False,
+        "version": CURRENT_APP_VERSION,
+        "current": current_version
+    }
+
+# ═══ Voice Command Processing ═══
+@router.post("/voice/command")
+async def voice_command(request: Request):
+    """Process voice command via Gemini AI."""
+    try:
+        body = await request.json()
+        text = body.get("text", "")
+        language = body.get("language", "en-IN")
+        
+        if not text:
+            return {"error": "No text provided"}
+        
+        # Simple command parsing (extends to Gemini when available)
+        lower = text.lower()
+        
+        # Price check
+        if any(w in lower for w in ["price", "kya hai", "kitna", "check"]):
+            return {"command": {"action": "price_check", "text": text, "reply": f"Checking price..."}}
+        
+        # Buy/Sell
+        if any(w in lower for w in ["buy", "kharido", "purchase", "long"]):
+            return {"command": {"action": "buy_order", "text": text, "reply": f"Processing buy command: {text}"}}
+        if any(w in lower for w in ["sell", "becho", "short"]):
+            return {"command": {"action": "sell_order", "text": text, "reply": f"Processing sell command: {text}"}}
+        
+        # Portfolio
+        if any(w in lower for w in ["portfolio", "holdings", "my stocks"]):
+            return {"command": {"action": "show_portfolio", "text": text, "reply": "Opening portfolio"}}
+        
+        # Market
+        if any(w in lower for w in ["market", "nifty", "sensex"]):
+            return {"command": {"action": "market_status", "text": text, "reply": "Loading market overview"}}
+        
+        # Default: AI chat
+        return {"command": {"action": "chat", "text": text, "reply": None}}
+    except Exception as e:
+        return {"error": str(e)}
+
+# ═══ Candle Data for TradingView Charts ═══
+@router.get("/candles")
+async def get_candles(symbol: str = "BTCUSDT", interval: str = "1h", limit: int = 200):
+    """Get candlestick data for TradingView chart."""
+    import time, random
+    try:
+        # Try Binance API
+        import httpx
+        async with httpx.AsyncClient(timeout=5) as client:
+            url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
+            resp = await client.get(url)
+            if resp.status_code == 200:
+                klines = resp.json()
+                candles = [{
+                    "time": int(k[0] / 1000),
+                    "open": float(k[1]),
+                    "high": float(k[2]),
+                    "low": float(k[3]),
+                    "close": float(k[4]),
+                    "volume": float(k[5])
+                } for k in klines]
+                return {"data": candles}
+    except:
+        pass
+    
+    # Fallback: generate demo data
+    now = int(time.time())
+    base = 67500 if "BTC" in symbol else 3750 if "ETH" in symbol else 170 if "SOL" in symbol else 100
+    candles = []
+    for i in range(limit, 0, -1):
+        t = now - i * 3600
+        v = base * 0.008
+        o = base + (random.random() - 0.48) * v
+        c = o + (random.random() - 0.48) * v
+        h = max(o, c) + random.random() * v * 0.5
+        l = min(o, c) - random.random() * v * 0.5
+        candles.append({"time": t, "open": round(o,2), "high": round(h,2), "low": round(l,2), "close": round(c,2), "volume": round(random.random()*1000+200, 2)})
+        base = c
+    return {"data": candles}
 

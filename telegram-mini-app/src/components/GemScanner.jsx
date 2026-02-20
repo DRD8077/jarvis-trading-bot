@@ -38,6 +38,12 @@ const GemScanner = () => {
 
   useEffect(() => { loadGems('all') }, [])
 
+  // ⚡ Auto-refresh gems every 10s
+  useEffect(() => {
+    const iv = setInterval(() => loadGems(), 10000)
+    return () => clearInterval(iv)
+  }, [filter, loadGems])
+
   const handleFilterChange = (f) => {
     setFilter(f)
     hapticFeedback?.('impact')

@@ -42,9 +42,9 @@ const Dashboard = () => {
 
   useEffect(() => { loadData() }, [loadData])
 
-  // Auto-refresh every 30s
+  // Auto-refresh every 15s (was 60s)
   useEffect(() => {
-    const iv = setInterval(() => loadData(true), 30000)
+    const iv = setInterval(() => loadData(true), 15000)
     return () => clearInterval(iv)
   }, [loadData])
 
@@ -106,7 +106,14 @@ const Dashboard = () => {
           <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
             Hey, {user?.first_name || 'Trader'} 👋
           </h1>
-          <p className="text-slate-500 text-xs mt-0.5">JARVIS AI Trading • Live</p>
+          <div className="flex items-center space-x-2 mt-0.5">
+            <div className="flex items-center space-x-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-emerald-400 text-[10px] font-medium">LIVE</span>
+            </div>
+            <span className="text-slate-600 text-[10px]">•</span>
+            <p className="text-slate-500 text-[10px]">Auto-refresh 15s</p>
+          </div>
         </div>
         <button onClick={() => loadData(true)} 
           className="p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:border-blue-500/30 transition-all active:scale-90">

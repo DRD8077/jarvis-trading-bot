@@ -1,32 +1,54 @@
 {
-  "name": "JARVIS Trading Bot",
+  "name": "JARVIS AI Trading Agent",
   "short_name": "JARVIS",
-  "description": "AI-Powered Trading Intelligence — Crypto, Stocks, Options, DeFi",
+  "description": "AI-Powered Trading Intelligence — Crypto, Stocks, Options, DeFi. Real-time signals, voice commands, portfolio tracking & automated trading.",
   "start_url": "/miniapp",
   "scope": "/miniapp",
+  "id": "/miniapp",
   "display": "standalone",
-  "orientation": "portrait",
+  "display_override": ["standalone", "window-controls-overlay"],
+  "orientation": "portrait-primary",
   "background_color": "#0a0e1a",
   "theme_color": "#0a0e1a",
-  "categories": ["finance", "business"],
+  "categories": ["finance", "business", "productivity"],
   "lang": "en",
   "dir": "ltr",
+  "iarc_rating_id": "",
   "icons": [
     { "src": "/miniapp/icons/icon-72.png", "sizes": "72x72", "type": "image/png" },
     { "src": "/miniapp/icons/icon-96.png", "sizes": "96x96", "type": "image/png" },
     { "src": "/miniapp/icons/icon-128.png", "sizes": "128x128", "type": "image/png" },
     { "src": "/miniapp/icons/icon-144.png", "sizes": "144x144", "type": "image/png" },
     { "src": "/miniapp/icons/icon-152.png", "sizes": "152x152", "type": "image/png" },
-    { "src": "/miniapp/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/miniapp/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/miniapp/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
     { "src": "/miniapp/icons/icon-384.png", "sizes": "384x384", "type": "image/png" },
-    { "src": "/miniapp/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/miniapp/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/miniapp/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "AI Chat", "url": "/miniapp/ai-chat", "description": "Chat with JARVIS AI" },
-    { "name": "Trading", "url": "/miniapp/trading", "description": "Live Trading" },
-    { "name": "Gem Scanner", "url": "/miniapp/gem-scanner", "description": "Find 100x Gems" },
-    { "name": "Wallet", "url": "/miniapp/wallet", "description": "Your Wallet" }
+    { "name": "AI Chat", "short_name": "Chat", "url": "/miniapp/ai-chat", "description": "Chat with JARVIS AI", "icons": [{"src": "/miniapp/icons/icon-96.png", "sizes": "96x96"}] },
+    { "name": "Trading", "short_name": "Trade", "url": "/miniapp/trading", "description": "Live Trading Dashboard", "icons": [{"src": "/miniapp/icons/icon-96.png", "sizes": "96x96"}] },
+    { "name": "Gem Scanner", "short_name": "Gems", "url": "/miniapp/gem-scanner", "description": "Find 100x Gems", "icons": [{"src": "/miniapp/icons/icon-96.png", "sizes": "96x96"}] },
+    { "name": "Portfolio", "short_name": "Folio", "url": "/miniapp/portfolio", "description": "Portfolio Analytics", "icons": [{"src": "/miniapp/icons/icon-96.png", "sizes": "96x96"}] },
+    { "name": "Wallet", "short_name": "Wallet", "url": "/miniapp/wallet", "description": "Your Wallet", "icons": [{"src": "/miniapp/icons/icon-96.png", "sizes": "96x96"}] },
+    { "name": "AI Signals", "short_name": "Signals", "url": "/miniapp/signals", "description": "AI Trading Signals", "icons": [{"src": "/miniapp/icons/icon-96.png", "sizes": "96x96"}] }
   ],
-  "screenshots": [],
-  "prefer_related_applications": false
+  "screenshots": [
+    { "src": "/miniapp/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "form_factor": "narrow", "label": "JARVIS Dashboard" }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [
+    {
+      "platform": "play",
+      "id": "com.jarvis.trading"
+    }
+  ],
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
 }

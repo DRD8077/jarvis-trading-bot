@@ -37,13 +37,13 @@ class JarvisOTAUpdater {
     this.isChecking = true
 
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE || ''
+      const { SERVER_BASE } = await import('./apiBase')
       const params = new URLSearchParams({
         version: this.currentVersion,
         native_version: '1.0.0',
       })
 
-      const resp = await fetch(`${baseUrl}${OTA_CHECK_URL}?${params}`)
+      const resp = await fetch(`${SERVER_BASE}${OTA_CHECK_URL}?${params}`)
       const data = await resp.json()
 
       localStorage.setItem(LAST_CHECK_KEY, Date.now().toString())
@@ -69,13 +69,13 @@ class JarvisOTAUpdater {
     if (!updateInfo?.download_url) return false
 
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE || ''
+      const { SERVER_BASE } = await import('./apiBase')
       
       // Show subtle update notification
       this._showUpdateNotification('Updating JARVIS... ✨')
 
       // Download bundle
-      const resp = await fetch(`${baseUrl}${updateInfo.download_url}`)
+      const resp = await fetch(`${SERVER_BASE}${updateInfo.download_url}`)
       if (!resp.ok) throw new Error('Download failed')
 
       // Store new version

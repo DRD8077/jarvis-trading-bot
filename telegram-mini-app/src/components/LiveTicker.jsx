@@ -1,32 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
-import { fetchDashboard } from '../services/api'
+import { TrendingUp, TrendingDown, Minus, Wifi, WifiOff } from 'lucide-react'
+import { fetchTicker } from '../services/api'
+import { useAutoRefresh } from '../hooks/useRealTime'
 
 const LiveTicker = () => {
+  const { data, refreshing } = useAutoRefresh(fetchTicker, 5000) // 5s refresh (was 20s, fetched full dashboard)
   const [tickers, setTickers] = useState([])
   const scrollRef = useRef(null)
 
   useEffect(() => {
-    const fetchPrices = async () => {
-      try {
-        const res = await fetchDashboard()
-        const data = res?.data || {}
-        const mt = data.market_ticker || []
-        if (mt.length > 0) {
-          setTickers(mt.map(t => ({
-            symbol: t.symbol || '???',
-            price: t.price_inr || t.price_usd || 0,
-            priceUsd: t.price_usd || 0,
-            change: t.change_24h || 0,
-            isInr: !!(t.price_inr && t.price_inr > 1)
-          })))
-        }
-      } catch (e) { /* silent */ }
+    const raw = data?.ticker || data?.data?.ticker || []
+    if (raw.length > 0) {
+      setTickers(raw.map(t => ({
+        symbol: t.symbol || '???',
+        price: t.price_inr || t.price_usd || 0,
+        priceUsd: t.price_usd || 0,
+        change: t.change_24h || 0,
+        isInr: !!(t.price_inr && t.price_inr > 1)
+      })))
     }
-    fetchPrices()
-    const interval = setInterval(fetchPrices, 20000)
-    return () => clearInterval(interval)
-  }, [])
+  }, [data])
 
   useEffect(() => {
     const el = scrollRef.current

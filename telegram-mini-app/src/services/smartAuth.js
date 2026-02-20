@@ -18,17 +18,17 @@ class JarvisAuth {
    */
   async login(chatId, username = '', firstName = '') {
     try {
-      const tg = window.Telegram?.WebApp
-      const telegramUser = tg?.initDataUnsafe?.user
+      // Use saved Gmail user data
+      const savedUser = JSON.parse(localStorage.getItem('jarvis_gmail_user') || 'null')
 
       const formData = new FormData()
-      formData.append('chat_id', chatId || telegramUser?.id || '0')
-      formData.append('username', username || telegramUser?.username || '')
-      formData.append('first_name', firstName || telegramUser?.first_name || '')
+      formData.append('chat_id', chatId || savedUser?.id || '0')
+      formData.append('username', username || savedUser?.name || '')
+      formData.append('first_name', firstName || savedUser?.name?.split(' ')[0] || '')
       formData.append('device_fp', this._getDeviceFingerprint())
 
-      const baseUrl = import.meta.env.VITE_API_BASE || '/api/miniapp'
-      const resp = await fetch(`${baseUrl.replace('/miniapp', '')}/api/auth/login`, {
+      const { SERVER_BASE } = await import('./apiBase')
+      const resp = await fetch(`${SERVER_BASE}/api/auth/login`, {
         method: 'POST',
         body: formData,
       })
@@ -58,11 +58,11 @@ class JarvisAuth {
    * Auto-login on app start
    */
   async autoLogin() {
-    const tg = window.Telegram?.WebApp
-    const user = tg?.initDataUnsafe?.user
+    // Use saved Gmail user data
+    const savedUser = JSON.parse(localStorage.getItem('jarvis_gmail_user') || 'null')
 
-    if (user?.id) {
-      return this.login(String(user.id), user.username, user.first_name)
+    if (savedUser?.id) {
+      return this.login(String(savedUser.id), savedUser.name, savedUser.name?.split(' ')[0])
     }
 
     // Try saved session
@@ -81,8 +81,8 @@ class JarvisAuth {
     if (!this.token) return false
 
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE || '/api/miniapp'
-      const resp = await fetch(`${baseUrl.replace('/miniapp', '')}/api/auth/verify`, {
+      const { SERVER_BASE } = await import('./apiBase')
+      const resp = await fetch(`${SERVER_BASE}/api/auth/verify`, {
         headers: { 'Authorization': `Bearer ${this.token}` },
       })
 

@@ -1,0 +1,29 @@
+{
+  "app_name": "JARVIS AI Trading",
+  "version": "7.0.0",
+  "build": 4,
+  "api_base": "",
+  "build_mode": "debug",
+  "built_at": "2026-02-20T21:50:48+00:00",
+  "local_first": true,
+  "features": {
+    "ota_updates": false,
+    "sse_push": true,
+    "voice_assistant": true,
+    "offline_ai": true,
+    "social_trading": true,
+    "backtester": true,
+    "portfolio_charts": true,
+    "biometric_auth": true,
+    "push_notifications": true
+  },
+  "sse": {
+    "enabled": true,
+    "url": "/api/sse/subscribe?channels=all"
+  },
+  "voice": {
+    "enabled": true,
+    "language": "hi-IN",
+    "chat_url": "/api/voice/chat"
+  }
+}

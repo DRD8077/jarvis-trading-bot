@@ -93,6 +93,23 @@ const NiftyOptionsLive = () => {
 
   useEffect(() => { load() }, [selectedIndex])
 
+  // ⚡ Auto-refresh options chain every 10s
+  useEffect(() => {
+    const iv = setInterval(async () => {
+      try {
+        const [chainRes, spotRes, signalRes] = await Promise.all([
+          fetchNseLiveChain(selectedIndex).catch(() => null),
+          fetchNseLiveSpot(selectedIndex).catch(() => null),
+          fetchOiSuperSignal(selectedIndex).catch(() => null)
+        ])
+        if (chainRes?.data) setChain(chainRes.data.data || chainRes.data)
+        if (spotRes?.data) setSpot(spotRes.data.data || spotRes.data)
+        if (signalRes?.data) setSuperSignal(signalRes.data.data || signalRes.data)
+      } catch (e) { /* silent */ }
+    }, 10000)
+    return () => clearInterval(iv)
+  }, [selectedIndex])
+
   const tabs = [
     { key: 'chain', label: 'Option Chain' },
     { key: 'traps', label: 'OI Traps' },

@@ -44,6 +44,12 @@ const Intelligence = () => {
 
   useEffect(() => { loadData() }, [])
 
+  // ⚡ Auto-refresh intelligence every 20s
+  useEffect(() => {
+    const iv = setInterval(loadData, 20000)
+    return () => clearInterval(iv)
+  }, [])
+
   const doRiskCalc = async () => {
     hapticFeedback('impact')
     try {
