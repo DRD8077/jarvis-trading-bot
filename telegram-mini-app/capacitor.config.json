@@ -1,14 +1,37 @@
 {
   "appId": "com.jarvis.trading",
-  "appName": "JARVIS Trading",
+  "appName": "JARVIS AI Agent",
   "webDir": "dist",
   "server": {
-    "url": "https://super-duper-funicular-gp99q655qw6cprr-8000.app.github.dev/miniapp",
     "cleartext": true,
-    "allowNavigation": ["*.app.github.dev"]
+    "allowNavigation": ["*"],
+    "errorPath": "index.html"
   },
   "android": {
     "allowMixedContent": true,
-    "backgroundColor": "#0a0e1a"
+    "backgroundColor": "#0a0e1a",
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true,
+    "initialFocus": true,
+    "buildOptions": {
+      "keystorePath": null,
+      "releaseType": "APK"
+    }
+  },
+  "plugins": {
+    "LocalLLM": {
+      "defaultModel": "auto",
+      "threads": 4,
+      "contextSize": 2048
+    },
+    "VoskSTT": {
+      "defaultLanguage": "en-us",
+      "sampleRate": 16000
+    },
+    "LocalTTS": {
+      "defaultLanguage": "hi-IN",
+      "rate": 1.0,
+      "pitch": 1.0
+    }
   }
 }
