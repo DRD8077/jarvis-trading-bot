@@ -79,6 +79,9 @@ const JarvisCommandCenter = lazy(() => import('./components/JarvisCommandCenter'
 const VoiceCommand = lazy(() => import('./components/VoiceCommand'))
 const VaultManager = lazy(() => import('./components/VaultManager'))
 const ExchangeConnect = lazy(() => import('./components/ExchangeConnect'))
+const QRScanner = lazy(() => import('./components/QRScanner'))
+const SignalShareCard = lazy(() => import('./components/SignalShareCard'))
+const VoiceAI = lazy(() => import('./components/VoiceAI'))
 
 const PageLoader = () => (
   <div className="p-4 bg-slate-900 min-h-screen space-y-3 animate-pulse">
@@ -256,6 +259,9 @@ function SwipeableApp() {
               <Route path="/voice-command" element={<ErrorBoundary><VoiceCommand /></ErrorBoundary>} />
               <Route path="/vault" element={<ErrorBoundary><VaultManager /></ErrorBoundary>} />
               <Route path="/exchange-connect" element={<ErrorBoundary><ExchangeConnect /></ErrorBoundary>} />
+              <Route path="/qr-scanner" element={<ErrorBoundary><QRScanner /></ErrorBoundary>} />
+              <Route path="/signal-card" element={<ErrorBoundary><SignalShareCard /></ErrorBoundary>} />
+              <Route path="/voice-ai" element={<ErrorBoundary><VoiceAI /></ErrorBoundary>} />
             </Routes>
           </main>
         </Suspense>

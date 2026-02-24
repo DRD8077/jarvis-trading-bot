@@ -37,3 +37,5 @@ build_report_*.json
 .idea/
 *.swp
 *.swo
+desktop-app/release/
+desktop-app/node_modules/
