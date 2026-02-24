@@ -15,9 +15,10 @@ import jarvisAuth from '../services/smartAuth'
  * - Real-time conversation
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/miniapp'
-const VOICE_BASE = API_BASE.replace('/miniapp', '') + '/api/voice'
-const GEMINI_BASE = API_BASE.replace('/miniapp', '') + '/api/gemini'
+import { API_BASE, SERVER_BASE } from '../services/apiBase'
+
+const VOICE_BASE = (SERVER_BASE || '') + '/api/voice'
+const GEMINI_BASE = (SERVER_BASE || '') + '/api/gemini'
 
 const MOOD_EMOJIS = {
   happy: '😊',

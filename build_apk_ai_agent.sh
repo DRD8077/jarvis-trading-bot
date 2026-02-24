@@ -98,21 +98,42 @@ echo "   ✅ Frontend built"
 
 # ═══ Step 2: Update Capacitor Config for Local Mode ═══
 echo ""
-echo "📱 [2/7] Configuring for offline AI mode..."
+echo "📱 [2/7] Configuring for hybrid mode (local UI + server AI)..."
 
-# Write offline-capable capacitor config
+# Write proper capacitor config — LOCAL UI, SERVER API (Gemini AI)
 cat > "$PROJ_DIR/capacitor.config.json" << 'EOF'
 {
   "appId": "com.jarvis.trading",
-  "appName": "JARVIS AI Agent",
+  "appName": "JARVIS AI",
   "webDir": "dist",
+  "server": {
+    "cleartext": true,
+    "allowNavigation": ["*"],
+    "errorPath": "index.html",
+    "androidScheme": "https"
+  },
   "android": {
     "allowMixedContent": true,
     "backgroundColor": "#0a0e1a",
     "captureInput": true,
-    "webContentsDebuggingEnabled": true
+    "webContentsDebuggingEnabled": false,
+    "initialFocus": true,
+    "buildOptions": {
+      "releaseType": "APK"
+    }
   },
   "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#0a0e1a",
+      "showSpinner": true,
+      "spinnerColor": "#3b82f6"
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0a0e1a"
+    },
     "LocalLLM": {
       "defaultModel": "auto",
       "threads": 4,
@@ -130,7 +151,7 @@ cat > "$PROJ_DIR/capacitor.config.json" << 'EOF'
   }
 }
 EOF
-echo "   ✅ Capacitor configured for offline AI"
+echo "   ✅ Capacitor configured (local UI + server Gemini AI)"
 
 # ═══ Step 3: Sync with Android ═══
 echo ""
@@ -278,27 +299,22 @@ APK_SIZE=$(du -h "$APK_DEST" | cut -f1)
 
 echo ""
 echo "═══════════════════════════════════════════════════════════"
-echo "  ✅ JARVIS AI Agent APK Ready!"
+echo "  ✅ JARVIS AI APK Ready!"
 echo "═══════════════════════════════════════════════════════════"
 echo ""
 echo "  📱 APK:  $APK_DEST"
 echo "  📦 Size: $APK_SIZE"
 echo ""
-echo "  🧠 Features Included:"
-echo "     ├── Local LLM (llama.cpp / GGUF models)"
-echo "     ├── Offline STT (Vosk — Hindi + English)"
-echo "     ├── Offline TTS (Android built-in)"
-echo "     ├── Device Commands (Battery, Calls, etc.)"
-echo "     ├── AI Chat with Markdown support"
-echo "     ├── Voice conversation mode"
-echo "     ├── Model download & management"
-echo "     └── 100% Offline — No API keys needed!"
+echo "  🧠 How it works:"
+echo "     ├── UI loads LOCALLY (no admin page!)"
+echo "     ├── AI Chat → Server Gemini API (real AI!)"
+echo "     ├── Trading, Signals, Dashboard → Live data"
+echo "     ├── Voice AI (STT + TTS) → Browser APIs"
+echo "     ├── Full React Trading App (not admin panel)"
+echo "     └── Auto-connects to your server for Gemini"
 echo ""
 echo "  📲 Install on phone:"
 echo "     adb install -r $APK_DEST"
 echo ""
-echo "  📥 Push model to phone (optional):"
-echo "     adb push model.gguf /data/data/com.jarvis.trading/files/models/"
-echo ""
-echo "  🙏 Jai Mahadev! Your AI is ready!"
+echo "  🙏 Jai Mahadev! Your JARVIS is ready!"
 echo "═══════════════════════════════════════════════════════════"

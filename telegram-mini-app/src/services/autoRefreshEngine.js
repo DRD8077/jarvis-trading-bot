@@ -10,6 +10,8 @@
  * - Auto OTA check every 30 minutes
  */
 
+import { SERVER_BASE } from './apiBase'
+
 const REFRESH_ULTRA = 1000    // 1s: market hours + active
 const REFRESH_FAST = 2000     // 2s: normal foreground
 const REFRESH_NORMAL = 3000   // 3s: idle
@@ -207,7 +209,7 @@ class AutoRefreshEngine {
 
   async _checkOTA() {
     try {
-      const resp = await fetch('/api/ota/check?current_version=' + (window.__JARVIS_VERSION || '1.0.0'))
+      const resp = await fetch(`${SERVER_BASE || ''}/api/ota/check?current_version=` + (window.__JARVIS_VERSION || '1.0.0'))
       const data = await resp.json()
       if (data?.update_available) {
         console.log('[OTA] Update available:', data.version)

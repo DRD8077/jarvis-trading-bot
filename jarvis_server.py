@@ -781,30 +781,45 @@ async def miniapp_portfolio():
 async def miniapp_chat(request: Request):
     data = await request.json()
     message = data.get("message", "")
-    lower = message.lower()
+    user_id = str(data.get("user_id", "0"))
+
+    if not message.strip():
+        return {"status": "error", "reply": "Please send a message."}
 
     # Track AI request in Prometheus
     track_fn = prom_mod.get("track_ai_request")
     if track_fn:
         try:
-            track_fn("local")
+            track_fn("miniapp")
         except Exception:
             pass
 
-    if "btc" in lower or "bitcoin" in lower:
-        reply = "Bitcoin is trading at $97,500 with bullish momentum. RSI at 62. Key resistance at $100K. AI predicts 78% chance of breakout."
-    elif "eth" in lower:
-        reply = "Ethereum at $3,200 consolidating. Support at $3,000. Moderate buy signal with 72% confidence."
-    elif "signal" in lower:
-        reply = "Top signals: BUY BTC @97.5K (target 102K, 92% conf), SELL ETH @3.2K (target 3.05K), BUY SOL @185 (target 210, 85% conf)"
-    elif "market" in lower:
-        reply = "Market Cap: $3.2T (+2.1%). BTC Dominance: 52.3%. Fear & Greed: 72 (Greed). Overall: Cautiously Bullish."
-    elif "backtest" in lower:
-        reply = "Use the Backtester tab to run strategy tests! Example: 'RSI < 30 buy, RSI > 70 sell on NIFTY 1 year'"
-    else:
-        reply = f"Analyzing '{message}'... Based on current market conditions, I recommend monitoring closely. Type 'signal', 'btc', 'eth' or 'market' for analysis."
+    # Use the REAL Gemini-powered brain for AI responses
+    try:
+        from jarvis_brain import jarvis_chat
+        reply = await jarvis_chat(message, user_id)
+        return {"status": "ok", "reply": reply, "response": reply, "model": "jarvis-brain"}
+    except ImportError:
+        logger.warning("jarvis_brain not available, trying direct Gemini")
+    except Exception as e:
+        logger.error(f"Brain chat error: {e}")
 
-    return {"status": "ok", "reply": reply}
+    # Direct Gemini fallback if brain fails
+    try:
+        from jarvis_brain import chat_gemini
+        reply = await chat_gemini(message, user_id)
+        if reply:
+            return {"status": "ok", "reply": reply, "response": reply, "model": "gemini-direct"}
+    except Exception as e:
+        logger.error(f"Gemini direct error: {e}")
+
+    # Last resort fallback
+    return {
+        "status": "ok",
+        "reply": f"🧠 AI is processing your request: '{message[:100]}'\n\nAll AI providers are currently busy. Please try again in a moment.",
+        "response": f"AI processing: '{message[:100]}'\n\nProviders busy, retry shortly.",
+        "model": "fallback"
+    }
 
 
 # ═══════════════════════════════════════════════════════════

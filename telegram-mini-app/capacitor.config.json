@@ -1,18 +1,18 @@
 {
   "appId": "com.jarvis.trading",
-  "appName": "JARVIS AI Agent",
+  "appName": "JARVIS AI",
   "webDir": "dist",
   "server": {
-    "url": "https://jarvis-trading-production.up.railway.app",
     "cleartext": true,
     "allowNavigation": ["*"],
-    "errorPath": "index.html"
+    "errorPath": "index.html",
+    "androidScheme": "https"
   },
   "android": {
     "allowMixedContent": true,
     "backgroundColor": "#0a0e1a",
     "captureInput": true,
-    "webContentsDebuggingEnabled": true,
+    "webContentsDebuggingEnabled": false,
     "initialFocus": true,
     "buildOptions": {
       "keystorePath": null,
@@ -20,6 +20,18 @@
     }
   },
   "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#0a0e1a",
+      "androidSplashResourceName": "splash",
+      "showSpinner": true,
+      "spinnerColor": "#3b82f6"
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0a0e1a"
+    },
     "LocalLLM": {
       "defaultModel": "auto",
       "threads": 4,

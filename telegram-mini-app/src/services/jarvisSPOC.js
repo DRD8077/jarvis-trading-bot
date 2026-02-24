@@ -235,7 +235,7 @@ class InferenceEngine {
    */
   async *_serverGenerate(prompt, options) {
     try {
-      const response = await fetch('/api/miniapp/ai/chat', {
+      const response = await fetch(`${API_BASE}/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: prompt, ...options }),
@@ -817,7 +817,7 @@ class JarvisAISPOC {
       yield fullResponse
 
       try {
-        const res = await fetch('/api/miniapp/ai/chat', {
+        const res = await fetch(`${API_BASE}/ai/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message, context }),

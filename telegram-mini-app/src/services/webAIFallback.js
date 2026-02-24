@@ -1,14 +1,17 @@
 /**
- * 🌐 Web Fallback for JARVIS AI Engine
+ * 🌐 Web/APK Fallback for JARVIS AI Engine v2.0
  * 
- * When running in browser (not in Capacitor native app),
- * this provides mock/fallback implementations for:
- * - Web Speech API for STT (browser built-in)
- * - Web Speech Synthesis for TTS (browser built-in)
- * - Mock device commands
+ * When native LLM plugins aren't available (browser or APK without compiled plugins),
+ * this provides REAL AI responses by calling the server's Gemini API,
+ * plus browser-native Speech API for STT/TTS.
  * 
- * This allows development & testing without an Android device.
+ * Priority:
+ * 1. Server Gemini API (real AI responses via Railway backend)
+ * 2. Browser Web Speech API for STT/TTS
+ * 3. Device mock commands (battery, network from browser APIs)
  */
+
+import { API_BASE, SERVER_BASE, isNativeApp } from './apiBase'
 
 class WebAIFallback {
   constructor() {
@@ -16,11 +19,22 @@ class WebAIFallback {
     this.recognition = null
     this.synth = window.speechSynthesis || null
     this.chatHistory = []
+    this.serverConnected = false
+    this._checkServerConnection()
   }
 
-  /**
-   * Check if we're in native or web mode
-   */
+  async _checkServerConnection() {
+    try {
+      const base = SERVER_BASE || ''
+      const res = await fetch(`${base}/health`, { timeout: 5000 })
+      this.serverConnected = res.ok
+      console.log(`[JARVIS] Server connection: ${this.serverConnected ? '✅ Connected' : '❌ Offline'}`)
+    } catch {
+      this.serverConnected = false
+      console.log('[JARVIS] Server connection: ❌ Offline (will retry on chat)')
+    }
+  }
+
   get isWeb() {
     return !this.isNative
   }
@@ -150,32 +164,73 @@ class WebAIFallback {
     }
   }
 
-  // ═══ Mock LLM (simple pattern-based responses for testing) ═══
+  // ═══ AI Generation (uses SERVER Gemini API — real AI responses!) ═══
 
   async mockGenerate(prompt) {
+    // ALWAYS try the server's Gemini API first (real AI!)
+    try {
+      const savedUser = JSON.parse(localStorage.getItem('jarvis_gmail_user') || '{}')
+      const userId = savedUser?.id || '0'
+      const apiBase = API_BASE || '/api/miniapp'
+      
+      console.log(`[JARVIS] Sending to Gemini via: ${apiBase}/chat`)
+      
+      const res = await fetch(`${apiBase}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          message: prompt, 
+          user_id: String(userId),
+          context: 'mobile_app'
+        })
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        const text = data.response || data.reply || data.message || data.text || 'No response from server'
+        this.serverConnected = true
+        
+        this.chatHistory.push({ role: 'user', content: prompt })
+        this.chatHistory.push({ role: 'assistant', content: text })
+        
+        return { 
+          text, 
+          model: data.model || 'gemini-server', 
+          tokensUsed: data.tokens_used || 0,
+          source: 'server-gemini'
+        }
+      }
+    } catch (e) {
+      console.warn('[JARVIS] Server Gemini API failed:', e.message, '— trying offline fallback')
+      this.serverConnected = false
+    }
+
+    // Offline fallback — basic pattern responses when server unreachable
+    return this._offlineFallback(prompt)
+  }
+
+  // Offline pattern-based responses (last resort when no internet)
+  _offlineFallback(prompt) {
     const p = prompt.toLowerCase()
     
-    // Simple keyword responses for testing
     const responses = {
-      'hello|hi|hey|namaste|namaskar': 'Namaste! 🙏 Main JARVIS hoon. Kaise madad kar sakta hoon? (Note: Yeh web mode hai — phone pe full AI chalega)',
-      'battery': `🔋 Battery Info:\n${JSON.stringify(await this.mockBattery(), null, 2)}\n\n*Web mode mein real battery API use ho raha hai*`,
-      'time|samay|waqt': `🕐 ${new Date().toLocaleString('hi-IN')}\n\n*Phone pe zyada accurate hoga with timezone*`,
-      'network|wifi|internet': `📶 Online: ${navigator.onLine ? 'Yes ✅' : 'No ❌'}\n\n*Phone pe full WiFi/cellular details milenge*`,
-      'device|phone': `📱 Browser: ${navigator.userAgent.substring(0, 50)}...\nCores: ${navigator.hardwareConcurrency}\n\n*Phone pe full device info milega*`,
-      'joke|mazak': '😄 Ek programmer ne apni maa se kaha: "Maa, mujhe ek girlfriend chahiye." Maa boli: "Beta, pehle bugs to fix kar le!" 😂',
-      'market|nifty|bitcoin|btc': '📊 Market data ke liye internet chahiye. Offline mode mein saved data use hoga.\n\nTip: Phone pe JARVIS AI Agent install karo — trading features bhi milenge! 🚀',
+      'hello|hi|hey|namaste|namaskar': 'Namaste! 🙏 Main JARVIS hoon. Abhi server se connect nahi ho pa raha — internet check karo.',
+      'battery': `🔋 Battery Info:\n${navigator.getBattery ? 'Browser Battery API available' : 'Not available'}\n\n⚠️ Full battery info ke liye server connection chahiye.`,
+      'time|samay|waqt': `🕐 ${new Date().toLocaleString('hi-IN')}`,
+      'network|wifi|internet': `📶 Online: ${navigator.onLine ? 'Haan ✅' : 'Nahi ❌'}\nServer: ${this.serverConnected ? 'Connected ✅' : 'Disconnected ❌'}`,
     }
     
     for (const [patterns, response] of Object.entries(responses)) {
       if (new RegExp(patterns, 'i').test(p)) {
-        return { text: response, model: 'web-mock', tokensUsed: 0 }
+        return { text: response, model: 'offline-fallback', tokensUsed: 0, source: 'offline' }
       }
     }
     
     return {
-      text: `🌐 **Web Mode Response**\n\nAapne kaha: "${prompt}"\n\nYeh web/browser mode hai — basic responses hi milenge.\n\n📱 **Full AI ke liye:**\n1. APK build karo: \`bash build_apk_ai_agent.sh\`\n2. Phone pe install karo\n3. LLM model download karo\n4. Phir offline AI full power se chalega! 🧠\n\n*Jai Mahadev! 🙏*`,
-      model: 'web-mock',
-      tokensUsed: 0
+      text: `⚠️ **Offline Mode**\n\nServer se connect nahi ho pa raha.\n\n**Fix karne ke liye:**\n1. Internet/WiFi on karo 📶\n2. App restart karo 🔄\n3. Server: ${SERVER_BASE || 'Not configured'}\n\nJab internet aayega, Gemini AI full power se chalega! 🧠✨`,
+      model: 'offline-fallback',
+      tokensUsed: 0,
+      source: 'offline'
     }
   }
 }

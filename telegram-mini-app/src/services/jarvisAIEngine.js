@@ -174,10 +174,11 @@ Jai Mahadev! 🔱`
 
   /**
    * Generate AI response from text prompt
+   * Priority: Native LLM → Server Gemini API → Offline fallback
    */
   async generate(prompt, options = {}) {
-    // Web fallback — use when not native OR native plugins unavailable
-    if ((!isNative || !nativePluginsAvailable) && webFallback) {
+    // If native LLM is NOT ready, use server Gemini API via webFallback
+    if ((!nativePluginsAvailable || !this.llmReady) && webFallback) {
       this.isGenerating = true
       this._emit('generatingStart', { prompt })
       try {

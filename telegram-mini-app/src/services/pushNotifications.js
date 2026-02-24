@@ -10,6 +10,8 @@
  * - Persistent notification preferences in localStorage
  */
 
+import { API_BASE } from './apiBase'
+
 const VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkOs-qy02tEMeHrlGG1e9tzQ4E4gHV-Lk5yA3VifIo'
 
 class PushNotificationEngine {
@@ -87,7 +89,7 @@ class PushNotificationEngine {
   async _sendSubscriptionToServer(sub) {
     try {
       const user = JSON.parse(localStorage.getItem('jarvis_gmail_user') || '{}')
-      await fetch('/api/miniapp/push/subscribe', {
+      await fetch(`${API_BASE}/push/subscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

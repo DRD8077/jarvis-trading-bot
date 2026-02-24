@@ -28,6 +28,7 @@
  */
 
 import jarvisAI from './jarvisAIEngine'
+import { API_BASE } from './apiBase'
 
 // ═══════════════════════════════════════════════════════════
 //  CONSTANTS & CONFIG
@@ -528,7 +529,7 @@ class ToolSystem {
       parameters: { symbol: 'string — e.g., BTC, ETH, NIFTY, RELIANCE' }
     }, async ({ symbol }) => {
       try {
-        const resp = await fetch(`/api/miniapp/price/${symbol}`)
+        const resp = await fetch(`${API_BASE}/price/${symbol}`)
         return await resp.json()
       } catch { return { symbol, error: 'price_unavailable' } }
     })
@@ -572,7 +573,7 @@ class ToolSystem {
       parameters: {}
     }, async () => {
       try {
-        const resp = await fetch('/api/miniapp/dashboard')
+        const resp = await fetch(`${API_BASE}/dashboard`)
         const data = await resp.json()
         return { ticker: data?.ticker?.slice(0, 10) || [], status: 'ok' }
       } catch { return { error: 'dashboard_unavailable' } }
@@ -584,7 +585,7 @@ class ToolSystem {
       parameters: {}
     }, async () => {
       try {
-        const resp = await fetch('/api/miniapp/india-dashboard')
+        const resp = await fetch(`${API_BASE}/india-dashboard`)
         return await resp.json()
       } catch { return { error: 'india_data_unavailable' } }
     })

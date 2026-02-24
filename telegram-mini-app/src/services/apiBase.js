@@ -1,34 +1,46 @@
 /**
- * 🌐 JARVIS API Base URL — Smart Auto-Detection
+ * 🌐 JARVIS API Base URL — Smart Auto-Detection v2.0
  * ════════════════════════════════════════════════════
- * Priority order:
- * 1. VITE_API_BASE env variable (dev/build override)
- * 2. Same-origin relative path (fastest, zero CORS)
- * 3. Fallback → relative path (works when served from same server)
+ * 
+ * APK MODE (Native):
+ *   UI loads locally from bundled dist/ folder
+ *   API calls go to Railway production server
+ *   Gemini AI, signals, trading — all via live backend
  *
- * NOTE: The APK bundles the full UI locally. API calls use relative
- * paths so the Capacitor server or any proxy can route them.
+ * BROWSER MODE:
+ *   Relative paths (same-origin, zero CORS)
+ *
+ * Priority:
+ * 1. VITE_API_BASE env override
+ * 2. Native APK → Railway live server (for Gemini + all APIs)
+ * 3. Same-origin relative path (browser)
  */
 
 export function isNativeApp() {
-  return typeof window !== 'undefined' && 
-    (window.Capacitor?.isNativePlatform?.() || 
-     window.location.protocol === 'file:' ||
-     (window.location.hostname === 'localhost' && !window.location.port))
+  if (typeof window === 'undefined') return false
+  // Capacitor native platform detection
+  if (window.Capacitor?.isNativePlatform?.()) return true
+  // file:// protocol (local WebView)
+  if (window.location.protocol === 'file:') return true
+  // Capacitor serves from localhost without port or capacitor://
+  if (window.location.protocol === 'capacitor:') return true
+  if (window.location.hostname === 'localhost' && !window.location.port) return true
+  return false
 }
 
 const LIVE_SERVER = 'https://jarvis-trading-production.up.railway.app'
 
 function detectServerBase() {
-  // 1. Env override (set during build via VITE_API_BASE)
+  // 1. Build-time env override
   if (import.meta.env.VITE_API_BASE) {
     return import.meta.env.VITE_API_BASE.replace('/api/miniapp', '')
   }
-  // 2. Running inside APK → use live Railway server
+  // 2. Native APK → always use live Railway server for ALL API calls
   if (isNativeApp()) {
+    console.log('[JARVIS] Native APK detected → API base:', LIVE_SERVER)
     return LIVE_SERVER
   }
-  // 3. Same-origin (browser) → relative path
+  // 3. Browser → same-origin relative
   return ''
 }
 
@@ -44,4 +56,11 @@ export function getApiBase() {
 export const API_BASE = getApiBase()
 export const SERVER_BASE = getServerBase()
 
-export default { API_BASE, SERVER_BASE, getApiBase, getServerBase, isNativeApp }
+// Log connection info on startup
+if (typeof window !== 'undefined') {
+  console.log(`[JARVIS] API Base: ${API_BASE}`)
+  console.log(`[JARVIS] Server Base: ${SERVER_BASE}`)
+  console.log(`[JARVIS] Native App: ${isNativeApp()}`)
+}
+
+export default { API_BASE, SERVER_BASE, getApiBase, getServerBase, isNativeApp, LIVE_SERVER }
