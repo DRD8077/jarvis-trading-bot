@@ -55,6 +55,9 @@ const Navigation = () => {
     { path: '/intelligence', icon: Brain, label: 'Intelligence', color: 'from-purple-500 to-pink-500', desc: 'AI market intel' },
     { path: '/ai-agent', icon: Brain, label: '🧠 AI Agent', color: 'from-violet-600 to-purple-600', desc: 'Offline AI — Voice + LLM + Commands' },
     { path: '/voice', icon: Mic, label: 'Hindi Voice', color: 'from-pink-500 to-rose-600', desc: 'Hindi voice assistant' },
+    { path: '/system-specs', icon: Gauge, label: '⚙️ System Specs', color: 'from-slate-500 to-blue-500', desc: 'OS • Hardware • LLM • Sensors' },
+    { path: '/jarvis-vs-myra', icon: Bot, label: '🤖 JARVIS vs MYRA', color: 'from-blue-500 to-pink-500', desc: 'Compare AI assistants' },
+    { path: '/voice-automation', icon: Mic, label: '🎙️ Voice Control', color: 'from-green-500 to-teal-500', desc: 'Volume • Brightness • WhatsApp • Music' },
     ...(isAdmin ? [{ path: '/admin', icon: Crown, label: '👑 Admin Panel', color: 'from-amber-500 to-orange-500', desc: 'System admin' }] : []),
     { path: '/settings', icon: Settings, label: 'Settings', color: 'from-slate-500 to-slate-600', desc: 'Preferences' },
   ]

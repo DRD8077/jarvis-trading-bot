@@ -436,10 +436,11 @@ const Settings = () => {
       {/* App Info */}
       <div className="bg-gradient-to-r from-slate-800 to-slate-800/50 rounded-xl p-4 border border-slate-700 text-center">
         <p className="gradient-text text-lg font-bold">JARVIS AI Trading Platform</p>
-        <p className="text-xs text-slate-500 mt-1">v7.0.0 ULTIMATE • 50+ Features • Voice Hindi AI • Desktop EXE • PWA + APK</p>
-        <p className="text-[10px] text-slate-600 mt-1">Push • Biometric • Offline AI • TradingView • Voice • Paper Trading • P&L Journal</p>
-        <p className="text-[10px] text-slate-600 mt-1">Watchlist • Smart Alerts • Depth Chart • Tax Calculator • Deep Links</p>
-        <p className="text-[10px] text-slate-600 mt-1">Multi-Language • Haptics • Crash Analytics • Splash Screen • Swipe Nav</p>
+        <p className="text-xs text-slate-500 mt-1">v8.0.0 ULTIMATE FINAL • 113 Engines • Voice Hindi AI • Desktop EXE • PWA + APK</p>
+        <p className="text-[10px] text-slate-600 mt-1">🧠 LLM: Gemini • GPT-4 • PaLM AI • GPT-Vision • On-Device WebAI</p>
+        <p className="text-[10px] text-slate-600 mt-1">🎙️ 8 Voice Profiles • WhatsApp • Volume • Brightness • Music • News • Power Control</p>
+        <p className="text-[10px] text-slate-600 mt-1">📱 Android 6.0+ • Windows EXE • macOS DMG • Linux AppImage • Web PWA</p>
+        <p className="text-[10px] text-slate-600 mt-1">🔐 AES-256 • Biometric • Laser Nav • 13.3" Touch • WiFi • BT 4.1</p>
         <p className="text-[10px] text-slate-600 mt-1">© 2024-2026 JARVIS AI • Jai Mahadev! 🙏</p>
       </div>
     </div>
