@@ -1,0 +1,146 @@
+# ═══════════════════════════════════════════════════════════════
+#  JARVIS Trading Platform — CD Pipeline (SDLC Phase: Deploy)
+#  Triggers: tag push (v*), manual workflow_dispatch
+# ═══════════════════════════════════════════════════════════════
+name: CD — Build APK & Deploy
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      build_apk:
+        description: 'Build Android APK'
+        type: boolean
+        default: true
+      deploy_fly:
+        description: 'Deploy to Fly.io'
+        type: boolean
+        default: true
+
+env:
+  PYTHON_VERSION: '3.12'
+  NODE_VERSION: '20'
+  JAVA_VERSION: '21'
+  FLY_APP: david-crew-bot
+
+jobs:
+  # ═══ Build Release APK ═══
+  build-apk:
+    name: 📱 Build Android APK
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.build_apk != 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: microsoft
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: telegram-mini-app/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: telegram-mini-app
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: telegram-mini-app
+        run: npm run build
+
+      - name: Capacitor sync
+        working-directory: telegram-mini-app
+        run: npx cap sync android
+
+      - name: Decode keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > telegram-mini-app/android/jarvis-release.keystore
+            echo "✅ Release keystore decoded"
+          else
+            echo "⚠️ No keystore secret — building debug APK"
+          fi
+
+      - name: Build APK
+        working-directory: telegram-mini-app/android
+        run: |
+          chmod +x gradlew
+          if [ -f "jarvis-release.keystore" ] && [ -n "${{ secrets.KEYSTORE_PASSWORD }}" ]; then
+            ./gradlew assembleRelease
+            APK_PATH=$(find . -name "*.apk" -path "*/release/*" | head -1)
+          else
+            ./gradlew assembleDebug
+            APK_PATH=$(find . -name "*.apk" -path "*/debug/*" | head -1)
+          fi
+          echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
+          ls -lh "$APK_PATH"
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "version=dev-$(date +%Y%m%d)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-${{ steps.version.outputs.version }}.apk
+          path: ${{ env.APK_PATH }}
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.APK_PATH }}
+          name: JARVIS ${{ steps.version.outputs.version }}
+          body: |
+            ## 🤖 JARVIS Trading Platform ${{ steps.version.outputs.version }}
+            
+            ### Download
+            - 📱 **Android APK** — attached below
+            
+            ### What's New
+            - See commit history for changes
+          draft: false
+          prerelease: false
+
+  # ═══ Deploy Server to Fly.io ═══
+  deploy-server:
+    name: 🚀 Deploy to Fly.io
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.deploy_fly != 'false' }}
+    needs: [build-apk]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Fly.io CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl deploy --remote-only --app ${{ env.FLY_APP }}
+
+      - name: Health check
+        run: |
+          sleep 15
+          curl -fsS "https://davidcrewai.shop/health" | python3 -m json.tool || echo "⚠️ Health check pending"

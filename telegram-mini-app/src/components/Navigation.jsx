@@ -4,7 +4,8 @@ import {
   Home, TrendingUp, Wallet, Bot, Zap, MoreHorizontal, X,
   Globe, Copy, Users, Activity, PieChart, Waves, FlaskConical,
   BarChart3, Settings, Search, Brain, Mic, Flame, Layers, LineChart, Gauge,
-  Crosshair, Puzzle, ShieldCheck, ScanLine, Rocket, Crown, LogOut
+  Crosshair, Puzzle, ShieldCheck, ScanLine, Rocket, Crown, LogOut,
+  Star, Bell, BarChart2, Calculator
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 
@@ -22,6 +23,7 @@ const Navigation = () => {
   ]
 
   const moreItems = [
+    { path: '/jarvis', icon: Bot, label: '🤖 JARVIS AI', color: 'from-cyan-400 to-blue-600', desc: 'Iron Man Command Center' },
     { path: '/phantom', icon: Globe, label: 'Phantom Wallet', color: 'from-purple-500 to-blue-500', desc: 'Solana wallet & auto-trade' },
     { path: '/mega-trader', icon: Rocket, label: '🤖 MEGA AI Trader', color: 'from-red-600 to-yellow-500', desc: 'NUCLEAR autonomous AI trader' },
     { path: '/auto-trader', icon: Zap, label: 'Auto Trader', color: 'from-amber-500 to-orange-500', desc: 'AI trading bot' },
@@ -29,6 +31,12 @@ const Navigation = () => {
     { path: '/options', icon: Activity, label: 'Options Chain', color: 'from-orange-500 to-red-500', desc: 'Nifty/BankNifty options' },
     { path: '/indian-stocks', icon: Flame, label: 'Indian Stocks', color: 'from-orange-500 to-amber-500', desc: 'NSE/BSE super analysis' },
     { path: '/nifty-options', icon: Layers, label: 'Live Options', color: 'from-red-500 to-pink-500', desc: 'Real NSE option chain' },
+    { path: '/paper-trading', icon: Activity, label: '📝 Paper Trade', color: 'from-amber-500 to-yellow-500', desc: 'Practice with fake money' },
+    { path: '/pnl-journal', icon: BarChart3, label: '📊 P&L Journal', color: 'from-emerald-500 to-cyan-500', desc: 'Track trades + charts' },
+    { path: '/watchlist', icon: Star, label: '⭐ Watchlist', color: 'from-yellow-500 to-amber-500', desc: 'Custom lists + price alerts' },
+    { path: '/smart-alerts', icon: Bell, label: '🔔 Smart Alerts', color: 'from-red-500 to-pink-500', desc: 'Multi-condition alert rules' },
+    { path: '/depth-chart', icon: BarChart2, label: '📊 Depth Chart', color: 'from-blue-500 to-cyan-500', desc: 'Order book + whale walls' },
+    { path: '/tax-calculator', icon: Calculator, label: '💰 Tax Calc', color: 'from-green-500 to-emerald-500', desc: 'Indian STCG/LTCG/Crypto tax' },
     { path: '/candle-indicators', icon: LineChart, label: 'Candles & TA', color: 'from-cyan-500 to-blue-500', desc: '43 patterns + 50 indicators' },
     { path: '/power-predictor', icon: Gauge, label: 'AI Predictor', color: 'from-purple-600 to-pink-600', desc: '10-signal ML prediction' },
     { path: '/intraday-scanner', icon: ScanLine, label: 'Intraday Scan', color: 'from-yellow-500 to-amber-500', desc: 'Breakout + Volume + Momentum' },

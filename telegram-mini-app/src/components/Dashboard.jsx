@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   TrendingUp, TrendingDown, Wallet, Activity, Bot, Zap, Search,
@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { fetchDashboard, fetchNews, fetchSentiment } from '../services/api'
 import { useApp } from '../context/AppContext'
+import realtime from '../services/realtime'
 
 const Dashboard = () => {
   const { user, addNotification, hapticFeedback } = useApp()
@@ -42,7 +43,29 @@ const Dashboard = () => {
 
   useEffect(() => { loadData() }, [loadData])
 
-  // Auto-refresh every 15s (was 60s)
+  // Real-time WebSocket for live price tickers
+  useEffect(() => {
+    let unsub
+    try {
+      unsub = realtime.subscribe('dashboard', (liveData) => {
+        if (liveData?.market_ticker) {
+          setData(prev => prev ? { ...prev, market_ticker: liveData.market_ticker } : prev)
+        }
+        if (liveData?.portfolio) {
+          setData(prev => prev ? { ...prev, portfolio: { ...prev.portfolio, ...liveData.portfolio } } : prev)
+        }
+        if (liveData?.fear_greed) {
+          setData(prev => prev ? { ...prev, fear_greed: liveData.fear_greed } : prev)
+        }
+      }, { pollInterval: 10000, pollUrl: '/dashboard' })
+    } catch (e) {
+      console.warn('[Dashboard] Realtime subscribe failed, using polling only')
+    }
+
+    return () => { if (unsub) unsub() }
+  }, [])
+
+  // Fallback auto-refresh every 15s
   useEffect(() => {
     const iv = setInterval(() => loadData(true), 15000)
     return () => clearInterval(iv)

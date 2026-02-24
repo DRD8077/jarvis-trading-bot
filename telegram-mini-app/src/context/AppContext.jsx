@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import gmailAuth from '../services/gmailAuth'
+import themeEngine from '../services/themeEngine'
 
 const AppContext = createContext(null)
 
@@ -10,9 +11,40 @@ export const AppProvider = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [authLoading, setAuthLoading] = useState(true)
-  const [theme, setTheme] = useState('dark')
+  const [theme, setTheme] = useState(themeEngine.getTheme())
   const [notifications, setNotifications] = useState([])
   const [isOnline, setIsOnline] = useState(true)
+  const [onboardingDone, setOnboardingDone] = useState(
+    localStorage.getItem('jarvis_onboarding_done') === 'true'
+  )
+  const [paperTradingMode, setPaperTradingMode] = useState(
+    localStorage.getItem('jarvis_paper_mode') === 'true'
+  )
+
+  // Theme change handler
+  const changeTheme = useCallback((themeId) => {
+    themeEngine.setTheme(themeId)
+    setTheme(themeId)
+  }, [])
+
+  const toggleTheme = useCallback(() => {
+    const next = themeEngine.toggle()
+    setTheme(next)
+    return next
+  }, [])
+
+  const completeOnboarding = useCallback(() => {
+    localStorage.setItem('jarvis_onboarding_done', 'true')
+    setOnboardingDone(true)
+  }, [])
+
+  const togglePaperTrading = useCallback(() => {
+    setPaperTradingMode(prev => {
+      const next = !prev
+      localStorage.setItem('jarvis_paper_mode', String(next))
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     // Check for saved Gmail/manual login (defensive: fallback if method missing)
@@ -86,8 +118,10 @@ export const AppProvider = ({ children }) => {
     <AppContext.Provider value={{
       user, isLoggedIn, isAdmin, authLoading,
       handleLogin, handleLogout,
-      theme, setTheme, notifications, addNotification,
-      isOnline, hapticFeedback
+      theme, setTheme: changeTheme, toggleTheme, notifications, addNotification,
+      isOnline, hapticFeedback,
+      onboardingDone, completeOnboarding,
+      paperTradingMode, togglePaperTrading
     }}>
       {children}
       {/* Toast Notifications */}

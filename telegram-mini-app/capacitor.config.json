@@ -45,6 +45,20 @@
       "defaultLanguage": "hi-IN",
       "rate": 1.0,
       "pitch": 1.0
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "BiometricAuth": {
+      "allowDeviceCredential": true
+    },
+    "Camera": {
+      "permissions": ["camera"]
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon",
+      "iconColor": "#3b82f6",
+      "sound": "notification.wav"
     }
   }
 }

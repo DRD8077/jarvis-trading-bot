@@ -67,3 +67,79 @@ body {
 /* Safe area */
 .pb-safe { padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
 
+/* ═══ AMOLED Black Theme ═══ */
+body.amoled-theme {
+  background: #000000 !important;
+}
+body.amoled-theme .bg-slate-900,
+body.amoled-theme .bg-\[#0a0e1a\],
+body.amoled-theme .bg-\[#0a0a0f\] {
+  background-color: #000000 !important;
+}
+body.amoled-theme .bg-slate-800,
+body.amoled-theme .bg-slate-800\/50 {
+  background-color: rgba(10, 10, 10, 0.9) !important;
+}
+body.amoled-theme .border-slate-700,
+body.amoled-theme .border-slate-700\/50,
+body.amoled-theme .border-slate-700\/30 {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+body.amoled-theme .glass {
+  background: rgba(0, 0, 0, 0.95) !important;
+}
+
+/* ═══ Light Theme ═══ */
+body.light-theme {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+body.light-theme .bg-slate-900,
+body.light-theme .bg-\[#0a0e1a\],
+body.light-theme .bg-\[#0a0a0f\] {
+  background-color: #f8fafc !important;
+}
+body.light-theme .bg-slate-800,
+body.light-theme .bg-slate-800\/50 {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+body.light-theme .text-white,
+body.light-theme .text-slate-200 {
+  color: #0f172a !important;
+}
+body.light-theme .text-slate-400,
+body.light-theme .text-slate-500 {
+  color: #64748b !important;
+}
+body.light-theme .border-slate-700,
+body.light-theme .border-slate-700\/50 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+body.light-theme .glass {
+  background: rgba(248, 250, 252, 0.95) !important;
+}
+
+/* ═══ Swipe Gesture Transitions ═══ */
+.swipe-container {
+  touch-action: pan-y;
+  overflow-x: hidden;
+}
+.page-transition-enter {
+  opacity: 0;
+  transform: translateX(100%);
+}
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: all 0.3s ease-out;
+}
+.page-transition-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+.page-transition-exit-active {
+  opacity: 0;
+  transform: translateX(-100%);
+  transition: all 0.3s ease-in;
+}
+
