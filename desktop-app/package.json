@@ -1,0 +1,86 @@
+{
+  "name": "jarvis-ai-desktop",
+  "version": "6.0.0",
+  "description": "JARVIS AI Trading — Iron Man Desktop Edition. Full trading intelligence for Windows/Mac/Linux.",
+  "main": "main.js",
+  "author": "JARVIS AI",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build": "npm run build-web && electron-builder --win --publish never",
+    "build-web": "cd ../telegram-mini-app && npm run build",
+    "build-win": "electron-builder --win --publish never",
+    "build-mac": "electron-builder --mac --publish never",
+    "build-linux": "electron-builder --linux --publish never",
+    "build-all": "electron-builder --win --mac --linux --publish never",
+    "dev": "electron . --dev",
+    "pack": "electron-builder --dir"
+  },
+  "build": {
+    "appId": "com.jarvis.trading.desktop",
+    "productName": "JARVIS AI Trading",
+    "copyright": "Copyright 2026 JARVIS AI",
+    "directories": {
+      "output": "release",
+      "buildResources": "assets"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "tray.js",
+      "systemControl.js",
+      "presenceEngine.js",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../telegram-mini-app/dist",
+        "to": "webapp",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "artifactName": "JARVIS-AI-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "shortcutName": "JARVIS AI Trading",
+      "runAfterFinish": true,
+      "installerSidebar": null
+    },
+    "mac": {
+      "target": ["dmg"],
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.finance"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "assets",
+      "category": "Finance"
+    }
+  },
+  "dependencies": {
+    "electron-store": "^8.1.0"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.0"
+  }
+}

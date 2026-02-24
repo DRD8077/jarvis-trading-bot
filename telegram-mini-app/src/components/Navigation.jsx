@@ -5,7 +5,7 @@ import {
   Globe, Copy, Users, Activity, PieChart, Waves, FlaskConical,
   BarChart3, Settings, Search, Brain, Mic, Flame, Layers, LineChart, Gauge,
   Crosshair, Puzzle, ShieldCheck, ScanLine, Rocket, Crown, LogOut,
-  Star, Bell, BarChart2, Calculator
+  Star, Bell, BarChart2, Calculator, Lock, Radio, Share2, Monitor
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 
@@ -24,6 +24,9 @@ const Navigation = () => {
 
   const moreItems = [
     { path: '/jarvis', icon: Bot, label: '🤖 JARVIS AI', color: 'from-cyan-400 to-blue-600', desc: 'Iron Man Command Center' },
+    { path: '/voice-command', icon: Mic, label: '🎤 Voice JARVIS', color: 'from-pink-500 to-rose-600', desc: 'Hindi live conversation' },
+    { path: '/vault', icon: Lock, label: '🔐 Secure Vault', color: 'from-green-500 to-emerald-600', desc: 'AES-256 encrypted storage' },
+    { path: '/exchange-connect', icon: Radio, label: '📡 Exchanges', color: 'from-blue-500 to-indigo-600', desc: 'Connect Binance, CoinDCX' },
     { path: '/phantom', icon: Globe, label: 'Phantom Wallet', color: 'from-purple-500 to-blue-500', desc: 'Solana wallet & auto-trade' },
     { path: '/mega-trader', icon: Rocket, label: '🤖 MEGA AI Trader', color: 'from-red-600 to-yellow-500', desc: 'NUCLEAR autonomous AI trader' },
     { path: '/auto-trader', icon: Zap, label: 'Auto Trader', color: 'from-amber-500 to-orange-500', desc: 'AI trading bot' },
