@@ -20,7 +20,7 @@ class WebAIFallback {
     this.synth = window.speechSynthesis || null
     this.chatHistory = []
     this.serverConnected = false
-    this._checkServerConnection()
+    // Don't fire fetch at import time — check lazily on first use
   }
 
   async _checkServerConnection() {

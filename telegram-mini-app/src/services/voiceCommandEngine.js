@@ -31,7 +31,12 @@ class GeminiVoiceEngine {
       return
     }
 
-    this.recognition = new SpeechRecognition()
+    try {
+      this.recognition = new SpeechRecognition()
+    } catch (e) {
+      console.warn('[VoiceEngine] SpeechRecognition constructor failed:', e.message)
+      return
+    }
     this.recognition.continuous = false
     this.recognition.interimResults = true
     this.recognition.lang = this.language

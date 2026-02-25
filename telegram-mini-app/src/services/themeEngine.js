@@ -41,9 +41,14 @@ const THEMES = {
 
 class ThemeEngine {
   constructor() {
-    this.current = localStorage.getItem('jarvis_theme') || 'dark'
+    this.current = 'dark'
     this.listeners = new Set()
-    this._apply(this.current)
+    try {
+      this.current = localStorage.getItem('jarvis_theme') || 'dark'
+      this._apply(this.current)
+    } catch (e) {
+      console.warn('[ThemeEngine] Constructor safe-init:', e.message)
+    }
   }
 
   getTheme() {
@@ -73,6 +78,7 @@ class ThemeEngine {
   _apply(themeId) {
     const theme = THEMES[themeId]
     if (!theme) return
+    if (typeof document === 'undefined' || !document.documentElement) return
 
     const root = document.documentElement
     root.style.setProperty('--jarvis-bg', theme.bg)
@@ -84,6 +90,7 @@ class ThemeEngine {
     root.style.setProperty('--jarvis-accent', theme.accent)
 
     // Update body background
+    if (!document.body) return
     document.body.style.background = theme.bg
     document.body.style.color = theme.text
 

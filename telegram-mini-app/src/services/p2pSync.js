@@ -19,12 +19,19 @@ class P2PSync {
   }
 
   _getDeviceId() {
-    let id = localStorage.getItem('jarvis_device_id')
-    if (!id) {
-      id = 'jarvis_' + crypto.randomUUID().split('-')[0]
-      localStorage.setItem('jarvis_device_id', id)
+    try {
+      let id = localStorage.getItem('jarvis_device_id')
+      if (!id) {
+        const uuid = (typeof crypto !== 'undefined' && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : 'xxxxxxxx-xxxx'.replace(/x/g, () => Math.floor(Math.random() * 16).toString(16))
+        id = 'jarvis_' + uuid.split('-')[0]
+        localStorage.setItem('jarvis_device_id', id)
+      }
+      return id
+    } catch (e) {
+      return 'jarvis_' + Date.now().toString(36)
     }
-    return id
   }
 
   // ═══════════════════════════════════

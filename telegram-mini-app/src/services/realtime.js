@@ -259,7 +259,7 @@ class RealTimeEngine {
   // ─── Visibility & Activity ──────────────────────────────────
   _setupVisibility() {
     if (typeof document === 'undefined') return
-    
+    try {
     document.addEventListener('visibilitychange', () => {
       this.isForeground = !document.hidden
       this._adjustPollerIntervals()
@@ -274,6 +274,7 @@ class RealTimeEngine {
     const activityEvents = ['touchstart', 'mousedown', 'keydown', 'scroll']
     const markActive = () => { this.lastActivity = Date.now() }
     activityEvents.forEach(evt => document.addEventListener(evt, markActive, { passive: true }))
+    } catch (e) { console.warn('[RealTime] _setupVisibility failed:', e.message) }
   }
 
   // ─── Cleanup ────────────────────────────────────────────────

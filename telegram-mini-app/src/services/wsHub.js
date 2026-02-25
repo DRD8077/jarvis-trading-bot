@@ -27,8 +27,8 @@ class NuclearWebSocketHub {
       startTime: Date.now(),
       lastMessage: 0,
     }
-    this.networkOnline = navigator.onLine
-    this._setupNetworkDetection()
+    this.networkOnline = typeof navigator !== 'undefined' ? navigator.onLine : true
+    if (typeof window !== 'undefined') this._setupNetworkDetection()
   }
 
   // ══════════════════════════════════════════════

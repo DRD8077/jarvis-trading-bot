@@ -14,11 +14,19 @@ const OWNER_ID = '5647898018'
 
 class GmailAuth {
   constructor() {
-    this.user = JSON.parse(localStorage.getItem(GMAIL_USER_KEY) || 'null')
-    this.token = localStorage.getItem(GMAIL_TOKEN_KEY)
-    this.isLoggedIn = !!this.user
-    this.isAdmin = this._checkAdmin()
+    this.user = null
+    this.token = null
+    this.isLoggedIn = false
+    this.isAdmin = false
     this.listeners = new Set()
+    try {
+      this.user = JSON.parse(localStorage.getItem(GMAIL_USER_KEY) || 'null')
+      this.token = localStorage.getItem(GMAIL_TOKEN_KEY)
+      this.isLoggedIn = !!this.user
+      this.isAdmin = this._checkAdmin()
+    } catch (e) {
+      console.warn('[GmailAuth] Constructor safe-init:', e.message)
+    }
   }
 
   // ─── Google Sign-In (OAuth popup for web/APK WebView) ─────

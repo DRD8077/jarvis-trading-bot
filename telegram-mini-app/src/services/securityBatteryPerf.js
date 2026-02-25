@@ -350,7 +350,8 @@ class PerformanceEngine {
 
   // Memory monitoring
   _monitorMemory() {
-    if (typeof performance !== 'undefined' && performance.memory) {
+    if (typeof performance === 'undefined' || !performance.memory) return
+    try {
       setInterval(() => {
         const used = performance.memory.usedJSHeapSize
         const limit = performance.memory.jsHeapSizeLimit
@@ -365,6 +366,8 @@ class PerformanceEngine {
           this.memoryPressure = 'normal'
         }
       }, 30000)
+    } catch (e) {
+      // Memory monitoring not available
     }
   }
 
@@ -408,12 +411,27 @@ const appSecurity = new AppSecurity()
 const batteryOptimizer = new BatteryOptimizer()
 const performanceEngine = new PerformanceEngine()
 
-// Auto-init all on load
-;(async () => {
-  await encryptedStorage.init()
-  appSecurity.init()
-  await batteryOptimizer.init()
-})()
+// Lazy init — call securityBatteryPerf.init() from App.jsx useEffect instead of auto-running at import
+let _initialized = false
+async function initSecurityBatteryPerf() {
+  if (_initialized) return
+  _initialized = true
+  try {
+    await encryptedStorage.init()
+  } catch (e) {
+    console.warn('[Security] EncryptedStorage init failed:', e.message)
+  }
+  try {
+    appSecurity.init()
+  } catch (e) {
+    console.warn('[Security] AppSecurity init failed:', e.message)
+  }
+  try {
+    await batteryOptimizer.init()
+  } catch (e) {
+    console.warn('[Security] BatteryOptimizer init failed:', e.message)
+  }
+}
 
-export { encryptedStorage, appSecurity, batteryOptimizer, performanceEngine }
-export default { encryptedStorage, appSecurity, batteryOptimizer, performanceEngine }
+export { encryptedStorage, appSecurity, batteryOptimizer, performanceEngine, initSecurityBatteryPerf }
+export default { encryptedStorage, appSecurity, batteryOptimizer, performanceEngine, initSecurityBatteryPerf }

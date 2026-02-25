@@ -31,7 +31,7 @@ class AutoRefreshEngine {
 
   _init() {
     if (typeof window === 'undefined') return
-
+    try {
     // Visibility change → adjust intervals
     document.addEventListener('visibilitychange', () => {
       this.isForeground = !document.hidden
@@ -57,6 +57,7 @@ class AutoRefreshEngine {
 
     // OTA check loop
     this._startOTACheck()
+    } catch (e) { console.warn('[AutoRefresh] _init failed:', e.message) }
   }
 
   /**

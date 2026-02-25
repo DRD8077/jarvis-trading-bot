@@ -28,7 +28,7 @@
 
 class ZeroDependencyEngine {
   constructor() {
-    this.isOnline = navigator.onLine
+    this.isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true
     this.syncQueue = this._loadQueue()
     this.syncInProgress = false
     this.dataVersions = new Map()  // key → version counter
@@ -42,6 +42,7 @@ class ZeroDependencyEngine {
   // ══════════════════════════════════════════════
 
   _setupListeners() {
+    if (typeof window === 'undefined') return
     window.addEventListener('online', () => {
       this.isOnline = true
       console.log('[JARVIS Offline] 🟢 Back online — syncing...')

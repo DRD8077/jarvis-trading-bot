@@ -1,0 +1,360 @@
+import React, { Suspense, lazy, useEffect, useState } from 'react'
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom'
+import { AppProvider, useApp } from './context/AppContext'
+import Navigation from './components/Navigation'
+import LiveTicker from './components/LiveTicker'
+import InstallPrompt from './components/InstallPrompt'
+import LoginScreen from './components/LoginScreen'
+import OnboardingScreen from './components/OnboardingScreen'
+import SplashScreen from './components/SplashScreen'
+import ErrorBoundary from './components/ErrorBoundary'
+import ConnectionStatus from './components/ConnectionStatus'
+import backgroundAlerts from './services/backgroundAlerts'
+import offlineCache from './services/offlineCache'
+import firebasePush from './services/firebasePush'
+import crashAnalytics from './services/crashAnalytics'
+import deepLink from './services/deepLink'
+import useSwipeNavigation from './hooks/useSwipeNavigation'
+// v6.0 IRON MAN: Self-sufficient JARVIS core services
+import jarvis from './services/jarvisCore'
+import serviceMesh from './services/serviceMesh'
+import multiSource from './services/multiSourceData'
+import wsHub from './services/wsHub'
+import offlineEngine from './services/offlineEngine'
+import { API_BASE, WS_URL } from './services/apiBase'
+// v7.0 ULTIMATE: 15 Power Services
+import jarvisDB from './services/jarvisDB'
+import encryptedVault from './services/encryptedVault'
+import notificationPipeline from './services/notificationPipeline'
+import portfolioSync from './services/portfolioSync'
+import exchangeEngine from './services/exchangeEngine'
+import chartCapture from './services/chartCapture'
+import jarvisVoice from './services/jarvisVoice'
+import bioGuard from './services/bioGuard'
+import p2pSync from './services/p2pSync'
+import systemControl from './services/systemControl'
+import presenceEngine from './services/presenceEngine'
+// v8.0 ULTIMATE FINAL: ALL remaining services wired in
+import autoRefreshEngine from './services/autoRefreshEngine'
+import hapticEngine from './services/hapticEngine'
+import i18n from './services/i18n'
+import themeEngine from './services/themeEngine'
+import smartAuth from './services/smartAuth'
+import voiceCommandEngine from './services/voiceCommandEngine'
+import webAIFallback from './services/webAIFallback'
+import securityBatteryPerf, { initSecurityBatteryPerf } from './services/securityBatteryPerf'
+import elevenlabsVoice from './services/elevenlabsVoice'
+// Direct server connection — no Telegram dependency
+
+// Lazy load pages for performance
+const Dashboard = lazy(() => import('./components/Dashboard'))
+const Trading = lazy(() => import('./components/Trading'))
+const Wallet = lazy(() => import('./components/Wallet'))
+const AIChat = lazy(() => import('./components/AIChat'))
+const AutoTrader = lazy(() => import('./components/AutoTrader'))
+const GemScanner = lazy(() => import('./components/GemScanner'))
+const Screener = lazy(() => import('./components/Screener'))
+const Intelligence = lazy(() => import('./components/Intelligence'))
+const Settings = lazy(() => import('./components/Settings'))
+const PhantomWallet = lazy(() => import('./components/PhantomWallet'))
+const CopyTrading = lazy(() => import('./components/CopyTrading'))
+const SocialFeed = lazy(() => import('./components/SocialFeed'))
+const OptionsChain = lazy(() => import('./components/OptionsChain'))
+const PortfolioAnalytics = lazy(() => import('./components/PortfolioAnalytics'))
+const WhaleAlerts = lazy(() => import('./components/WhaleAlerts'))
+const BacktestBuilder = lazy(() => import('./components/BacktestBuilder'))
+const IndianStocks = lazy(() => import('./components/IndianStocks'))
+const NiftyOptionsLive = lazy(() => import('./components/NiftyOptionsLive'))
+const CandleIndicators = lazy(() => import('./components/CandleIndicators'))
+const PowerPredictor = lazy(() => import('./components/PowerPredictor'))
+const IntradayScanner = lazy(() => import('./pages/IntradayScanner'))
+const OptionsProLive = lazy(() => import('./pages/OptionsProLive'))
+const StrategyBuilder = lazy(() => import('./pages/StrategyBuilder'))
+const RiskManager = lazy(() => import('./pages/RiskManager'))
+const MegaTrader = lazy(() => import('./components/MegaTrader'))
+const HindiVoice = lazy(() => import('./components/HindiVoiceAssistant'))
+const AIAgent = lazy(() => import('./components/AIAgent'))
+const AdminPanel = lazy(() => import('./components/AdminPanel'))
+// NEW: Pro features
+const PaperTrading = lazy(() => import('./components/PaperTrading'))
+const PnLJournal = lazy(() => import('./components/PnLJournal'))
+// v5.1: Super power features
+const Watchlist = lazy(() => import('./components/Watchlist'))
+const AlertRulesEngine = lazy(() => import('./components/AlertRulesEngine'))
+const DepthChart = lazy(() => import('./components/DepthChart'))
+const TaxCalculator = lazy(() => import('./components/TaxCalculator'))
+// v6.0 IRON MAN: JARVIS Command Center
+const JarvisCommandCenter = lazy(() => import('./components/JarvisCommandCenter'))
+// v7.0 ULTIMATE: New pages
+const VoiceCommand = lazy(() => import('./components/VoiceCommand'))
+const VaultManager = lazy(() => import('./components/VaultManager'))
+const ExchangeConnect = lazy(() => import('./components/ExchangeConnect'))
+const QRScanner = lazy(() => import('./components/QRScanner'))
+const SignalShareCard = lazy(() => import('./components/SignalShareCard'))
+const VoiceAI = lazy(() => import('./components/VoiceAI'))
+// v8.0 ULTIMATE FINAL: New pages
+const SystemSpecs = lazy(() => import('./components/SystemSpecs'))
+const JarvisVsMyra = lazy(() => import('./components/JarvisVsMyra'))
+const VoiceAutomation = lazy(() => import('./components/VoiceAutomation'))
+// v10.0 IRON MAN: Holographic JARVIS Interface
+const JarvisHolographic = lazy(() => import('./components/JarvisHolographic'))
+// v11.0: Gaming AI Coach
+const GamingCoach = lazy(() => import('./components/GamingCoach'))
+
+const PageLoader = () => (
+  <div className="p-4 bg-slate-900 min-h-screen space-y-3 animate-pulse">
+    <div className="h-6 w-40 bg-slate-800 rounded" />
+    <div className="grid grid-cols-2 gap-2">
+      <div className="h-20 bg-slate-800 rounded-xl" />
+      <div className="h-20 bg-slate-800 rounded-xl" />
+    </div>
+    <div className="h-32 bg-slate-800 rounded-xl" />
+    <div className="h-24 bg-slate-800 rounded-xl" />
+  </div>
+)
+
+// Inner app that can use context hooks
+function AppInner() {
+  const { isLoggedIn, authLoading, handleLogin, onboardingDone, completeOnboarding } = useApp()
+
+  const [showSplash, setShowSplash] = useState(() => {
+    return !sessionStorage.getItem('jarvis_splash_shown')
+  })
+
+  // Safe service initializer — prevents "xxx.init is not a function" crashes
+  const safeInit = (service, method, ...args) => {
+    try {
+      if (service && typeof service[method] === 'function') {
+        const result = service[method](...args)
+        if (result && typeof result.catch === 'function') result.catch(() => {})
+        return result
+      }
+    } catch (e) {
+      console.warn(`[JARVIS] Service ${method}() failed:`, e.message)
+    }
+    return null
+  }
+
+  useEffect(() => {
+    console.log('[JARVIS v11.0 STANDALONE] Booting all autonomous systems...')
+    try {
+      // Initialize crash analytics
+      safeInit(crashAnalytics, 'init')
+      if (crashAnalytics && typeof crashAnalytics.addBreadcrumb === 'function') {
+        crashAnalytics.addBreadcrumb('app', 'App loaded — v11.0 STANDALONE')
+      }
+      // === Initialize JARVIS Core ===
+      safeInit(jarvis, 'init', API_BASE)
+      // Start self-healing service mesh
+      if (serviceMesh && typeof serviceMesh.registerService === 'function') {
+        serviceMesh.registerService({ name: 'backend-api', endpoint: `${API_BASE}/health`, criticalLevel: 'critical', interval: 30000 })
+        serviceMesh.registerService({ name: 'coingecko', endpoint: 'https://api.coingecko.com/api/v3/ping', criticalLevel: 'high' })
+        serviceMesh.registerService({ name: 'binance', endpoint: 'https://api.binance.com/api/v3/ping', criticalLevel: 'normal' })
+      }
+      safeInit(serviceMesh, 'start', 30000)
+      // Start multi-source data aggregator
+      safeInit(multiSource, 'startAutoRefresh')
+      // Connect WebSocket hub — standalone server + Binance
+      const wsUrl = WS_URL || `${API_BASE.replace(/^http/, 'ws')}/ws`
+      safeInit(wsHub, 'connect', 'jarvis', {
+        url: [wsUrl],
+        channels: ['prices', 'signals', 'alerts'],
+        heartbeatInterval: 30000,
+        onMessage: (msg) => {
+          if (msg.type === 'price_update') {
+            window.dispatchEvent(new CustomEvent('jarvis-price-update', { detail: msg.data }))
+          } else if (msg.type === 'new_signal') {
+            window.dispatchEvent(new CustomEvent('jarvis-signal', { detail: msg.data }))
+          }
+        }
+      })
+      safeInit(wsHub, 'connect', 'binance', {
+        url: ['wss://stream.binance.com:9443/ws'],
+        channels: [],
+        heartbeatInterval: 60000
+      })
+      // Offline engine (self-initializes in constructor, no init() needed)
+      console.log('[JARVIS] Offline engine ready (auto-initialized)')
+      // === Initialize all power services ===
+      // 1. Embedded SQLite Database
+      safeInit(jarvisDB, 'init')
+      // 2. Notification Pipeline (no init needed — constructor handles it)
+      console.log('[JARVIS] Notification pipeline ready')
+      // 3. Presence Detection — JARVIS knows when you're here
+      safeInit(presenceEngine, 'init', {
+        onGreeting: (msg) => {
+          // Use send() — the actual method on notificationPipeline
+          safeInit(notificationPipeline, 'send', { title: '👁️ JARVIS', message: msg, type: 'info', priority: 'normal' })
+          if (jarvisVoice && jarvisVoice._initialized && typeof jarvisVoice.speak === 'function') jarvisVoice.speak(msg, 'hi-IN')
+        },
+        onDeparture: (msg) => {
+          safeInit(notificationPipeline, 'send', { title: '👁️ JARVIS', message: msg, type: 'info', priority: 'low' })
+        }
+      })
+      // 4. Register advanced service worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw-v6.js').then(reg => {
+          console.log('[JARVIS] Service Worker registered')
+          if (reg.periodicSync) {
+            reg.periodicSync.register('jarvis-price-check', { minInterval: 15 * 60 * 1000 }).catch(() => {})
+          }
+        }).catch(() => {})
+      }
+      // 5. Desktop-specific initialization
+      if (window.jarvisDesktop) {
+        console.log('[JARVIS] Desktop mode — full OS control enabled!')
+        window.jarvisDesktop.on('navigate', (path) => {
+          window.dispatchEvent(new CustomEvent('jarvis-navigate', { detail: path }))
+        })
+        window.jarvisDesktop.on('voice', () => {
+          if (jarvisVoice && typeof jarvisVoice.startListening === 'function') jarvisVoice.startListening()
+        })
+      }
+      // === Initialize ALL remaining services (all safely guarded) ===
+      safeInit(autoRefreshEngine, 'start')
+      safeInit(hapticEngine, 'init')
+      safeInit(i18n, 'init')
+      safeInit(themeEngine, 'init')
+      safeInit(smartAuth, 'init')
+      safeInit(voiceCommandEngine, 'init')
+      safeInit(webAIFallback, 'init')
+      safeInit(securityBatteryPerf, 'init')
+      // Lazy-init the security/battery/performance engines (was auto-IIFE, now lazy)
+      initSecurityBatteryPerf().catch(e => console.warn('[JARVIS] SecurityBatteryPerf init failed:', e.message))
+      safeInit(elevenlabsVoice, 'init')
+      console.log('[JARVIS v11.0] ALL services ONLINE ⚡ Standalone mode active')
+      // Start background price alert engine
+      safeInit(backgroundAlerts, 'start', 15000)
+      // Pre-cache essentials for offline mode
+      import('./services/api').then(api => {
+        if (offlineCache && typeof offlineCache.preCacheEssentials === 'function') {
+          offlineCache.preCacheEssentials(api).catch(() => {})
+        }
+      }).catch(() => {})
+      // Initialize Firebase push notifications
+      safeInit(firebasePush, 'init')
+    } catch (e) {
+      console.error('[JARVIS] Boot error (non-fatal):', e.message)
+    }
+  }, [])
+
+  // Cinematic splash screen on first session load
+  if (showSplash) {
+    return <SplashScreen onFinish={() => { sessionStorage.setItem('jarvis_splash_shown', '1'); setShowSplash(false) }} />
+  }
+
+  // Show loading spinner while checking saved auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#0a0e1a] flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 border-3 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+          <span className="text-slate-400 text-sm">Loading JARVIS...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Gate: Show onboarding on first launch
+  if (!onboardingDone) {
+    return <OnboardingScreen onComplete={completeOnboarding} />
+  }
+
+  // Gate: Show login screen if not authenticated
+  if (!isLoggedIn) {
+    return <LoginScreen onLogin={handleLogin} />
+  }
+
+  return (
+    <Router>
+      <SwipeableApp />
+    </Router>
+  )
+}
+
+function SwipeableApp() {
+  const { onTouchStart, onTouchEnd } = useSwipeNavigation()
+  const navigate = useNavigate()
+
+  // Activate deep link router
+  useEffect(() => {
+    deepLink.activate(navigate)
+  }, [navigate])
+
+  return (
+    <div className="min-h-screen bg-slate-900" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <ConnectionStatus />
+      <LiveTicker />
+      <ErrorBoundary>
+        <Suspense fallback={<PageLoader />}>
+          <main className="pb-safe">
+            <Routes>
+              <Route path="/" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
+              <Route path="/trading" element={<ErrorBoundary><Trading /></ErrorBoundary>} />
+              <Route path="/wallet" element={<ErrorBoundary><Wallet /></ErrorBoundary>} />
+              <Route path="/chat" element={<ErrorBoundary><AIChat /></ErrorBoundary>} />
+              <Route path="/auto-trader" element={<ErrorBoundary><AutoTrader /></ErrorBoundary>} />
+              <Route path="/gems" element={<ErrorBoundary><GemScanner /></ErrorBoundary>} />
+              <Route path="/screener" element={<ErrorBoundary><Screener /></ErrorBoundary>} />
+              <Route path="/intelligence" element={<ErrorBoundary><Intelligence /></ErrorBoundary>} />
+              <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
+              <Route path="/phantom" element={<ErrorBoundary><PhantomWallet /></ErrorBoundary>} />
+              <Route path="/copy-trading" element={<ErrorBoundary><CopyTrading /></ErrorBoundary>} />
+              <Route path="/social" element={<ErrorBoundary><SocialFeed /></ErrorBoundary>} />
+              <Route path="/options" element={<ErrorBoundary><OptionsChain /></ErrorBoundary>} />
+              <Route path="/portfolio" element={<ErrorBoundary><PortfolioAnalytics /></ErrorBoundary>} />
+              <Route path="/whales" element={<ErrorBoundary><WhaleAlerts /></ErrorBoundary>} />
+              <Route path="/backtest" element={<ErrorBoundary><BacktestBuilder /></ErrorBoundary>} />
+              <Route path="/indian-stocks" element={<ErrorBoundary><IndianStocks /></ErrorBoundary>} />
+              <Route path="/nifty-options" element={<ErrorBoundary><NiftyOptionsLive /></ErrorBoundary>} />
+              <Route path="/candle-indicators" element={<ErrorBoundary><CandleIndicators /></ErrorBoundary>} />
+              <Route path="/power-predictor" element={<ErrorBoundary><PowerPredictor /></ErrorBoundary>} />
+              <Route path="/intraday-scanner" element={<ErrorBoundary><IntradayScanner /></ErrorBoundary>} />
+              <Route path="/options-pro" element={<ErrorBoundary><OptionsProLive /></ErrorBoundary>} />
+              <Route path="/strategy-builder" element={<ErrorBoundary><StrategyBuilder /></ErrorBoundary>} />
+              <Route path="/risk-manager" element={<ErrorBoundary><RiskManager /></ErrorBoundary>} />
+              <Route path="/mega-trader" element={<ErrorBoundary><MegaTrader /></ErrorBoundary>} />
+              <Route path="/voice" element={<ErrorBoundary><HindiVoice fullScreen /></ErrorBoundary>} />
+              <Route path="/ai-agent" element={<ErrorBoundary><AIAgent /></ErrorBoundary>} />
+              <Route path="/admin" element={<ErrorBoundary><AdminPanel /></ErrorBoundary>} />
+              <Route path="/paper-trading" element={<ErrorBoundary><PaperTrading /></ErrorBoundary>} />
+              <Route path="/pnl-journal" element={<ErrorBoundary><PnLJournal /></ErrorBoundary>} />
+              <Route path="/watchlist" element={<ErrorBoundary><Watchlist /></ErrorBoundary>} />
+              <Route path="/smart-alerts" element={<ErrorBoundary><AlertRulesEngine /></ErrorBoundary>} />
+              <Route path="/depth-chart" element={<ErrorBoundary><DepthChart /></ErrorBoundary>} />
+              <Route path="/tax-calculator" element={<ErrorBoundary><TaxCalculator /></ErrorBoundary>} />
+              <Route path="/jarvis" element={<ErrorBoundary><JarvisCommandCenter /></ErrorBoundary>} />
+              <Route path="/voice-command" element={<ErrorBoundary><VoiceCommand /></ErrorBoundary>} />
+              <Route path="/vault" element={<ErrorBoundary><VaultManager /></ErrorBoundary>} />
+              <Route path="/exchange-connect" element={<ErrorBoundary><ExchangeConnect /></ErrorBoundary>} />
+              <Route path="/qr-scanner" element={<ErrorBoundary><QRScanner /></ErrorBoundary>} />
+              <Route path="/signal-card" element={<ErrorBoundary><SignalShareCard /></ErrorBoundary>} />
+              <Route path="/voice-ai" element={<ErrorBoundary><VoiceAI /></ErrorBoundary>} />
+              <Route path="/system-specs" element={<ErrorBoundary><SystemSpecs /></ErrorBoundary>} />
+              <Route path="/jarvis-vs-myra" element={<ErrorBoundary><JarvisVsMyra /></ErrorBoundary>} />
+              <Route path="/voice-automation" element={<ErrorBoundary><VoiceAutomation /></ErrorBoundary>} />
+              <Route path="/jarvis-holographic" element={<ErrorBoundary><JarvisHolographic /></ErrorBoundary>} />
+              <Route path="/iron-man" element={<ErrorBoundary><JarvisHolographic /></ErrorBoundary>} />
+              <Route path="/gaming" element={<ErrorBoundary><GamingCoach apiBase={API_BASE} /></ErrorBoundary>} />
+              <Route path="/gaming-coach" element={<ErrorBoundary><GamingCoach apiBase={API_BASE} /></ErrorBoundary>} />
+            </Routes>
+          </main>
+        </Suspense>
+      </ErrorBoundary>
+      <Navigation />
+      <InstallPrompt />
+    </div>
+  )
+}
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <AppProvider>
+        <AppInner />
+      </AppProvider>
+    </ErrorBoundary>
+  )
+}
+
+export default App
