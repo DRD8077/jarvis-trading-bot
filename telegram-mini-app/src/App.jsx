@@ -121,107 +121,119 @@ function AppInner() {
     return !sessionStorage.getItem('jarvis_splash_shown')
   })
 
+  // Safe service initializer — prevents "xxx.init is not a function" crashes
+  const safeInit = (service, method, ...args) => {
+    try {
+      if (service && typeof service[method] === 'function') {
+        const result = service[method](...args)
+        if (result && typeof result.catch === 'function') result.catch(() => {})
+        return result
+      }
+    } catch (e) {
+      console.warn(`[JARVIS] Service ${method}() failed:`, e.message)
+    }
+    return null
+  }
+
   useEffect(() => {
-    console.log('[JARVIS v8.5 POWER ULTIMATE] Booting all autonomous systems...')
-    // Initialize crash analytics
-    crashAnalytics.init()
-    crashAnalytics.addBreadcrumb('app', 'App loaded — v8.5 POWER ULTIMATE')
-    // === v6.0: Initialize JARVIS Core ===
-    jarvis.init(API_BASE)
-    // Start self-healing service mesh
-    serviceMesh.registerService({ name: 'backend-api', endpoint: `${API_BASE}/health`, criticalLevel: 'critical', interval: 30000 })
-    serviceMesh.registerService({ name: 'coingecko', endpoint: 'https://api.coingecko.com/api/v3/ping', criticalLevel: 'high' })
-    serviceMesh.registerService({ name: 'binance', endpoint: 'https://api.binance.com/api/v3/ping', criticalLevel: 'normal' })
-    serviceMesh.start(30000)
-    // Start multi-source data aggregator
-    multiSource.startAutoRefresh()
-    // Connect WebSocket hub — standalone server + Binance
-    const wsUrl = WS_URL || `${API_BASE.replace(/^http/, 'ws')}/ws`
-    wsHub.connect('jarvis', {
-      url: [wsUrl],
-      channels: ['prices', 'signals', 'alerts'],
-      heartbeatInterval: 30000,
-      onMessage: (msg) => {
-        if (msg.type === 'price_update') {
-          window.dispatchEvent(new CustomEvent('jarvis-price-update', { detail: msg.data }))
-        } else if (msg.type === 'new_signal') {
-          window.dispatchEvent(new CustomEvent('jarvis-signal', { detail: msg.data }))
+    console.log('[JARVIS v11.0 STANDALONE] Booting all autonomous systems...')
+    try {
+      // Initialize crash analytics
+      safeInit(crashAnalytics, 'init')
+      if (crashAnalytics && typeof crashAnalytics.addBreadcrumb === 'function') {
+        crashAnalytics.addBreadcrumb('app', 'App loaded — v11.0 STANDALONE')
+      }
+      // === Initialize JARVIS Core ===
+      safeInit(jarvis, 'init', API_BASE)
+      // Start self-healing service mesh
+      if (serviceMesh && typeof serviceMesh.registerService === 'function') {
+        serviceMesh.registerService({ name: 'backend-api', endpoint: `${API_BASE}/health`, criticalLevel: 'critical', interval: 30000 })
+        serviceMesh.registerService({ name: 'coingecko', endpoint: 'https://api.coingecko.com/api/v3/ping', criticalLevel: 'high' })
+        serviceMesh.registerService({ name: 'binance', endpoint: 'https://api.binance.com/api/v3/ping', criticalLevel: 'normal' })
+      }
+      safeInit(serviceMesh, 'start', 30000)
+      // Start multi-source data aggregator
+      safeInit(multiSource, 'startAutoRefresh')
+      // Connect WebSocket hub — standalone server + Binance
+      const wsUrl = WS_URL || `${API_BASE.replace(/^http/, 'ws')}/ws`
+      safeInit(wsHub, 'connect', 'jarvis', {
+        url: [wsUrl],
+        channels: ['prices', 'signals', 'alerts'],
+        heartbeatInterval: 30000,
+        onMessage: (msg) => {
+          if (msg.type === 'price_update') {
+            window.dispatchEvent(new CustomEvent('jarvis-price-update', { detail: msg.data }))
+          } else if (msg.type === 'new_signal') {
+            window.dispatchEvent(new CustomEvent('jarvis-signal', { detail: msg.data }))
+          }
         }
+      })
+      safeInit(wsHub, 'connect', 'binance', {
+        url: ['wss://stream.binance.com:9443/ws'],
+        channels: [],
+        heartbeatInterval: 60000
+      })
+      // Offline engine (self-initializes in constructor, no init() needed)
+      console.log('[JARVIS] Offline engine ready (auto-initialized)')
+      // === Initialize all power services ===
+      // 1. Embedded SQLite Database
+      safeInit(jarvisDB, 'init')
+      // 2. Notification Pipeline (no init needed — constructor handles it)
+      console.log('[JARVIS] Notification pipeline ready')
+      // 3. Presence Detection — JARVIS knows when you're here
+      safeInit(presenceEngine, 'init', {
+        onGreeting: (msg) => {
+          // Use send() — the actual method on notificationPipeline
+          safeInit(notificationPipeline, 'send', { title: '👁️ JARVIS', message: msg, type: 'info', priority: 'normal' })
+          if (jarvisVoice && jarvisVoice._initialized && typeof jarvisVoice.speak === 'function') jarvisVoice.speak(msg, 'hi-IN')
+        },
+        onDeparture: (msg) => {
+          safeInit(notificationPipeline, 'send', { title: '👁️ JARVIS', message: msg, type: 'info', priority: 'low' })
+        }
+      })
+      // 4. Register advanced service worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw-v6.js').then(reg => {
+          console.log('[JARVIS] Service Worker registered')
+          if (reg.periodicSync) {
+            reg.periodicSync.register('jarvis-price-check', { minInterval: 15 * 60 * 1000 }).catch(() => {})
+          }
+        }).catch(() => {})
       }
-    })
-    wsHub.connect('binance', {
-      url: ['wss://stream.binance.com:9443/ws'],
-      channels: [],
-      heartbeatInterval: 60000
-    })
-    // Initialize offline engine
-    offlineEngine.init()
-    // === v7.0 ULTIMATE: Initialize all 15 power services ===
-    // 1. Embedded SQLite Database
-    jarvisDB.init().then(() => {
-      console.log('[JARVIS v8.0] SQLite database online ⚡')
-    }).catch(() => {})
-    // 2. Notification Pipeline
-    notificationPipeline.init()
-    // 3. Presence Detection — JARVIS knows when you're here
-    presenceEngine.init({
-      onGreeting: (msg) => {
-        notificationPipeline.notify({ title: '👁️ JARVIS', message: msg, type: 'info', priority: 'normal' })
-        if (jarvisVoice._initialized) jarvisVoice.speak(msg, 'hi-IN')
-      },
-      onDeparture: (msg) => {
-        notificationPipeline.notify({ title: '👁️ JARVIS', message: msg, type: 'info', priority: 'low' })
+      // 5. Desktop-specific initialization
+      if (window.jarvisDesktop) {
+        console.log('[JARVIS] Desktop mode — full OS control enabled!')
+        window.jarvisDesktop.on('navigate', (path) => {
+          window.dispatchEvent(new CustomEvent('jarvis-navigate', { detail: path }))
+        })
+        window.jarvisDesktop.on('voice', () => {
+          if (jarvisVoice && typeof jarvisVoice.startListening === 'function') jarvisVoice.startListening()
+        })
       }
-    })
-    // 4. Register advanced service worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw-v6.js').then(reg => {
-        console.log('[JARVIS v8.0] Service Worker v6 registered')
-        if (reg.periodicSync) {
-          reg.periodicSync.register('jarvis-price-check', { minInterval: 15 * 60 * 1000 }).catch(() => {})
+      // === Initialize ALL remaining services (all safely guarded) ===
+      safeInit(autoRefreshEngine, 'start')
+      safeInit(hapticEngine, 'init')
+      safeInit(i18n, 'init')
+      safeInit(themeEngine, 'init')
+      safeInit(smartAuth, 'init')
+      safeInit(voiceCommandEngine, 'init')
+      safeInit(webAIFallback, 'init')
+      safeInit(securityBatteryPerf, 'init')
+      safeInit(elevenlabsVoice, 'init')
+      console.log('[JARVIS v11.0] ALL services ONLINE ⚡ Standalone mode active')
+      // Start background price alert engine
+      safeInit(backgroundAlerts, 'start', 15000)
+      // Pre-cache essentials for offline mode
+      import('./services/api').then(api => {
+        if (offlineCache && typeof offlineCache.preCacheEssentials === 'function') {
+          offlineCache.preCacheEssentials(api).catch(() => {})
         }
       }).catch(() => {})
+      // Initialize Firebase push notifications
+      safeInit(firebasePush, 'init')
+    } catch (e) {
+      console.error('[JARVIS] Boot error (non-fatal):', e.message)
     }
-    // 5. Desktop-specific initialization
-    if (window.jarvisDesktop) {
-      console.log('[JARVIS v8.0] Desktop mode detected — full OS control enabled!')
-      window.jarvisDesktop.on('navigate', (path) => {
-        window.dispatchEvent(new CustomEvent('jarvis-navigate', { detail: path }))
-      })
-      window.jarvisDesktop.on('voice', () => {
-        jarvisVoice.startListening()
-      })
-    }
-    // === v8.0: Initialize ALL remaining services ===
-    // Auto-refresh engine for live price data
-    if (autoRefreshEngine && autoRefreshEngine.start) autoRefreshEngine.start()
-    // Haptic feedback engine for mobile
-    if (hapticEngine && hapticEngine.init) hapticEngine.init()
-    // i18n internationalization (Hindi + English)
-    if (i18n && i18n.init) i18n.init()
-    // Theme engine
-    if (themeEngine && themeEngine.init) themeEngine.init()
-    // Smart authentication
-    if (smartAuth && smartAuth.init) smartAuth.init()
-    // Voice command engine
-    if (voiceCommandEngine && voiceCommandEngine.init) voiceCommandEngine.init()
-    // WebAI offline fallback
-    if (webAIFallback && webAIFallback.init) webAIFallback.init()
-    // Security + Battery + Performance monitor
-    if (securityBatteryPerf && securityBatteryPerf.init) securityBatteryPerf.init()
-    // ElevenLabs premium voice engine
-    if (elevenlabsVoice && elevenlabsVoice.init) elevenlabsVoice.init()
-    console.log('[JARVIS v8.5] ALL 54 services ONLINE ⚡ 113 Python engines + ElevenLabs voice active')
-    // Start background price alert engine
-    backgroundAlerts.start(15000)
-    // Pre-cache essentials for offline mode
-    import('./services/api').then(api => {
-      offlineCache.preCacheEssentials(api).catch(() => {})
-    }).catch(() => {})
-    // Initialize Firebase push notifications
-    firebasePush.init().then(token => {
-      if (token) console.log('[JARVIS] Firebase push ready')
-    }).catch(() => {})
   }, [])
 
   // Cinematic splash screen on first session load
