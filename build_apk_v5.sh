@@ -14,8 +14,8 @@ APK_OUTPUT="$ANDROID_DIR/app/build/outputs/apk/debug/app-debug.apk"
 AAB_OUTPUT="$ANDROID_DIR/app/build/outputs/bundle/release/app-release.aab"
 APK_RELEASE_OUTPUT="$ANDROID_DIR/app/build/outputs/apk/release/app-release.apk"
 DIST_DIR="$PROJ_DIR/dist"
-VERSION_NAME="5.0.0"
-VERSION_CODE="50000"
+VERSION_NAME="9.0.0"
+VERSION_CODE="90000"
 
 # Build mode: apk (default), aab (Play Store), or both
 BUILD_MODE="${1:-apk}"

@@ -23,6 +23,7 @@ const Navigation = () => {
   ]
 
   const moreItems = [
+    { path: '/jarvis-holographic', icon: Monitor, label: '🦾 JARVIS AI', color: 'from-cyan-400 to-blue-600', desc: 'Iron Man Holographic Interface' },
     { path: '/jarvis', icon: Bot, label: '🤖 JARVIS AI', color: 'from-cyan-400 to-blue-600', desc: 'Iron Man Command Center' },
     { path: '/voice-command', icon: Mic, label: '🎤 Voice JARVIS', color: 'from-pink-500 to-rose-600', desc: 'Hindi live conversation' },
     { path: '/vault', icon: Lock, label: '🔐 Secure Vault', color: 'from-green-500 to-emerald-600', desc: 'AES-256 encrypted storage' },
@@ -58,6 +59,7 @@ const Navigation = () => {
     { path: '/system-specs', icon: Gauge, label: '⚙️ System Specs', color: 'from-slate-500 to-blue-500', desc: 'OS • Hardware • LLM • Sensors' },
     { path: '/jarvis-vs-myra', icon: Bot, label: '🤖 JARVIS vs MYRA', color: 'from-blue-500 to-pink-500', desc: 'Compare AI assistants' },
     { path: '/voice-automation', icon: Mic, label: '🎙️ Voice Control', color: 'from-green-500 to-teal-500', desc: 'Volume • Brightness • WhatsApp • Music' },
+    { path: '/gaming', icon: Rocket, label: '🎮 Gaming Coach', color: 'from-red-500 to-yellow-500', desc: 'BGMI Pro AI • Jonathan • Mortal' },
     ...(isAdmin ? [{ path: '/admin', icon: Crown, label: '👑 Admin Panel', color: 'from-amber-500 to-orange-500', desc: 'System admin' }] : []),
     { path: '/settings', icon: Settings, label: 'Settings', color: 'from-slate-500 to-slate-600', desc: 'Preferences' },
   ]

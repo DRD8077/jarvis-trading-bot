@@ -1,0 +1,91 @@
+# ═══════════════════════════════════════════════════════════
+#  🚀 JARVIS AI Trading Platform — Standalone Docker Compose
+#  No Telegram. No Mini App Bot. Pure standalone.
+# ═══════════════════════════════════════════════════════════
+version: "3.8"
+
+services:
+  # ═══ Main Application ═══
+  jarvis:
+    build:
+      context: .
+      dockerfile: Dockerfile.standalone
+      args:
+        VITE_SERVER_URL: ""  # Empty = same-origin (Docker serves both)
+    container_name: jarvis-platform
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - PORT=8000
+      - APP_MODE=standalone
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://jarvis:jarvis@postgres:5432/jarvis
+      # AI Keys — set in .env file
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      # Exchange Keys
+      - COINDCX_API_KEY=${COINDCX_API_KEY:-}
+      - COINDCX_SECRET=${COINDCX_SECRET:-}
+      - ANGELONE_API_KEY=${ANGELONE_API_KEY:-}
+      # Data Keys
+      - DEXTOOLS_API_KEY=${DEXTOOLS_API_KEY:-}
+      - BIRDEYE_API_KEY=${BIRDEYE_API_KEY:-}
+      # Push Notifications (Firebase)
+      - FCM_SERVER_KEY=${FCM_SERVER_KEY:-}
+    volumes:
+      - jarvis-data:/app/data
+      - ./jarvis_api_keys.json:/app/jarvis_api_keys.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - jarvis-net
+
+  # ═══ PostgreSQL ═══
+  postgres:
+    image: postgres:16-alpine
+    container_name: jarvis-postgres
+    environment:
+      POSTGRES_USER: jarvis
+      POSTGRES_PASSWORD: jarvis
+      POSTGRES_DB: jarvis
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jarvis"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - jarvis-net
+
+  # ═══ Redis ═══
+  redis:
+    image: redis:7-alpine
+    container_name: jarvis-redis
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - jarvis-net
+
+volumes:
+  postgres-data:
+  redis-data:
+  jarvis-data:
+
+networks:
+  jarvis-net:
+    driver: bridge

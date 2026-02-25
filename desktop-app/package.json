@@ -1,7 +1,7 @@
 {
   "name": "jarvis-ai-desktop",
   "version": "10.0.0",
-  "description": "JARVIS AI v10.0 ULTIMATE — 42 engines, 444 endpoints, WhatsApp, Email, LinkedIn, Desktop Control, 30+ AI capabilities, Hindi Voice with ElevenLabs. She never says no!",
+  "description": "JARVIS AI v10.0 — Iron Man Holographic Interface. Full AI assistant with camera emotion detection, code execution, system control, voice AI. No server needed.",
   "main": "main.js",
   "author": "JARVIS AI",
   "license": "MIT",
@@ -18,11 +18,12 @@
     "build-linux": "electron-builder --linux --publish never",
     "build-all": "electron-builder --win --mac --linux --publish never",
     "dev": "electron . --dev",
-    "pack": "electron-builder --dir"
+    "pack": "electron-builder --dir",
+    "install-build": "npm run build-web && electron-builder --win --mac --linux --publish never"
   },
   "build": {
-    "appId": "com.jarvis.trading.desktop",
-    "productName": "JARVIS AI Trading",
+    "appId": "com.jarvis.ai.ironman",
+    "productName": "JARVIS AI",
     "copyright": "Copyright 2026 JARVIS AI",
     "publish": null,
     "directories": {
@@ -56,7 +57,8 @@
         }
       ],
       "icon": "assets/icon.ico",
-      "artifactName": "JARVIS-AI-Setup-${version}.${ext}"
+      "artifactName": "JARVIS-AI-v${version}-Setup.${ext}",
+      "requestedExecutionLevel": "asInvoker"
     },
     "nsis": {
       "oneClick": false,
@@ -66,19 +68,33 @@
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",
       "installerHeaderIcon": "assets/icon.ico",
-      "shortcutName": "JARVIS AI Trading",
+      "shortcutName": "JARVIS AI",
       "runAfterFinish": true,
-      "installerSidebar": null
+      "installerSidebar": null,
+      "perMachine": false,
+      "allowElevation": true
     },
     "mac": {
-      "target": ["dmg"],
+      "target": ["dmg", "zip"],
       "icon": "assets/icon.icns",
-      "category": "public.app-category.finance"
+      "category": "public.app-category.productivity",
+      "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "entitlements": "assets/entitlements.mac.plist",
+      "extendInfo": {
+        "NSCameraUsageDescription": "JARVIS needs camera access for face detection and emotion recognition",
+        "NSMicrophoneUsageDescription": "JARVIS needs microphone access for voice commands"
+      }
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": ["AppImage", "deb", "rpm"],
       "icon": "assets",
-      "category": "Finance"
+      "category": "Utility",
+      "desktop": {
+        "Name": "JARVIS AI",
+        "Comment": "Iron Man AI Assistant",
+        "Keywords": "jarvis;ai;assistant;iron-man"
+      }
     }
   },
   "dependencies": {

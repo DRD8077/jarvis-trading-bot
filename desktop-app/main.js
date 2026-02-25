@@ -24,10 +24,11 @@
  */
 
 const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, 
-        Notification, shell, screen, nativeTheme, powerMonitor } = require('electron')
+        Notification, shell, screen, nativeTheme, powerMonitor, 
+        desktopCapturer, session } = require('electron')
 const path = require('path')
 const fs = require('fs')
-const { exec, execSync } = require('child_process')
+const { exec, execSync, spawn } = require('child_process')
 const os = require('os')
 
 let mainWindow = null
@@ -106,6 +107,22 @@ function createMainWindow() {
       enableBlinkFeatures: 'CSSColorSchemeUARendering',
       backgroundThrottling: false, // Keep running in background
     }
+  })
+
+  // ═══ CAMERA PERMISSION — Auto-grant for JARVIS ═══
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    const allowed = ['media', 'mediaKeySystem', 'notifications', 'fullscreen', 'clipboard-read', 'clipboard-sanitized-write']
+    if (allowed.includes(permission)) {
+      callback(true)
+    } else {
+      callback(false)
+    }
+  })
+
+  // Also handle permission check
+  session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
+    const allowed = ['media', 'mediaKeySystem', 'notifications', 'fullscreen', 'clipboard-read', 'clipboard-sanitized-write']
+    return allowed.includes(permission)
   })
 
   // Load the app
@@ -675,7 +692,164 @@ function setupIPC() {
     } catch (e) { return { success: false, error: e.message } }
   })
 
-  console.log('[JARVIS Desktop v8.0] All IPC handlers registered — Full OS Control Active!')
+  console.log('[JARVIS Desktop v10.0] All IPC handlers registered — Full OS Control + Code Engine + Camera Active!')
+}
+
+// ═══════════════════════════════════
+// CODE EXECUTION ENGINE (IPC)
+// ═══════════════════════════════════
+
+function setupCodeEngine() {
+  // Execute code in any language
+  ipcMain.handle('execute-code', async (event, code, language, options = {}) => {
+    const timeout = options.timeout || 30000
+    
+    const langMap = {
+      'python': { ext: '.py', cmd: 'python3' },
+      'javascript': { ext: '.js', cmd: 'node' },
+      'typescript': { ext: '.ts', cmd: 'npx ts-node' },
+      'ruby': { ext: '.rb', cmd: 'ruby' },
+      'go': { ext: '.go', cmd: 'go run' },
+      'rust': { ext: '.rs', cmd: null }, // Special handling
+      'java': { ext: '.java', cmd: null }, // Special handling
+      'c': { ext: '.c', cmd: null },
+      'cpp': { ext: '.cpp', cmd: null },
+      'shell': { ext: '.sh', cmd: 'bash' },
+      'bash': { ext: '.sh', cmd: 'bash' },
+      'powershell': { ext: '.ps1', cmd: 'powershell -File' },
+    }
+
+    const lang = langMap[language.toLowerCase()]
+    if (!lang) {
+      // Try direct execution
+      return new Promise((resolve) => {
+        exec(code, { timeout }, (error, stdout, stderr) => {
+          resolve({ success: !error, stdout, stderr, error: error?.message })
+        })
+      })
+    }
+
+    const tmpFile = path.join(os.tmpdir(), `jarvis_exec_${Date.now()}${lang.ext}`)
+    
+    try {
+      fs.writeFileSync(tmpFile, code, 'utf-8')
+
+      let cmd
+      if (language === 'rust') {
+        const outFile = tmpFile.replace('.rs', '')
+        cmd = `rustc "${tmpFile}" -o "${outFile}" && "${outFile}"`
+      } else if (language === 'java') {
+        const className = code.match(/class\s+(\w+)/)?.[1] || 'JarvisExec'
+        const dir = path.dirname(tmpFile)
+        const jFile = path.join(dir, `${className}.java`)
+        fs.renameSync(tmpFile, jFile)
+        cmd = `cd "${dir}" && javac "${className}.java" && java "${className}"`
+      } else if (language === 'c') {
+        const outFile = tmpFile.replace('.c', '')
+        cmd = `gcc "${tmpFile}" -o "${outFile}" && "${outFile}"`
+      } else if (language === 'cpp') {
+        const outFile = tmpFile.replace('.cpp', '')
+        cmd = `g++ "${tmpFile}" -o "${outFile}" && "${outFile}"`
+      } else {
+        cmd = `${lang.cmd} "${tmpFile}"`
+      }
+
+      return new Promise((resolve) => {
+        exec(cmd, { timeout, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
+          // Cleanup
+          try { fs.unlinkSync(tmpFile) } catch {}
+          resolve({ success: !error, stdout, stderr, error: error?.message })
+        })
+      })
+    } catch (err) {
+      try { fs.unlinkSync(tmpFile) } catch {}
+      return { success: false, error: err.message }
+    }
+  })
+
+  // Screen capture
+  ipcMain.handle('capture-screen', async () => {
+    try {
+      const sources = await desktopCapturer.getSources({ 
+        types: ['screen'], 
+        thumbnailSize: { width: 1920, height: 1080 } 
+      })
+      if (sources.length > 0) {
+        const thumbnail = sources[0].thumbnail.toDataURL()
+        return { success: true, image: thumbnail }
+      }
+      return { success: false, error: 'No screen found' }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // Take screenshot of specific window
+  ipcMain.handle('capture-window', async (event, windowTitle) => {
+    try {
+      const sources = await desktopCapturer.getSources({ 
+        types: ['window'], 
+        thumbnailSize: { width: 1280, height: 720 } 
+      })
+      const target = windowTitle 
+        ? sources.find(s => s.name.toLowerCase().includes(windowTitle.toLowerCase()))
+        : sources[0]
+      if (target) {
+        return { success: true, image: target.thumbnail.toDataURL(), name: target.name }
+      }
+      return { success: false, error: 'Window not found' }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // List running processes
+  ipcMain.handle('list-processes', async () => {
+    return new Promise((resolve) => {
+      const cmd = process.platform === 'win32' 
+        ? 'tasklist /FO CSV /NH' 
+        : 'ps aux --sort=-%mem | head -20'
+      exec(cmd, { timeout: 5000 }, (error, stdout) => {
+        resolve({ success: !error, data: stdout })
+      })
+    })
+  })
+
+  // Open URL in default browser
+  ipcMain.handle('open-url', (event, url) => {
+    shell.openExternal(url)
+    return { success: true }
+  })
+
+  // Get Wi-Fi info
+  ipcMain.handle('get-wifi-info', async () => {
+    return new Promise((resolve) => {
+      const cmd = process.platform === 'win32'
+        ? 'netsh wlan show interfaces'
+        : process.platform === 'darwin'
+        ? '/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I'
+        : 'iwconfig 2>/dev/null || nmcli device wifi show'
+      exec(cmd, { timeout: 5000 }, (error, stdout) => {
+        resolve({ success: !error, data: stdout })
+      })
+    })
+  })
+
+  // Get battery info
+  ipcMain.handle('get-battery-info', async () => {
+    return new Promise((resolve) => {
+      const cmd = process.platform === 'win32'
+        ? 'WMIC PATH Win32_Battery Get EstimatedChargeRemaining,BatteryStatus'
+        : process.platform === 'darwin'
+        ? 'pmset -g batt'
+        : 'cat /sys/class/power_supply/BAT0/capacity 2>/dev/null || echo "No battery"'
+      exec(cmd, { timeout: 5000 }, (error, stdout) => {
+        resolve({ success: !error, data: stdout })
+      })
+    })
+  })
+
+  console.log('[JARVIS Desktop v10.0] Code Engine + Screen Capture active!')
 }
 
 // ═══════════════════════════════════
@@ -728,20 +902,54 @@ function setupAutoStart() {
 }
 
 // ═══════════════════════════════════
+// BACKEND MANAGER
+// ═══════════════════════════════════
+
+let backendManager = null
+try {
+  backendManager = require('./backendManager')
+} catch (e) {
+  console.log('[JARVIS Desktop] Backend manager not found, running frontend-only mode')
+}
+
+// ═══════════════════════════════════
 // APP LIFECYCLE
 // ═══════════════════════════════════
 
-app.whenReady().then(() => {
-  console.log('[JARVIS Desktop v8.0] ULTIMATE Iron Man Edition starting — Full OS Control!')
+app.whenReady().then(async () => {
+  console.log('[JARVIS Desktop v10.0] ULTIMATE Iron Man Edition starting — Full OS Control + Code Engine + Camera!')
+
+  // Start Python backend first
+  if (backendManager) {
+    console.log('[JARVIS Desktop] Starting Python AI backend...')
+    const backendReady = await backendManager.startBackend()
+    if (backendReady) {
+      console.log('[JARVIS Desktop] ✅ Python backend running on port 8000')
+    } else {
+      console.log('[JARVIS Desktop] ⚠️ Backend not available — using remote/hosted mode')
+    }
+  }
 
   createMainWindow()
   createTray()
   registerGlobalShortcuts()
   setupIPC()
+  setupCodeEngine()
   setupPowerMonitoring()
 
-  // Auto-start on boot (user can disable in settings)
-  // setupAutoStart()
+  // Backend status IPC
+  ipcMain.handle('backend-status', () => backendManager?.getStatus() || { running: false })
+  ipcMain.handle('backend-restart', async () => {
+    if (backendManager) {
+      backendManager.stopBackend()
+      await new Promise(r => setTimeout(r, 2000))
+      return await backendManager.startBackend()
+    }
+    return false
+  })
+
+  // Auto-start on boot
+  setupAutoStart()
 
   // If started with --hidden flag, don't show window
   if (process.argv.includes('--hidden')) {
@@ -762,12 +970,16 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   isQuitting = true
+  // Stop Python backend on quit
+  if (backendManager) backendManager.stopBackend()
 })
 
 app.on('will-quit', () => {
   try {
     if (app.isReady()) globalShortcut.unregisterAll()
   } catch (e) { /* ignore */ }
+  // Ensure backend is stopped
+  if (backendManager) backendManager.stopBackend()
 })
 
 // Second instance handler (lock acquired at top of file)

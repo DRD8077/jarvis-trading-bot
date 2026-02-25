@@ -21,7 +21,7 @@ import serviceMesh from './services/serviceMesh'
 import multiSource from './services/multiSourceData'
 import wsHub from './services/wsHub'
 import offlineEngine from './services/offlineEngine'
-import { API_BASE } from './services/apiBase'
+import { API_BASE, WS_URL } from './services/apiBase'
 // v7.0 ULTIMATE: 15 Power Services
 import jarvisDB from './services/jarvisDB'
 import encryptedVault from './services/encryptedVault'
@@ -43,6 +43,7 @@ import smartAuth from './services/smartAuth'
 import voiceCommandEngine from './services/voiceCommandEngine'
 import webAIFallback from './services/webAIFallback'
 import securityBatteryPerf from './services/securityBatteryPerf'
+import elevenlabsVoice from './services/elevenlabsVoice'
 // Direct server connection — no Telegram dependency
 
 // Lazy load pages for performance
@@ -95,6 +96,10 @@ const VoiceAI = lazy(() => import('./components/VoiceAI'))
 const SystemSpecs = lazy(() => import('./components/SystemSpecs'))
 const JarvisVsMyra = lazy(() => import('./components/JarvisVsMyra'))
 const VoiceAutomation = lazy(() => import('./components/VoiceAutomation'))
+// v10.0 IRON MAN: Holographic JARVIS Interface
+const JarvisHolographic = lazy(() => import('./components/JarvisHolographic'))
+// v11.0: Gaming AI Coach
+const GamingCoach = lazy(() => import('./components/GamingCoach'))
 
 const PageLoader = () => (
   <div className="p-4 bg-slate-900 min-h-screen space-y-3 animate-pulse">
@@ -117,10 +122,10 @@ function AppInner() {
   })
 
   useEffect(() => {
-    console.log('[JARVIS v8.0 ULTIMATE FINAL] Booting all autonomous systems...')
+    console.log('[JARVIS v8.5 POWER ULTIMATE] Booting all autonomous systems...')
     // Initialize crash analytics
     crashAnalytics.init()
-    crashAnalytics.addBreadcrumb('app', 'App loaded — v8.0 ULTIMATE FINAL')
+    crashAnalytics.addBreadcrumb('app', 'App loaded — v8.5 POWER ULTIMATE')
     // === v6.0: Initialize JARVIS Core ===
     jarvis.init(API_BASE)
     // Start self-healing service mesh
@@ -130,8 +135,25 @@ function AppInner() {
     serviceMesh.start(30000)
     // Start multi-source data aggregator
     multiSource.startAutoRefresh()
-    // Connect WebSocket hub
-    wsHub.connect([`${API_BASE.replace('http', 'ws')}/ws`, 'wss://stream.binance.com:9443/ws'])
+    // Connect WebSocket hub — standalone server + Binance
+    const wsUrl = WS_URL || `${API_BASE.replace(/^http/, 'ws')}/ws`
+    wsHub.connect('jarvis', {
+      url: [wsUrl],
+      channels: ['prices', 'signals', 'alerts'],
+      heartbeatInterval: 30000,
+      onMessage: (msg) => {
+        if (msg.type === 'price_update') {
+          window.dispatchEvent(new CustomEvent('jarvis-price-update', { detail: msg.data }))
+        } else if (msg.type === 'new_signal') {
+          window.dispatchEvent(new CustomEvent('jarvis-signal', { detail: msg.data }))
+        }
+      }
+    })
+    wsHub.connect('binance', {
+      url: ['wss://stream.binance.com:9443/ws'],
+      channels: [],
+      heartbeatInterval: 60000
+    })
     // Initialize offline engine
     offlineEngine.init()
     // === v7.0 ULTIMATE: Initialize all 15 power services ===
@@ -187,7 +209,9 @@ function AppInner() {
     if (webAIFallback && webAIFallback.init) webAIFallback.init()
     // Security + Battery + Performance monitor
     if (securityBatteryPerf && securityBatteryPerf.init) securityBatteryPerf.init()
-    console.log('[JARVIS v8.0] ALL 53 services ONLINE ⚡ 113 Python engines active')
+    // ElevenLabs premium voice engine
+    if (elevenlabsVoice && elevenlabsVoice.init) elevenlabsVoice.init()
+    console.log('[JARVIS v8.5] ALL 54 services ONLINE ⚡ 113 Python engines + ElevenLabs voice active')
     // Start background price alert engine
     backgroundAlerts.start(15000)
     // Pre-cache essentials for offline mode
@@ -295,6 +319,10 @@ function SwipeableApp() {
               <Route path="/system-specs" element={<ErrorBoundary><SystemSpecs /></ErrorBoundary>} />
               <Route path="/jarvis-vs-myra" element={<ErrorBoundary><JarvisVsMyra /></ErrorBoundary>} />
               <Route path="/voice-automation" element={<ErrorBoundary><VoiceAutomation /></ErrorBoundary>} />
+              <Route path="/jarvis-holographic" element={<ErrorBoundary><JarvisHolographic /></ErrorBoundary>} />
+              <Route path="/iron-man" element={<ErrorBoundary><JarvisHolographic /></ErrorBoundary>} />
+              <Route path="/gaming" element={<ErrorBoundary><GamingCoach apiBase={API_BASE} /></ErrorBoundary>} />
+              <Route path="/gaming-coach" element={<ErrorBoundary><GamingCoach apiBase={API_BASE} /></ErrorBoundary>} />
             </Routes>
           </main>
         </Suspense>

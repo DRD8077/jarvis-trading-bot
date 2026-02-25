@@ -5,7 +5,7 @@
     "first_seen": "2026-02-17T01:27:27.612711+05:30",
     "language": "hinglish",
     "risk_appetite": "moderate",
-    "trading_style": "",
+    "trading_style": "intraday",
     "budget": ""
   },
   "conversations": [
@@ -152,15 +152,52 @@
       "text": "hello",
       "intent": "greeting",
       "timestamp": "2026-02-19T11:33:09.268624+05:30"
+    },
+    {
+      "role": "user",
+      "text": "What is NIFTY 50?",
+      "intent": "nifty",
+      "timestamp": "2026-02-25T20:12:56.098425+05:30"
+    },
+    {
+      "role": "assistant",
+      "text": "NIFTY 50, also known as the Nifty50, is a stock market index that represents the 50 largest and most liquid companies listed on the National Stock Exchange (NSE) of India. It is one of the most widely followed and traded indices in India, and is often considered to be a benchmark for the Indian stock market.\n\nThe NIFTY 50 index is calculated and maintained by the NSE, and it is designed to reflect the performance of the Indian economy and the stock market as a whole. The index is composed of 50 companies from various sectors, including finance, technology, healthcare, consumer goods, and more.\n\nThe NIFTY 50 index is calculated using a market capitalization-weighted methodology, which means that the weight of each company in the index is determined by its market capitalization. The index is reviewed and revised periodically to ensure that it remains representative of the Indian stock market and the economy.\n\nSome of the key features of the NIFTY 50 index are:\n\n* It is a market capitaliz",
+      "intent": "",
+      "timestamp": "2026-02-25T20:12:56.100701+05:30"
+    },
+    {
+      "role": "user",
+      "text": "What is NIFTY 50?",
+      "intent": "nifty",
+      "timestamp": "2026-02-25T20:13:00.299568+05:30"
+    },
+    {
+      "role": "user",
+      "text": "Hello JARVIS, what can you do?",
+      "intent": "greeting",
+      "timestamp": "2026-02-25T21:18:27.928584+05:30"
+    },
+    {
+      "role": "assistant",
+      "text": "Namaste! Main hoon JARVIS, duniya ka sabse advanced AI Trading & Market Intelligence Assistant. Main aapki trading aur investment needs ke liye yahaan hoon.\n\nMain kya kar sakta hoon?\n\n* **Crypto aur stock market data**: Main aapko real-time crypto aur stock market data provide kar sakta hoon, jismein current prices, trending tokens, market sentiment, fear & greed index, aur bahut kuchh.\n* **Technical analysis**: Main aapko technical analysis provide kar sakta hoon, jismein chart patterns, indicators, aur candlestick patterns shamil hain.\n* **Trading signals**: Main aapko trading signals provide kar sakta hoon, jismein buy aur sell signals shamil hain, aur yeh signals aapke risk appetite aur investment goals ke hisab se customize kiye ja sakte hain.\n* **Portfolio management**: Main aapke portfolio ko manage kar sakta hoon, jismein aapke investments ki tracking, risk analysis, aur portfolio optimization shamil hain.\n* **News aur updates**: Main aapko latest news aur updates provide kar s",
+      "intent": "",
+      "timestamp": "2026-02-25T21:18:27.934588+05:30"
+    },
+    {
+      "role": "user",
+      "text": "What is Bitcoin price today?",
+      "intent": "price_check",
+      "timestamp": "2026-02-25T21:19:12.293605+05:30"
     }
   ],
   "positions": [],
   "facts": {
     "favorite_symbols": [
-      "NIFTY",
       "SOL",
-      "SENSEX"
-    ]
+      "SENSEX",
+      "NIFTY"
+    ],
+    "trading_style": "intraday"
   },
   "predictions": [
     {
@@ -230,5 +267,5 @@
   ],
   "learnings": [],
   "summary": "",
-  "last_active": "2026-02-19T11:33:09.268651+05:30"
+  "last_active": "2026-02-25T21:19:12.293633+05:30"
 }

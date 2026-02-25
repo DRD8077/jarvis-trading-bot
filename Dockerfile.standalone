@@ -1,0 +1,55 @@
+FROM python:3.12-slim AS base
+
+# System dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python dependencies (cached layer)
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ═══ Frontend Build Stage ═══
+FROM node:20-slim AS frontend-builder
+WORKDIR /build
+
+# Copy frontend source (telegram-mini-app is the React app)
+COPY telegram-mini-app/package.json telegram-mini-app/package-lock.json* ./
+RUN npm ci --production=false 2>/dev/null || npm install
+
+COPY telegram-mini-app/ .
+
+# Build for production — set API base for standalone
+ARG VITE_SERVER_URL=""
+ENV VITE_SERVER_URL=${VITE_SERVER_URL}
+RUN npm run build
+
+# ═══ Final Production Image ═══
+FROM base AS production
+
+# Copy all Python backend code
+COPY *.py /app/
+COPY *.json /app/
+COPY *.sh /app/
+
+# Copy built frontend
+COPY --from=frontend-builder /build/dist /app/frontend/dist
+
+# Copy templates and static if they exist
+COPY templates/ /app/templates/ 2>/dev/null || true
+COPY static/ /app/static/ 2>/dev/null || true
+
+# Create data directory
+RUN mkdir -p /app/data
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Start standalone server (no Telegram bot)
+CMD ["python3", "-m", "uvicorn", "jarvis_standalone_server:app", \
+     "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--log-level", "info"]

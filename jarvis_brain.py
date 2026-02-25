@@ -145,6 +145,7 @@ _INTENT_PATTERNS = {
     "code": r"(?:code|github|program|script|banao|build|develop|clone|install|run\s*kar)",
     "greeting": r"(?:^(?:hi|hello|hey|namaste|kya\s*hal|kaise\s*ho|good\s*morning|gm))",
     "memory": r"(?:yaad|remember|memory|history|fact|mujhe\s*pata|mera\s*naam|position\s*batao)",
+    "gaming": r"(?:bgmi|pubg|game|gaming|play\s*like|jonathan|mortal|scout|dynamo|sensitivity|sens\b|recoil|weapon|gun|headshot|chicken\s*dinner|rush|drop\s*(?:where|kaha)|screen\s*shar|coaching|squad|tdm|clutch|spray|scope|gyro)",
 }
 
 def _detect_intent(text: str) -> str:
@@ -936,6 +937,26 @@ async def jarvis_chat(message: str, user_id: str = "0", market_context: str = ""
             _add_memory(user_id, "user", message)
             _add_memory(user_id, "assistant", txt)
             return txt
+
+    # 🎮 GAMING ENGINE — Route gaming-related queries directly
+    intent = _detect_intent(message)
+    if intent == "gaming":
+        try:
+            from jarvis_gaming_engine import JarvisGamingEngine
+            _gaming = JarvisGamingEngine()
+            result = _gaming.handle_command(message)
+            if isinstance(result, dict):
+                gaming_reply = result.get("advice", result.get("message", result.get("strategy", "")))
+                if not gaming_reply:
+                    gaming_reply = json.dumps(result, indent=2) if result else ""
+            else:
+                gaming_reply = str(result) if result else ""
+            if gaming_reply:
+                _add_memory(user_id, "user", message)
+                _add_memory(user_id, "assistant", gaming_reply)
+                return gaming_reply
+        except Exception as e:
+            logger.warning(f"Gaming engine error: {e}")
 
     # 🔥 SMART CONTEXT — Fetch real engine data based on what user asks
     try:

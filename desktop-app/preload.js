@@ -13,6 +13,31 @@ contextBridge.exposeInMainWorld('jarvisDesktop', {
   // ═══ Platform Info ═══
   isDesktop: true,
   platform: process.platform,
+  version: '10.0.0',
+
+  // ═══ System ═══
+  getSystemInfo: () => ipcRenderer.invoke('get-system-info'),
+  getOsSpecs: () => ipcRenderer.invoke('get-os-specs'),
+  getVersion: () => ipcRenderer.invoke('get-version'),
+  getAppPath: () => ipcRenderer.invoke('get-app-path'),
+  getDiskSpace: () => ipcRenderer.invoke('get-disk-space'),
+
+  // ═══ Code Execution Engine ═══
+  executeCode: (code, language, options) => ipcRenderer.invoke('execute-code', code, language, options),
+
+  // ═══ Screen Capture ═══
+  captureScreen: () => ipcRenderer.invoke('capture-screen'),
+  captureWindow: (title) => ipcRenderer.invoke('capture-window', title),
+
+  // ═══ Process Management ═══
+  listProcesses: () => ipcRenderer.invoke('list-processes'),
+
+  // ═══ Network Info ═══
+  getWifiInfo: () => ipcRenderer.invoke('get-wifi-info'),
+  getBatteryInfo: () => ipcRenderer.invoke('get-battery-info'),
+
+  // ═══ URL Opening ═══
+  openUrl: (url) => ipcRenderer.invoke('open-url', url),
 
   // ═══ System ═══
   getSystemInfo: () => ipcRenderer.invoke('get-system-info'),

@@ -1,426 +1,492 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { API_BASE } from '../services/apiBase'
 
 /**
- * 🎙️ JARVIS Voice Automation Center
- * Full system automation via voice commands
+ * 🎙️ JARVIS Ultimate Voice Automation Center v8.5
+ * ElevenLabs Premium AI Voice + Full System Control
  * Features: WhatsApp, Volume, Brightness, Music, News, PC Power, Window Management
+ * Voice: ElevenLabs streaming TTS (voiceId: 2bNrEsM0omyhLiEyOwqY)
  */
+
+let elevenlabsVoice = null
+import('../services/elevenlabsVoice.js').then(m => { elevenlabsVoice = m.default }).catch(() => {})
 
 const VoiceAutomation = () => {
   const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [response, setResponse] = useState('')
-  const [selectedVoice, setSelectedVoice] = useState('male-1')
+  const [selectedVoice, setSelectedVoice] = useState('jarvis-prime')
   const [systemStatus, setSystemStatus] = useState(null)
   const [recentCommands, setRecentCommands] = useState([])
   const [activeTab, setActiveTab] = useState('commands')
+  const [voiceEngine, setVoiceEngine] = useState('elevenlabs')
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [continuousMode, setContinuousMode] = useState(false)
+  const [aiThinking, setAiThinking] = useState(false)
+  const [powerStatus, setPowerStatus] = useState(null)
+  const [elevenLabsReady, setElevenLabsReady] = useState(false)
+  const recognitionRef = useRef(null)
+  const continuousRef = useRef(false)
 
   const voiceProfiles = [
-    { id: 'male-1', name: 'JARVIS (Tony)', gender: 'male', lang: 'en' },
-    { id: 'male-2', name: 'Friday', gender: 'male', lang: 'en' },
-    { id: 'male-3', name: 'Vikram (Hindi)', gender: 'male', lang: 'hi' },
-    { id: 'male-4', name: 'Arjun (Hindi)', gender: 'male', lang: 'hi' },
-    { id: 'female-1', name: 'MYRA', gender: 'female', lang: 'en' },
-    { id: 'female-2', name: 'Alexa', gender: 'female', lang: 'en' },
-    { id: 'female-3', name: 'Priya (Hindi)', gender: 'female', lang: 'hi' },
-    { id: 'female-4', name: 'Neha (Hindi)', gender: 'female', lang: 'hi' },
+    { id: 'jarvis-prime', name: 'JARVIS Prime', gender: 'male', lang: 'en', engine: 'elevenlabs', desc: 'ElevenLabs AI Voice' },
+    { id: 'jarvis-tony', name: 'Tony Stark', gender: 'male', lang: 'en', engine: 'elevenlabs', desc: 'Confident & Smart' },
+    { id: 'friday', name: 'Friday', gender: 'female', lang: 'en', engine: 'elevenlabs', desc: 'Professional Assistant' },
+    { id: 'myra', name: 'MYRA 2.0', gender: 'female', lang: 'en', engine: 'elevenlabs', desc: 'Personal AI Friend' },
+    { id: 'vikram', name: 'Vikram (Hindi)', gender: 'male', lang: 'hi', engine: 'elevenlabs', desc: 'Hindi Male Voice' },
+    { id: 'arjun', name: 'Arjun (Hindi)', gender: 'male', lang: 'hi', engine: 'web', desc: 'Hindi Deep Voice' },
+    { id: 'priya', name: 'Priya (Hindi)', gender: 'female', lang: 'hi', engine: 'elevenlabs', desc: 'Hindi Female Voice' },
+    { id: 'neha', name: 'Neha (Hindi)', gender: 'female', lang: 'hi', engine: 'web', desc: 'Hindi Warm Voice' },
   ]
 
   const commandCategories = [
     {
-      title: '🚀 Full System Automation',
-      commands: [
-        { cmd: 'Open Chrome', desc: 'Launch Google Chrome browser' },
-        { cmd: 'Close Notepad', desc: 'Close Notepad application' },
-        { cmd: 'Open Calculator', desc: 'Launch system calculator' },
-        { cmd: 'Create folder Projects', desc: 'Create new folder on desktop' },
-        { cmd: 'Delete file temp.txt', desc: 'Delete a specific file' },
-        { cmd: 'Move file to Documents', desc: 'Move files between folders' },
+      title: '🚀 System Automation', commands: [
+        { cmd: 'Open Chrome', desc: 'Launch browser', icon: '🌐' },
+        { cmd: 'Close Notepad', desc: 'Close app', icon: '📝' },
+        { cmd: 'Open Calculator', desc: 'Launch calc', icon: '🔢' },
+        { cmd: 'Create folder', desc: 'New folder', icon: '📁' },
+        { cmd: 'Delete file', desc: 'Remove file', icon: '🗑️' },
+        { cmd: 'Take screenshot', desc: 'Screen capture', icon: '📸' },
       ]
     },
     {
-      title: '📊 System Status Check',
-      commands: [
-        { cmd: 'Battery status', desc: 'Check current battery level & charging' },
-        { cmd: 'CPU usage', desc: 'Monitor real-time CPU utilization' },
-        { cmd: 'RAM usage', desc: 'Check memory usage and available RAM' },
-        { cmd: 'Internet status', desc: 'Check connection speed and status' },
-        { cmd: 'Disk space', desc: 'Check available storage space' },
-        { cmd: 'System info', desc: 'Full system hardware information' },
+      title: '📊 System Status', commands: [
+        { cmd: 'Battery status', desc: 'Battery & charging', icon: '🔋' },
+        { cmd: 'CPU usage', desc: 'CPU monitor', icon: '💻' },
+        { cmd: 'RAM usage', desc: 'Memory check', icon: '🧠' },
+        { cmd: 'Internet speed', desc: 'Speed test', icon: '📶' },
+        { cmd: 'Disk space', desc: 'Storage check', icon: '💾' },
+        { cmd: 'System info', desc: 'Full HW info', icon: '⚙️' },
       ]
     },
     {
-      title: '🖥️ Windows Management',
-      commands: [
-        { cmd: 'Minimize window', desc: 'Minimize current active window' },
-        { cmd: 'Maximize window', desc: 'Maximize current window to full screen' },
-        { cmd: 'Switch window', desc: 'Switch between open windows (Alt+Tab)' },
-        { cmd: 'Close window', desc: 'Close the current active window' },
-        { cmd: 'Split screen', desc: 'Arrange windows side by side' },
-        { cmd: 'Show desktop', desc: 'Minimize all windows to show desktop' },
+      title: '🖥️ Window Control', commands: [
+        { cmd: 'Minimize all', desc: 'Show desktop', icon: '⬇️' },
+        { cmd: 'Switch window', desc: 'Alt+Tab', icon: '🔄' },
+        { cmd: 'Split screen', desc: 'Side by side', icon: '📐' },
+        { cmd: 'Close window', desc: 'Close current', icon: '❌' },
+        { cmd: 'New desktop', desc: 'Virtual desktop', icon: '🖥️' },
+        { cmd: 'Show taskbar', desc: 'Toggle taskbar', icon: '📊' },
       ]
     },
     {
-      title: '⚡ PC Power Control',
-      commands: [
-        { cmd: 'Shutdown PC', desc: 'Shutdown computer immediately' },
-        { cmd: 'Restart PC', desc: 'Restart the computer' },
-        { cmd: 'Sleep mode', desc: 'Put computer to sleep' },
-        { cmd: 'Lock PC', desc: 'Lock the screen instantly' },
-        { cmd: 'Log off', desc: 'Sign out of current user' },
-        { cmd: 'Hibernate', desc: 'Hibernate the system' },
+      title: '⚡ PC Power', commands: [
+        { cmd: 'Shutdown PC', desc: 'Power off', icon: '🔴' },
+        { cmd: 'Restart PC', desc: 'Reboot', icon: '🔄' },
+        { cmd: 'Sleep mode', desc: 'Sleep', icon: '😴' },
+        { cmd: 'Lock screen', desc: 'Lock PC', icon: '🔒' },
+        { cmd: 'Log off', desc: 'Sign out', icon: '👋' },
+        { cmd: 'Hibernate', desc: 'Hibernate', icon: '💤' },
       ]
     },
     {
-      title: '💬 WhatsApp Automation',
-      commands: [
-        { cmd: 'Send WhatsApp to Mom', desc: 'Send message to contact via WhatsApp' },
-        { cmd: 'Send file on WhatsApp', desc: 'Share files through WhatsApp' },
-        { cmd: 'Open WhatsApp', desc: 'Launch WhatsApp application' },
-        { cmd: 'Read last WhatsApp', desc: 'Read latest unread messages' },
-        { cmd: 'WhatsApp call Rohit', desc: 'Make WhatsApp voice call' },
-        { cmd: 'WhatsApp video call', desc: 'Start WhatsApp video call' },
+      title: '💬 WhatsApp', commands: [
+        { cmd: 'Send WhatsApp', desc: 'Send message', icon: '📱' },
+        { cmd: 'Open WhatsApp', desc: 'Launch app', icon: '💬' },
+        { cmd: 'Read messages', desc: 'Latest msgs', icon: '📩' },
+        { cmd: 'WhatsApp call', desc: 'Voice call', icon: '📞' },
+        { cmd: 'Video call', desc: 'Start video', icon: '📹' },
+        { cmd: 'Send file', desc: 'Share file', icon: '📎' },
       ]
     },
     {
-      title: '🔊 Volume Control',
-      commands: [
-        { cmd: 'Volume up', desc: 'Increase system volume by 10%' },
-        { cmd: 'Volume down', desc: 'Decrease system volume by 10%' },
-        { cmd: 'Mute', desc: 'Mute the system audio' },
-        { cmd: 'Unmute', desc: 'Unmute the system audio' },
-        { cmd: 'Set volume 50', desc: 'Set volume to specific level' },
-        { cmd: 'Max volume', desc: 'Set volume to 100%' },
+      title: '🔊 Volume', commands: [
+        { cmd: 'Volume up', desc: '+10%', icon: '🔊' },
+        { cmd: 'Volume down', desc: '-10%', icon: '🔉' },
+        { cmd: 'Mute', desc: 'Mute audio', icon: '🔇' },
+        { cmd: 'Unmute', desc: 'Unmute', icon: '🔈' },
+        { cmd: 'Volume 50', desc: 'Set level', icon: '🎚️' },
+        { cmd: 'Max volume', desc: '100%', icon: '📢' },
       ]
     },
     {
-      title: '🔆 Brightness Management',
-      commands: [
-        { cmd: 'Brightness up', desc: 'Increase screen brightness' },
-        { cmd: 'Brightness down', desc: 'Decrease screen brightness' },
-        { cmd: 'Set brightness 80', desc: 'Set brightness to specific level' },
-        { cmd: 'Night mode', desc: 'Enable blue light filter' },
-        { cmd: 'Auto brightness', desc: 'Enable auto brightness adjustment' },
-        { cmd: 'Max brightness', desc: 'Set brightness to 100%' },
+      title: '🔆 Brightness', commands: [
+        { cmd: 'Brightness up', desc: 'Increase', icon: '☀️' },
+        { cmd: 'Brightness down', desc: 'Decrease', icon: '🌙' },
+        { cmd: 'Brightness 80', desc: 'Set level', icon: '🔆' },
+        { cmd: 'Night mode', desc: 'Blue filter', icon: '🌙' },
+        { cmd: 'Auto brightness', desc: 'Auto adjust', icon: '💡' },
+        { cmd: 'Max brightness', desc: '100%', icon: '🌟' },
       ]
     },
     {
-      title: '🎵 Music Playback',
-      commands: [
-        { cmd: 'Play music', desc: 'Play music from YouTube' },
-        { cmd: 'Play on Spotify', desc: 'Play from Spotify library' },
-        { cmd: 'Next song', desc: 'Skip to next track' },
-        { cmd: 'Previous song', desc: 'Go back to previous track' },
-        { cmd: 'Pause music', desc: 'Pause current playback' },
-        { cmd: 'Play Arijit Singh', desc: 'Play specific artist songs' },
+      title: '🎵 Music', commands: [
+        { cmd: 'Play music', desc: 'YouTube play', icon: '▶️' },
+        { cmd: 'Play Spotify', desc: 'From Spotify', icon: '💚' },
+        { cmd: 'Next song', desc: 'Skip track', icon: '⏭️' },
+        { cmd: 'Previous song', desc: 'Go back', icon: '⏮️' },
+        { cmd: 'Pause music', desc: 'Pause', icon: '⏸️' },
+        { cmd: 'Play Arijit', desc: 'Artist play', icon: '🎤' },
       ]
     },
     {
-      title: '📰 News Updates',
-      commands: [
-        { cmd: 'Latest news', desc: 'Get real-time breaking news' },
-        { cmd: 'Market news', desc: 'Stock market & crypto news' },
-        { cmd: 'Sports news', desc: 'Latest sports headlines' },
-        { cmd: 'Tech news', desc: 'Technology and startup news' },
-        { cmd: 'India news', desc: 'Indian news headlines' },
-        { cmd: 'World news', desc: 'International news updates' },
+      title: '📰 News', commands: [
+        { cmd: 'Latest news', desc: 'Breaking', icon: '🗞️' },
+        { cmd: 'Market news', desc: 'Stock news', icon: '📈' },
+        { cmd: 'Sports news', desc: 'Sports', icon: '⚽' },
+        { cmd: 'Tech news', desc: 'Technology', icon: '💻' },
+        { cmd: 'India news', desc: 'Indian news', icon: '🇮🇳' },
+        { cmd: 'World news', desc: 'Global', icon: '🌍' },
+      ]
+    },
+    {
+      title: '💰 Trading', commands: [
+        { cmd: 'BTC price', desc: 'Bitcoin price', icon: '₿' },
+        { cmd: 'Buy Nifty CE', desc: 'Options order', icon: '📈' },
+        { cmd: 'Portfolio status', desc: 'Check P&L', icon: '📊' },
+        { cmd: 'Market overview', desc: 'Full summary', icon: '🌐' },
+        { cmd: 'Set stop loss', desc: 'Risk manage', icon: '🛡️' },
+        { cmd: 'Sell all', desc: 'Close trades', icon: '🔴' },
+      ]
+    },
+    {
+      title: '🚨 Emergency', commands: [
+        { cmd: 'EMERGENCY SELL', desc: 'Liquidate all', icon: '🔴' },
+        { cmd: 'Kill switch', desc: 'Stop engines', icon: '⛔' },
+        { cmd: 'Stop loss all', desc: 'Enable SL', icon: '🛡️' },
+        { cmd: 'Pause trading', desc: 'Pause 1hr', icon: '⏸️' },
+        { cmd: 'Export trades', desc: 'Download', icon: '📥' },
+        { cmd: 'Full backup', desc: 'Backup data', icon: '💾' },
       ]
     },
   ]
 
-  // Voice recognition
+  // Initialize ElevenLabs
+  useEffect(() => {
+    const initEL = async () => {
+      try {
+        const mod = await import('../services/elevenlabsVoice.js')
+        elevenlabsVoice = mod.default
+        await elevenlabsVoice.init()
+        setElevenLabsReady(elevenlabsVoice.initialized && !elevenlabsVoice.useFallback)
+      } catch { setElevenLabsReady(false) }
+    }
+    initEL()
+  }, [])
+
   const startListening = useCallback(() => {
     if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      setResponse('Speech recognition not supported in this browser')
+      setResponse('❌ Speech recognition not supported')
       return
     }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    const recognition = new SpeechRecognition()
-    recognition.lang = selectedVoice.includes('hindi') || selectedVoice.includes('3') || selectedVoice.includes('4') ? 'hi-IN' : 'en-US'
-    recognition.continuous = false
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    const recognition = new SR()
+    const profile = voiceProfiles.find(v => v.id === selectedVoice)
+    recognition.lang = profile?.lang === 'hi' ? 'hi-IN' : 'en-US'
+    recognition.continuous = continuousMode
     recognition.interimResults = true
 
-    recognition.onstart = () => setIsListening(true)
-    recognition.onend = () => setIsListening(false)
-    recognition.onerror = () => setIsListening(false)
-
-    recognition.onresult = (event) => {
-      const text = event.results[0][0].transcript
-      setTranscript(text)
-      if (event.results[0].isFinal) {
-        executeVoiceCommand(text)
+    recognition.onstart = () => { setIsListening(true); setIsProcessing(false) }
+    recognition.onend = () => {
+      setIsListening(false)
+      if (continuousRef.current) {
+        setTimeout(() => { try { recognition.start() } catch {} }, 500)
       }
     }
-
+    recognition.onerror = (e) => {
+      setIsListening(false)
+      if (e.error !== 'no-speech' && e.error !== 'aborted') setResponse(`❌ ${e.error}`)
+    }
+    recognition.onresult = (event) => {
+      const result = event.results[event.results.length - 1]
+      setTranscript(result[0].transcript)
+      if (result.isFinal) {
+        const text = result[0].transcript
+        if (continuousMode && !text.toLowerCase().includes('jarvis') && !text.toLowerCase().includes('myra')) return
+        executeVoiceCommand(text.replace(/jarvis|myra/gi, '').trim() || text)
+      }
+    }
+    recognitionRef.current = recognition
     recognition.start()
-  }, [selectedVoice])
+  }, [selectedVoice, continuousMode])
+
+  const stopListening = () => {
+    continuousRef.current = false
+    setContinuousMode(false)
+    try { recognitionRef.current?.stop() } catch {}
+    setIsListening(false)
+  }
+
+  const toggleContinuous = () => {
+    if (continuousMode) { stopListening() } else { setContinuousMode(true); continuousRef.current = true; startListening() }
+  }
 
   const executeVoiceCommand = async (command) => {
-    const cmd = command.toLowerCase()
+    const cmd = command.toLowerCase().trim()
     let result = ''
+    setIsProcessing(true)
+    setAiThinking(true)
 
-    // System commands via desktop bridge
-    if (window.jarvisDesktop) {
-      if (cmd.includes('shutdown') || cmd.includes('shut down')) {
-        const r = await window.jarvisDesktop.runCommand(process.platform === 'win32' ? 'shutdown /s /t 5' : 'shutdown -h now')
-        result = '⚡ Shutting down PC in 5 seconds...'
-      } else if (cmd.includes('restart') || cmd.includes('reboot')) {
-        await window.jarvisDesktop.runCommand(process.platform === 'win32' ? 'shutdown /r /t 5' : 'reboot')
-        result = '🔄 Restarting PC in 5 seconds...'
-      } else if (cmd.includes('sleep')) {
-        await window.jarvisDesktop.runCommand(process.platform === 'win32' ? 'rundll32.exe powrprof.dll,SetSuspendState 0,1,0' : 'systemctl suspend')
-        result = '😴 PC going to sleep...'
-      } else if (cmd.includes('lock')) {
-        await window.jarvisDesktop.runCommand(process.platform === 'win32' ? 'rundll32.exe user32.dll,LockWorkStation' : 'loginctl lock-session')
-        result = '🔒 PC locked!'
-      } else if (cmd.includes('volume up')) {
-        await window.jarvisDesktop.runCommand(process.platform === 'win32'
-          ? 'powershell "(New-Object -ComObject WScript.Shell).SendKeys([char]175)"'
-          : 'amixer set Master 10%+')
-        result = '🔊 Volume increased!'
-      } else if (cmd.includes('volume down')) {
-        await window.jarvisDesktop.runCommand(process.platform === 'win32'
-          ? 'powershell "(New-Object -ComObject WScript.Shell).SendKeys([char]174)"'
-          : 'amixer set Master 10%-')
-        result = '🔉 Volume decreased!'
-      } else if (cmd.includes('mute')) {
-        await window.jarvisDesktop.runCommand(process.platform === 'win32'
-          ? 'powershell "(New-Object -ComObject WScript.Shell).SendKeys([char]173)"'
-          : 'amixer set Master toggle')
-        result = '🔇 Audio muted!'
-      } else if (cmd.includes('brightness up')) {
-        await window.jarvisDesktop.runCommand(process.platform === 'win32'
-          ? 'powershell "(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,80)"'
-          : 'xrandr --output $(xrandr | grep " connected" | cut -f1 -d " ") --brightness 1.0')
-        result = '🔆 Brightness increased!'
-      } else if (cmd.includes('brightness down')) {
-        await window.jarvisDesktop.runCommand(process.platform === 'win32'
-          ? 'powershell "(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,40)"'
-          : 'xrandr --output $(xrandr | grep " connected" | cut -f1 -d " ") --brightness 0.6')
-        result = '🔅 Brightness decreased!'
-      } else if (cmd.includes('open chrome') || cmd.includes('open browser')) {
-        await window.jarvisDesktop.runCommand(process.platform === 'win32' ? 'start chrome' : 'google-chrome &')
-        result = '🌐 Opening Chrome...'
-      } else if (cmd.includes('open whatsapp')) {
-        await window.jarvisDesktop.runCommand(process.platform === 'win32' ? 'start whatsapp:' : 'xdg-open https://web.whatsapp.com')
-        result = '💬 Opening WhatsApp...'
-      } else if (cmd.includes('open calculator')) {
-        await window.jarvisDesktop.runCommand(process.platform === 'win32' ? 'calc' : 'gnome-calculator &')
-        result = '🔢 Opening Calculator...'
-      } else if (cmd.includes('minimize')) {
-        await window.jarvisDesktop.minimize()
-        result = '⬇️ Window minimized!'
-      } else if (cmd.includes('maximize')) {
-        await window.jarvisDesktop.maximize()
-        result = '⬆️ Window maximized!'
-      } else if (cmd.includes('battery') || cmd.includes('power status')) {
-        const r = await window.jarvisDesktop.getSystemInfo()
-        result = `🔋 System: ${r.cpus} CPUs, ${r.totalMemory} RAM, ${r.freeMemory} free, Uptime: ${r.uptime}`
-      } else if (cmd.includes('cpu') || cmd.includes('ram') || cmd.includes('system status')) {
-        const r = await window.jarvisDesktop.getSystemInfo()
-        result = `📊 CPU: ${r.cpus} cores | RAM: ${r.totalMemory} (${r.freeMemory} free) | Platform: ${r.platform} | Uptime: ${r.uptime}`
-      } else {
-        // Generic command execution
-        const r = await window.jarvisDesktop.runCommand(command)
-        result = r.success ? (r.stdout || '✅ Command executed!') : `❌ Error: ${r.error}`
-      }
-    } else {
-      // Browser/Mobile mode — use API
-      try {
-        const res = await fetch(`${API_BASE}/api/miniapp/jarvis-ai/respond`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: command, user_id: 'voice_user' })
-        })
-        const data = await res.json()
-        result = data.response || data.message || '🤖 Command processed via AI'
-      } catch {
-        // Offline voice response
-        if (cmd.includes('news')) result = '📰 Fetching latest news...'
-        else if (cmd.includes('music') || cmd.includes('play')) result = '🎵 Opening music player...'
-        else if (cmd.includes('weather')) result = '🌤️ Checking weather...'
-        else result = `🤖 Voice command received: "${command}"`
-      }
-    }
-
-    // Speak the response
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(result.replace(/[🎵📰⚡🔊🔉🔇🔆🔅🌐💬🔢⬇️⬆️🔋📊🤖✅❌🔄😴🔒🖥️]/g, ''))
-      const voices = speechSynthesis.getVoices()
-      const profile = voiceProfiles.find(v => v.id === selectedVoice)
-      if (profile) {
-        const matchVoice = voices.find(v =>
-          (profile.lang === 'hi' ? v.lang.includes('hi') : v.lang.includes('en')) &&
-          (profile.gender === 'female' ? v.name.toLowerCase().includes('female') || v.name.includes('Zira') || v.name.includes('Samantha') : true)
-        )
-        if (matchVoice) utterance.voice = matchVoice
-      }
-      utterance.rate = 1.0
-      utterance.pitch = 1.0
-      speechSynthesis.speak(utterance)
-    }
-
-    setResponse(result)
-    setRecentCommands(prev => [{ cmd: command, result, time: new Date().toLocaleTimeString() }, ...prev.slice(0, 9)])
-  }
-
-  // Quick command execution
-  const quickExec = (cmd) => {
-    setTranscript(cmd)
-    executeVoiceCommand(cmd)
-  }
-
-  // Fetch system status
-  useEffect(() => {
-    const fetchStatus = async () => {
+    try {
       if (window.jarvisDesktop) {
-        const info = await window.jarvisDesktop.getSystemInfo()
-        setSystemStatus(info)
+        if (cmd.includes('volume up')) { await window.jarvisDesktop.volumeUp(); result = '🔊 Volume increased!' }
+        else if (cmd.includes('volume down')) { await window.jarvisDesktop.volumeDown(); result = '🔉 Volume decreased!' }
+        else if (cmd.match(/mute|unmute/)) { await window.jarvisDesktop.volumeMute(); result = '🔇 Toggled!' }
+        else if (cmd.match(/volume (\d+)/)) { await window.jarvisDesktop.volumeSet(parseInt(cmd.match(/(\d+)/)[1])); result = `🔊 Volume set!` }
+        else if (cmd.includes('brightness up')) { await window.jarvisDesktop.brightnessUp(); result = '🔆 Brightness up!' }
+        else if (cmd.includes('brightness down')) { await window.jarvisDesktop.brightnessDown(); result = '🔅 Brightness down!' }
+        else if (cmd.match(/brightness (\d+)/)) { await window.jarvisDesktop.brightnessSet(parseInt(cmd.match(/(\d+)/)[1])); result = '🔆 Set!' }
+        else if (cmd.includes('shutdown')) { await window.jarvisDesktop.pcShutdown(); result = '🔴 Shutting down...' }
+        else if (cmd.includes('restart')) { await window.jarvisDesktop.pcRestart(); result = '🔄 Restarting...' }
+        else if (cmd.includes('sleep')) { await window.jarvisDesktop.pcSleep(); result = '😴 Sleeping...' }
+        else if (cmd.includes('lock')) { await window.jarvisDesktop.pcLock(); result = '🔒 Locked!' }
+        else if (cmd.includes('logoff') || cmd.includes('log off')) { await window.jarvisDesktop.pcLogoff(); result = '👋 Logging off...' }
+        else if (cmd.includes('minimize')) { await window.jarvisDesktop.minimizeAll(); result = '⬇️ All minimized!' }
+        else if (cmd.includes('switch')) { await window.jarvisDesktop.switchWindow(); result = '🔄 Switched!' }
+        else if (cmd.includes('chrome') || cmd.includes('browser')) { await window.jarvisDesktop.openApp('chrome'); result = '🌐 Chrome!' }
+        else if (cmd.includes('whatsapp') && cmd.includes('open')) { await window.jarvisDesktop.whatsappOpen(); result = '💬 WhatsApp!' }
+        else if (cmd.includes('calculator')) { await window.jarvisDesktop.openApp('calculator'); result = '🔢 Calculator!' }
+        else if (cmd.includes('play') && cmd.includes('spotify')) { await window.jarvisDesktop.playSpotify(cmd.replace(/play|spotify|on/gi, '').trim()); result = '🎵 Spotify!' }
+        else if (cmd.includes('play')) { await window.jarvisDesktop.playYouTube(cmd.replace('play', '').trim()); result = '🎵 Playing!' }
+        else if (cmd.includes('next')) { await window.jarvisDesktop.mediaControl('next'); result = '⏭️ Next!' }
+        else if (cmd.includes('previous')) { await window.jarvisDesktop.mediaControl('prev'); result = '⏮️ Previous!' }
+        else if (cmd.includes('pause')) { await window.jarvisDesktop.mediaControl('pause'); result = '⏸️ Paused!' }
+        else if (cmd.includes('news')) { await window.jarvisDesktop.openNews('latest'); result = '📰 Opening news!' }
+        else if (cmd.match(/battery|cpu|ram|system/)) {
+          const info = await window.jarvisDesktop.getSystemInfo()
+          result = `📊 ${info.cpus} cores | ${info.totalMemory} RAM | ${info.platform}`
+        }
+        else if (cmd.includes('screenshot')) { await window.jarvisDesktop.runCommand('gnome-screenshot'); result = '📸 Done!' }
+        else { const r = await window.jarvisDesktop.runCommand(command); result = r?.success ? '✅ Done!' : `❌ ${r?.error || 'Failed'}` }
       } else {
-        setSystemStatus({
-          platform: navigator.platform,
-          cores: navigator.hardwareConcurrency || 'N/A',
-          memory: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'N/A',
-          online: navigator.onLine,
-        })
+        if (cmd.match(/emergency|kill switch|sell all|stop loss/)) {
+          try {
+            const action = cmd.includes('kill') ? 'kill_switch' : cmd.includes('sell') ? 'sell_all' : cmd.includes('stop') ? 'stop_loss_all' : 'pause_trading'
+            const res = await fetch(`${API_BASE}/api/miniapp/v8/emergency-action`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action, user_id: 'voice_user' })
+            })
+            const data = await res.json()
+            result = `🚨 ${data.detail || 'Emergency executed!'}`
+          } catch { result = '🚨 Emergency action sent (offline)' }
+        } else {
+          try {
+            const res = await fetch(`${API_BASE}/api/miniapp/jarvis-ai/respond`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: command, user_id: 'voice_user' })
+            })
+            const data = await res.json()
+            result = data.response || data.message || '🤖 Processed!'
+          } catch {
+            if (cmd.includes('price') || cmd.includes('btc')) result = '₿ Fetching Bitcoin price...'
+            else if (cmd.includes('nifty')) result = '📊 Checking Nifty...'
+            else if (cmd.includes('news')) result = '📰 Fetching news...'
+            else if (cmd.includes('play')) result = '🎵 Opening music...'
+            else if (cmd.includes('time') || cmd.includes('date')) result = `🕐 ${new Date().toLocaleString('en-IN')}`
+            else if (cmd.match(/hello|hi|namaste/)) result = '🙏 Namaste! Main JARVIS hoon!'
+            else result = `🤖 "${command}"`
+          }
+        }
+      }
+    } catch (e) { result = `❌ ${e.message || 'Failed'}` }
+
+    setAiThinking(false)
+    setIsProcessing(false)
+    await speakResponse(result)
+    setResponse(result)
+    setRecentCommands(prev => [{ cmd: command, result, time: new Date().toLocaleTimeString(), voice: selectedVoice }, ...prev.slice(0, 19)])
+  }
+
+  const speakResponse = async (text) => {
+    const clean = text.replace(/[\u{1F300}-\u{1FAD6}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}]/gu, '')
+    if (elevenlabsVoice && elevenLabsReady && voiceEngine === 'elevenlabs') {
+      elevenlabsVoice.setVoice(selectedVoice)
+      const ok = await elevenlabsVoice.speak(clean)
+      if (ok) return
+    }
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+      const u = new SpeechSynthesisUtterance(clean)
+      const p = voiceProfiles.find(v => v.id === selectedVoice)
+      u.lang = p?.lang === 'hi' ? 'hi-IN' : 'en-US'
+      u.rate = 1.0; u.pitch = p?.gender === 'female' ? 1.1 : 0.9
+      const voices = speechSynthesis.getVoices()
+      const m = voices.find(v => v.lang.includes(p?.lang === 'hi' ? 'hi' : 'en'))
+      if (m) u.voice = m
+      speechSynthesis.speak(u)
+    }
+  }
+
+  const quickExec = (cmd) => { setTranscript(cmd); executeVoiceCommand(cmd) }
+
+  useEffect(() => {
+    const fetch_ = async () => {
+      try { const r = await fetch(`${API_BASE}/api/miniapp/v8/power-status`); if (r.ok) setPowerStatus(await r.json()) } catch {}
+      if (window.jarvisDesktop) { setSystemStatus(await window.jarvisDesktop.getSystemInfo()) }
+      else {
+        setSystemStatus({ platform: navigator.platform, cores: navigator.hardwareConcurrency || 'N/A', memory: navigator.deviceMemory ? `${navigator.deviceMemory}GB` : 'N/A', online: navigator.onLine })
+        if (navigator.getBattery) try { const b = await navigator.getBattery(); setSystemStatus(p => ({ ...p, battery: `${Math.round(b.level*100)}%${b.charging ? '⚡' : ''}` })) } catch {}
       }
     }
-    fetchStatus()
-    const interval = setInterval(fetchStatus, 10000)
-    return () => clearInterval(interval)
+    fetch_()
+    const i = setInterval(fetch_, 10000)
+    return () => clearInterval(i)
   }, [])
 
   return (
-    <div className="p-3 bg-slate-900 min-h-screen text-white">
-      {/* Header */}
+    <div className="p-3 bg-slate-900 min-h-screen text-white pb-20">
       <div className="text-center mb-4">
         <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-green-400 to-purple-400 bg-clip-text text-transparent">
-          🎙️ Voice Automation
+          🎙️ JARVIS Voice Automation
         </h1>
-        <p className="text-xs text-slate-400 mt-1">Full System Control via Voice — Hindi + English</p>
-      </div>
-
-      {/* Voice Button */}
-      <div className="flex flex-col items-center mb-4">
-        <button
-          onClick={startListening}
-          className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl transition-all ${
-            isListening
-              ? 'bg-red-500 animate-pulse shadow-lg shadow-red-500/50 scale-110'
-              : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:scale-105 shadow-lg shadow-blue-600/30'
-          }`}
-        >
-          {isListening ? '⏹️' : '🎤'}
-        </button>
-        <div className={`text-xs mt-2 ${isListening ? 'text-red-400 animate-pulse' : 'text-slate-400'}`}>
-          {isListening ? '🔴 Listening...' : 'Tap to speak'}
+        <p className="text-[10px] text-slate-400 mt-1">ElevenLabs AI Voice • {commandCategories.length * 6} Commands • Hindi + English</p>
+        <div className="flex items-center justify-center gap-2 mt-1">
+          <span className={`text-[9px] px-2 py-0.5 rounded-full ${elevenLabsReady ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+            {elevenLabsReady ? '🟢 ElevenLabs' : '🟡 Web Speech'}
+          </span>
+          <span className="text-[9px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">v8.5 Power</span>
         </div>
-        {transcript && (
-          <div className="mt-2 text-sm text-blue-300 bg-blue-500/10 rounded-lg px-3 py-1">
-            "{transcript}"
-          </div>
-        )}
-        {response && (
-          <div className="mt-1 text-xs text-green-400 bg-green-500/10 rounded-lg px-3 py-1 max-w-xs text-center">
-            {response}
-          </div>
-        )}
       </div>
 
-      {/* Voice Profile Selector */}
-      <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 mb-4">
-        <div className="text-xs text-slate-400 font-bold mb-2">🗣️ Voice Profile (4 Male + 4 Female)</div>
+      <div className="flex flex-col items-center mb-4">
+        <div className="relative">
+          <button onClick={isListening ? stopListening : startListening}
+            className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl transition-all ${
+              isListening ? 'bg-red-500 animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.6)] scale-110'
+              : aiThinking ? 'bg-yellow-500 animate-bounce shadow-[0_0_40px_rgba(234,179,8,0.4)]'
+              : 'bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 hover:scale-105 shadow-[0_0_30px_rgba(99,102,241,0.4)]'
+            }`}>
+            {aiThinking ? '🧠' : isListening ? '⏹️' : '🎤'}
+          </button>
+          {isListening && <>
+            <div className="absolute inset-0 rounded-full border-2 border-red-500/50 animate-ping" />
+            <div className="absolute -inset-2 rounded-full border border-red-500/30 animate-ping" style={{ animationDelay: '0.3s' }} />
+          </>}
+        </div>
+        <div className={`text-xs mt-2 font-medium ${isListening ? 'text-red-400 animate-pulse' : aiThinking ? 'text-yellow-400' : 'text-slate-400'}`}>
+          {aiThinking ? '🧠 AI Processing...' : isListening ? '🔴 LISTENING...' : 'Tap to speak'}
+        </div>
+        <button onClick={toggleContinuous}
+          className={`mt-2 text-[10px] px-3 py-1 rounded-full transition-all ${continuousMode ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-slate-800 text-slate-500'}`}>
+          {continuousMode ? '🟢 Always Listening (Say "JARVIS...")' : '👂 Enable Always Listening'}
+        </button>
+        {transcript && <div className="mt-2 text-sm text-blue-300 bg-blue-500/10 rounded-lg px-4 py-2 max-w-xs border border-blue-500/20">🗣️ "{transcript}"</div>}
+        {response && <div className="mt-1 text-xs text-green-400 bg-green-500/10 rounded-lg px-4 py-2 max-w-xs text-center border border-green-500/20">{response}</div>}
+      </div>
+
+      <div className="flex gap-2 mb-3">
+        <button onClick={() => setVoiceEngine('elevenlabs')}
+          className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${voiceEngine === 'elevenlabs' ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-600/30' : 'bg-slate-800 text-slate-400'}`}>
+          ✨ ElevenLabs AI
+        </button>
+        <button onClick={() => setVoiceEngine('web')}
+          className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${voiceEngine === 'web' ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400'}`}>
+          🌐 Web Speech
+        </button>
+      </div>
+
+      <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 mb-3">
+        <div className="text-[10px] text-slate-400 font-bold mb-2">🗣️ Voice Profiles ({voiceProfiles.length})</div>
         <div className="grid grid-cols-4 gap-1.5">
           {voiceProfiles.map(v => (
-            <button
-              key={v.id}
-              onClick={() => setSelectedVoice(v.id)}
-              className={`p-1.5 rounded-lg text-[10px] text-center transition-all ${
-                selectedVoice === v.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700'
-              }`}
-            >
-              {v.gender === 'male' ? '👨' : '👩'} {v.name}
+            <button key={v.id} onClick={() => { setSelectedVoice(v.id); if (elevenlabsVoice) elevenlabsVoice.setVoice(v.id); speakResponse(`Hello, I am ${v.name}`) }}
+              className={`p-1.5 rounded-lg text-center transition-all ${selectedVoice === v.id ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white shadow-lg ring-1 ring-blue-400/50' : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700'}`}>
+              <div className="text-lg">{v.gender === 'male' ? '👨' : '👩'}</div>
+              <div className="text-[9px] font-medium leading-tight">{v.name}</div>
+              <div className="text-[7px] opacity-60">{v.engine === 'elevenlabs' ? '✨AI' : '🌐Web'}</div>
             </button>
           ))}
         </div>
       </div>
 
-      {/* System Status */}
       {systemStatus && (
-        <div className="bg-gradient-to-r from-emerald-900/30 to-blue-900/30 border border-emerald-500/20 rounded-xl p-3 mb-4">
-          <div className="text-xs text-emerald-400 font-bold mb-1">📊 Live System Status</div>
-          <div className="grid grid-cols-4 gap-1.5 text-[10px]">
-            <div className="bg-slate-800/50 rounded p-1.5 text-center">
-              <div className="text-slate-400">Platform</div>
-              <div className="text-white font-medium">{systemStatus.platform}</div>
+        <div className="bg-gradient-to-r from-emerald-900/30 to-blue-900/30 border border-emerald-500/20 rounded-xl p-2.5 mb-3">
+          <div className="grid grid-cols-5 gap-1 text-[9px]">
+            <div className="bg-slate-800/60 rounded-lg p-1.5 text-center">
+              <div className="text-slate-500">Platform</div>
+              <div className="text-white font-bold">{(systemStatus.platform||'').substring(0,8)}</div>
             </div>
-            <div className="bg-slate-800/50 rounded p-1.5 text-center">
-              <div className="text-slate-400">CPU</div>
-              <div className="text-white font-medium">{systemStatus.cores || systemStatus.cpus}</div>
+            <div className="bg-slate-800/60 rounded-lg p-1.5 text-center">
+              <div className="text-slate-500">CPU</div>
+              <div className="text-cyan-400 font-bold">{powerStatus?.cpu?.percent ? `${powerStatus.cpu.percent}%` : systemStatus.cores||'N/A'}</div>
             </div>
-            <div className="bg-slate-800/50 rounded p-1.5 text-center">
-              <div className="text-slate-400">RAM</div>
-              <div className="text-white font-medium">{systemStatus.memory || systemStatus.totalMemory}</div>
+            <div className="bg-slate-800/60 rounded-lg p-1.5 text-center">
+              <div className="text-slate-500">RAM</div>
+              <div className="text-purple-400 font-bold">{powerStatus?.memory?.percent ? `${powerStatus.memory.percent}%` : systemStatus.memory||'N/A'}</div>
             </div>
-            <div className="bg-slate-800/50 rounded p-1.5 text-center">
-              <div className="text-slate-400">Status</div>
-              <div className="text-green-400 font-medium">{systemStatus.online !== false ? '🟢' : '🔴'}</div>
+            <div className="bg-slate-800/60 rounded-lg p-1.5 text-center">
+              <div className="text-slate-500">Disk</div>
+              <div className="text-amber-400 font-bold">{powerStatus?.disk?.percent ? `${powerStatus.disk.percent}%` : 'N/A'}</div>
+            </div>
+            <div className="bg-slate-800/60 rounded-lg p-1.5 text-center">
+              <div className="text-slate-500">Status</div>
+              <div className="text-green-400 font-bold">{systemStatus.online !== false ? '🟢' : '🔴'}</div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Tab Navigation */}
-      <div className="flex gap-1.5 mb-3">
-        <button onClick={() => setActiveTab('commands')} className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${activeTab === 'commands' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
-          📋 Commands
-        </button>
-        <button onClick={() => setActiveTab('history')} className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${activeTab === 'history' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
-          📜 History
-        </button>
+      <div className="flex gap-1 mb-3">
+        {['commands','history','settings'].map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+            {tab === 'commands' ? '📋 Commands' : tab === 'history' ? '📜 History' : '⚙️ Settings'}
+          </button>
+        ))}
       </div>
 
       {activeTab === 'commands' ? (
-        /* Command Categories */
         <div className="space-y-3">
           {commandCategories.map((cat, ci) => (
             <div key={ci} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3">
               <div className="text-sm font-bold text-blue-400 mb-2">{cat.title}</div>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-3 gap-1.5">
                 {cat.commands.map((c, i) => (
-                  <button
-                    key={i}
-                    onClick={() => quickExec(c.cmd)}
-                    className="bg-slate-900/50 hover:bg-slate-700/50 rounded-lg p-2 text-left transition-all group"
-                  >
-                    <div className="text-[11px] text-white font-medium group-hover:text-blue-400">{c.cmd}</div>
-                    <div className="text-[9px] text-slate-500">{c.desc}</div>
+                  <button key={i} onClick={() => quickExec(c.cmd)} disabled={isProcessing}
+                    className="bg-slate-900/50 hover:bg-blue-600/20 rounded-lg p-2 text-center transition-all active:scale-95 disabled:opacity-50">
+                    <div className="text-base">{c.icon}</div>
+                    <div className="text-[9px] text-white font-medium mt-0.5 leading-tight">{c.cmd}</div>
                   </button>
                 ))}
               </div>
             </div>
           ))}
         </div>
-      ) : (
-        /* Command History */
+      ) : activeTab === 'history' ? (
         <div className="space-y-1.5">
           {recentCommands.length === 0 ? (
-            <div className="text-center text-slate-500 text-xs py-8">No commands yet — start speaking!</div>
-          ) : (
-            recentCommands.map((c, i) => (
-              <div key={i} className="bg-slate-800/50 rounded-lg p-2">
-                <div className="flex justify-between items-center">
-                  <div className="text-xs text-blue-400 font-medium">"{c.cmd}"</div>
-                  <div className="text-[9px] text-slate-500">{c.time}</div>
+            <div className="text-center text-slate-500 text-xs py-8"><div className="text-4xl mb-2">🎤</div>No commands yet — tap mic!</div>
+          ) : recentCommands.map((c, i) => (
+            <div key={i} className="bg-slate-800/50 rounded-lg p-2.5 border border-slate-700/30">
+              <div className="flex justify-between"><div className="text-xs text-blue-400 font-medium">"{c.cmd}"</div><div className="text-[8px] text-slate-500">{c.time}</div></div>
+              <div className="text-[10px] text-green-400 mt-0.5">{c.result}</div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3">
+            <div className="text-sm font-bold text-purple-400 mb-3">✨ ElevenLabs Voice</div>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between"><span className="text-slate-400">Status</span><span className={elevenLabsReady ? 'text-green-400' : 'text-yellow-400'}>{elevenLabsReady ? '🟢 Connected' : '🟡 Web Speech'}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Model</span><span className="text-blue-400">eleven_multilingual_v2</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Voice ID</span><span className="text-slate-300 font-mono text-[9px]">2bNrEsM0omyhLiEyOwqY</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Commands</span><span className="text-cyan-400">{commandCategories.reduce((s,c) => s + c.commands.length, 0)}</span></div>
+            </div>
+          </div>
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3">
+            <div className="text-sm font-bold text-cyan-400 mb-2">🔧 Voice Tuning</div>
+            <div className="space-y-2">
+              {[{l:'Stability',c:'blue',d:50},{l:'Clarity',c:'purple',d:75},{l:'Style',c:'pink',d:50}].map(s => (
+                <div key={s.l}>
+                  <div className="text-[10px] text-slate-400 mb-1">{s.l}</div>
+                  <input type="range" min="0" max="100" defaultValue={s.d} className={`w-full h-1 bg-slate-700 rounded-lg appearance-none accent-${s.c}-500`}
+                    onChange={e => elevenlabsVoice?.setSettings({ [s.l.toLowerCase()]: e.target.value/100 })} />
                 </div>
-                <div className="text-[10px] text-green-400 mt-0.5">{c.result}</div>
-              </div>
-            ))
-          )}
+              ))}
+            </div>
+          </div>
+          <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 border border-blue-500/20 rounded-xl p-3">
+            <div className="text-sm font-bold text-blue-400 mb-1">💡 Power Tips</div>
+            <div className="text-[10px] text-slate-400 space-y-1">
+              <div>• Set ELEVENLABS_API_KEY for premium voice</div>
+              <div>• Say "JARVIS" in continuous mode</div>
+              <div>• Emergency commands work offline</div>
+              <div>• Desktop app = full OS control</div>
+              <div>• Voice cloning via ElevenLabs API</div>
+            </div>
+          </div>
         </div>
       )}
     </div>

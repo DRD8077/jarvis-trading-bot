@@ -281,6 +281,14 @@ if social_mod.get("SOCIAL_AVAILABLE") and social_mod.get("social_router"):
     app.include_router(social_mod["social_router"])
     logger.info("✅ Social trading router included")
 
+# ═══ Include Mini App API (v9.0 — 321 endpoints) ═══
+try:
+    from miniapp_api import router as miniapp_router
+    app.include_router(miniapp_router)
+    logger.info("✅ Mini App API v9.0 NUCLEAR POWER router included — 321 endpoints")
+except Exception as e:
+    logger.warning(f"⚠️ Mini App API import failed: {e}")
+
 
 # ═══════════════════════════════════════════════════════════
 #  TEMPLATE CONTEXT BUILDER

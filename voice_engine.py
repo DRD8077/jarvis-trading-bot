@@ -32,25 +32,33 @@ import requests
 logger = logging.getLogger("voice_engine")
 
 # ═══════════════════════════════════════════════════════════
-#  VOICE CONFIGURATION — GEMINI LIVE QUALITY
+#  VOICE CONFIGURATION — 5-LAYER TTS CHAIN (ElevenLabs Primary)
 # ═══════════════════════════════════════════════════════════
 
 # ── ENV-CONFIGURABLE VOICE SETTINGS ──
 _JARVIS_VOICE = os.environ.get("JARVIS_VOICE", "").strip()
 _JARVIS_PERSONA = os.environ.get("JARVIS_PERSONA", "female").strip().lower()
 
-# ── OpenAI TTS (PRIMARY — ultra-natural, best quality) ──
+# ── ElevenLabs TTS (NEW PRIMARY — ultra-realistic, best quality) ──
+ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
+ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "2bNrEsM0omyhLiEyOwqY")  # From voice library
+ELEVENLABS_MODEL = "eleven_multilingual_v2"
+ELEVENLABS_STABILITY = 0.5
+ELEVENLABS_SIMILARITY = 0.75
+ELEVENLABS_STYLE = 0.5
+
+# ── OpenAI TTS (SECONDARY — ultra-natural, best quality) ──
 # nova = warm female | alloy = neutral | shimmer = expressive female
 OPENAI_TTS_MODEL = "tts-1-hd"  # HD quality
 OPENAI_TTS_VOICE = "nova" if _JARVIS_PERSONA == "female" else "onyx"
 OPENAI_TTS_VOICE_BACKUP = "shimmer" if _JARVIS_PERSONA == "female" else "echo"
 OPENAI_TTS_SPEED = 1.05  # slightly faster for natural feel
 
-# ── Deepgram TTS (SECONDARY — fast, natural) ──
+# ── Deepgram TTS (TERTIARY — fast, natural) ──
 DEEPGRAM_TTS_MODEL = "aura-asteria-en"  # warm female
 DEEPGRAM_TTS_MODEL_HI = "aura-asteria-en"  # Hindi content in English voice
 
-# ── Gemini TTS (TERTIARY — Gemini Live quality)
+# ── Gemini TTS (QUATERNARY — Gemini Live quality)
 # Use JARVIS_VOICE env var if set, otherwise Aoede (best voice)
 GEMINI_VOICE_PRIMARY = _JARVIS_VOICE if _JARVIS_VOICE else ("Kore" if _JARVIS_PERSONA == "female" else "Charon")
 GEMINI_VOICE_BACKUP = "Aoede" if _JARVIS_PERSONA == "female" else "Orus"
@@ -622,18 +630,113 @@ def _generate_edge_tts(text: str, output_path: str, language: str = "auto") -> b
 
 
 # ═══════════════════════════════════════════════════════════
-#  MAIN VOICE GENERATOR — Gemini → Edge fallback
+#  ELEVENLABS TTS — NEW PRIMARY (Ultra-realistic, best voice)
 # ═══════════════════════════════════════════════════════════
 
-# FREE_MODE: Use free APIs
-# Gemini TTS first (best quality free), then Edge TTS
-FREE_MODE = True
+def _generate_elevenlabs_tts(text: str, output_ogg_path: str, voice_id: str = None) -> bool:
+    """
+    Generate voice using ElevenLabs — world's most realistic TTS.
+    Voice ID: 2bNrEsM0omyhLiEyOwqY (from voice library)
+    Returns OGG file path.
+    """
+    api_key = ELEVENLABS_API_KEY
+    if not api_key:
+        logger.debug("[VOICE-ELEVENLABS] No ELEVENLABS_API_KEY")
+        return False
+
+    voice_id = voice_id or ELEVENLABS_VOICE_ID
+    clean = clean_text_for_speech(text)
+    if not clean or len(clean) < 3:
+        return False
+
+    if len(clean) > VOICE_SHORT_THRESHOLD:
+        clean = _summarize_for_voice(text)
+
+    try:
+        url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+        headers = {
+            "xi-api-key": api_key,
+            "Content-Type": "application/json",
+            "Accept": "audio/mpeg"
+        }
+        payload = {
+            "text": clean,
+            "model_id": ELEVENLABS_MODEL,
+            "voice_settings": {
+                "stability": ELEVENLABS_STABILITY,
+                "similarity_boost": ELEVENLABS_SIMILARITY,
+                "style": ELEVENLABS_STYLE,
+                "use_speaker_boost": True
+            }
+        }
+
+        resp = requests.post(url, headers=headers, json=payload, timeout=60)
+
+        if resp.status_code != 200:
+            logger.error(f"[VOICE-ELEVENLABS] API error {resp.status_code}: {resp.text[:200]}")
+            return False
+
+        audio_bytes = resp.content
+        if len(audio_bytes) < 1000:
+            logger.warning("[VOICE-ELEVENLABS] Audio too short")
+            return False
+
+        # ElevenLabs returns MP3, convert to OGG Opus for Telegram
+        mp3_path = output_ogg_path.replace('.ogg', '_el.mp3')
+        with open(mp3_path, 'wb') as f:
+            f.write(audio_bytes)
+
+        # Convert MP3 to OGG Opus
+        try:
+            result = subprocess.run([
+                'ffmpeg', '-y',
+                '-i', mp3_path,
+                '-c:a', 'libopus',
+                '-b:a', '64k',
+                '-vbr', 'on',
+                '-application', 'voip',
+                output_ogg_path
+            ], capture_output=True, text=True, timeout=15)
+
+            if result.returncode == 0 and os.path.exists(output_ogg_path) and os.path.getsize(output_ogg_path) > 500:
+                logger.info(f"[VOICE-ELEVENLABS] Generated {os.path.getsize(output_ogg_path)} bytes OGG, voice={voice_id}")
+                try:
+                    os.unlink(mp3_path)
+                except:
+                    pass
+                return True
+        except Exception as e:
+            logger.error(f"[VOICE-ELEVENLABS] ffmpeg convert failed: {e}")
+
+        # Fallback: just return the MP3 renamed as ogg (some clients handle it)
+        try:
+            import shutil
+            shutil.move(mp3_path, output_ogg_path)
+            logger.info(f"[VOICE-ELEVENLABS] Using MP3 as fallback, size={os.path.getsize(output_ogg_path)}")
+            return True
+        except:
+            pass
+
+        return False
+
+    except Exception as e:
+        logger.error(f"[VOICE-ELEVENLABS] TTS failed: {e}")
+        return False
+
+
+# ═══════════════════════════════════════════════════════════
+#  MAIN VOICE GENERATOR — ElevenLabs → Gemini → OpenAI → Edge
+# ═══════════════════════════════════════════════════════════
+
+# FREE_MODE: Use free APIs (Gemini + Edge)
+# When ElevenLabs key is set, it becomes primary regardless of mode
+FREE_MODE = not bool(ELEVENLABS_API_KEY) and not bool(OPENAI_API_KEY_TTS)
 
 
 def generate_voice(text: str, language: str = "auto") -> Optional[str]:
     """
     Generate beautiful voice audio.
-    PRIORITY: Gemini TTS (free, Gemini Live quality) → Edge TTS (free, unlimited)
+    PRIORITY: ElevenLabs (ultra-realistic) → OpenAI → Deepgram → Gemini → Edge TTS
     Returns: Path to OGG Opus file or None.
     """
     if not text or len(text.strip()) < 5:
@@ -646,6 +749,12 @@ def generate_voice(text: str, language: str = "auto") -> Optional[str]:
         # Cache check (15 min TTL)
         if os.path.exists(cache_path) and os.path.getsize(cache_path) > 500:
             if time.time() - os.path.getmtime(cache_path) < 900:
+                return cache_path
+
+        # ═══ LAYER 0: ElevenLabs (ALWAYS FIRST if key available) ═══
+        if ELEVENLABS_API_KEY:
+            logger.info("[VOICE] Trying ElevenLabs (premium)")
+            if _generate_elevenlabs_tts(text, cache_path):
                 return cache_path
 
         if FREE_MODE:
@@ -695,6 +804,16 @@ def generate_voice(text: str, language: str = "auto") -> Optional[str]:
 
 def generate_voice_for_message(text: str, chat_id: int = 0) -> Optional[str]:
     """Smart voice generation for JARVIS responses."""
+    return generate_voice(text)
+
+
+def generate_voice_response(text: str, language: str = "auto") -> Optional[str]:
+    """Alias for generate_voice — used by miniapp API."""
+    return generate_voice(text, language)
+
+
+def text_to_speech_ogg(text: str) -> Optional[str]:
+    """Generate OGG from text — used by miniapp API."""
     return generate_voice(text)
 
 
