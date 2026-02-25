@@ -1,10 +1,14 @@
 {
   "name": "jarvis-ai-desktop",
-  "version": "8.0.0",
-  "description": "JARVIS AI Trading v7.0 ULTIMATE — Full trading intelligence with Hindi Voice AI, System Control, 50+ features for Windows/Mac/Linux.",
+  "version": "10.0.0",
+  "description": "JARVIS AI v10.0 ULTIMATE — 42 engines, 444 endpoints, WhatsApp, Email, LinkedIn, Desktop Control, 30+ AI capabilities, Hindi Voice with ElevenLabs. She never says no!",
   "main": "main.js",
   "author": "JARVIS AI",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jarvis-ai/trading-desktop"
+  },
   "scripts": {
     "start": "electron .",
     "build": "npm run build-web && electron-builder --win --publish never",
@@ -20,6 +24,7 @@
     "appId": "com.jarvis.trading.desktop",
     "productName": "JARVIS AI Trading",
     "copyright": "Copyright 2026 JARVIS AI",
+    "publish": null,
     "directories": {
       "output": "release",
       "buildResources": "assets"
