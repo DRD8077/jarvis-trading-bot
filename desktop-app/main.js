@@ -34,22 +34,49 @@ let mainWindow = null
 let tray = null
 let isQuitting = false
 
+// Single instance lock — MUST be before any app event handlers
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) {
+  app.quit()
+  process.exit(0)
+}
+
 // ═══════════════════════════════════
 // APP CONFIGURATION
 // ═══════════════════════════════════
 
 const isDev = process.argv.includes('--dev')
-const WEBAPP_PATH = isDev
-  ? 'http://localhost:5173'
-  : `file://${path.join(process.resourcesPath, 'webapp', 'index.html')}`
 
+// Determine webapp path with fallbacks
+function getWebAppPath() {
+  if (isDev) return 'http://localhost:5173'
+  
+  // Try multiple paths for packaged app
+  const candidates = [
+    path.join(process.resourcesPath || '', 'webapp', 'index.html'),
+    path.join(__dirname, '..', 'webapp', 'index.html'),
+    path.join(__dirname, 'webapp', 'index.html'),
+    path.join(__dirname, 'dist', 'index.html'),
+  ]
+  
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return `file://${p}`
+  }
+  
+  // Fallback to hosted version
+  return 'https://super-duper-funicular-gp99q655qw6cprr-8000.app.github.dev'
+}
+
+const WEBAPP_PATH = getWebAppPath()
+
+const iconFile = path.join(__dirname, 'assets', 'icon.png')
 const APP_CONFIG = {
   width: 1280,
   height: 800,
   minWidth: 400,
   minHeight: 600,
   title: 'JARVIS AI Trading — Iron Man Edition',
-  icon: path.join(__dirname, 'assets', 'icon.png'),
+  icon: fs.existsSync(iconFile) ? iconFile : undefined,
 }
 
 // ═══════════════════════════════════
@@ -122,15 +149,21 @@ function createMainWindow() {
 // ═══════════════════════════════════
 
 function createTray() {
-  const iconPath = path.join(__dirname, 'assets', 'tray-icon.png')
-  
-  // Create a default icon if not exists
-  if (!fs.existsSync(iconPath)) {
-    // Use app icon fallback
-    tray = new Tray(APP_CONFIG.icon || path.join(__dirname, 'assets', 'icon.png'))
-  } else {
-    tray = new Tray(iconPath)
-  }
+  try {
+    const iconPath = path.join(__dirname, 'assets', 'tray-icon.png')
+    const appIcon = APP_CONFIG.icon || path.join(__dirname, 'assets', 'icon.png')
+    
+    // Find a valid icon path
+    let validIcon = null
+    if (fs.existsSync(iconPath)) validIcon = iconPath
+    else if (fs.existsSync(appIcon)) validIcon = appIcon
+    
+    if (!validIcon) {
+      console.log('[JARVIS Desktop] No tray icon found, skipping tray')
+      return
+    }
+    
+    tray = new Tray(validIcon)
 
   const contextMenu = Menu.buildFromTemplate([
     { label: '🤖 Open JARVIS', click: () => { mainWindow?.show(); mainWindow?.focus() } },
@@ -168,6 +201,9 @@ function createTray() {
     mainWindow?.show()
     mainWindow?.focus()
   })
+  } catch (err) {
+    console.error('[JARVIS Desktop] Tray creation failed:', err.message)
+  }
 }
 
 function navigate(path) {
@@ -185,6 +221,11 @@ function sendToRenderer(channel, data = {}) {
 // ═══════════════════════════════════
 
 function registerGlobalShortcuts() {
+  if (!app.isReady()) {
+    console.log('[JARVIS Desktop] App not ready, skipping shortcut registration')
+    return
+  }
+  try {
   // Ctrl+Shift+J → Toggle JARVIS
   globalShortcut.register('CommandOrControl+Shift+J', () => {
     if (mainWindow?.isVisible() && mainWindow?.isFocused()) {
@@ -208,6 +249,9 @@ function registerGlobalShortcuts() {
   })
 
   console.log('[JARVIS Desktop] Global shortcuts registered')
+  } catch (err) {
+    console.error('[JARVIS Desktop] Shortcut registration failed:', err.message)
+  }
 }
 
 // ═══════════════════════════════════
@@ -721,22 +765,19 @@ app.on('before-quit', () => {
 })
 
 app.on('will-quit', () => {
-  globalShortcut.unregisterAll()
+  try {
+    if (app.isReady()) globalShortcut.unregisterAll()
+  } catch (e) { /* ignore */ }
 })
 
-// Single instance lock — prevent multiple JARVIS instances
-const gotLock = app.requestSingleInstanceLock()
-if (!gotLock) {
-  app.quit()
-} else {
-  app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.show()
-      mainWindow.focus()
-    }
-  })
-}
+// Second instance handler (lock acquired at top of file)
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.show()
+    mainWindow.focus()
+  }
+})
 
 // Handle uncaught errors
 process.on('uncaughtException', (error) => {

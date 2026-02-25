@@ -5077,3 +5077,36 @@ async def api_v10_power_stats():
         ],
         "ts": datetime.now(IST).isoformat()
     }
+
+# ═══════════════════════════════════════════════════════════════
+# DOWNLOAD ENDPOINTS — Direct links for APK & EXE
+# ═══════════════════════════════════════════════════════════════
+@router.get("/download/apk")
+async def download_apk():
+    """Download JARVIS AI v10 APK for Android."""
+    from fastapi.responses import FileResponse
+    import glob
+    files = sorted(glob.glob("/workspaces/codespaces-blank/jarvis-ai-*.apk"), reverse=True)
+    if files:
+        return FileResponse(files[0], filename=os.path.basename(files[0]), media_type="application/vnd.android.package-archive")
+    return {"error": "APK not found. Build first."}
+
+@router.get("/download/exe")
+async def download_exe():
+    """Download JARVIS AI v10 Windows EXE (ZIP) for Laptop."""
+    from fastapi.responses import FileResponse
+    import glob
+    files = sorted(glob.glob("/workspaces/codespaces-blank/JARVIS-AI-*-win-*.zip"), reverse=True)
+    if files:
+        return FileResponse(files[0], filename=os.path.basename(files[0]), media_type="application/zip")
+    return {"error": "Windows ZIP not found. Build first."}
+
+@router.get("/download/linux")
+async def download_linux():
+    """Download JARVIS AI v10 Linux AppImage."""
+    from fastapi.responses import FileResponse
+    import glob
+    files = sorted(glob.glob("/workspaces/codespaces-blank/JARVIS-AI-*-linux.AppImage"), reverse=True)
+    if files:
+        return FileResponse(files[0], filename=os.path.basename(files[0]), media_type="application/octet-stream")
+    return {"error": "AppImage not found. Build first."}
