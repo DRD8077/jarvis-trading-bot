@@ -242,12 +242,26 @@ class JarvisVoiceEngine {
 
   // ═══════════════════════════════════
   // TEXT-TO-SPEECH (Hindi + English)
+  // Uses ElevenLabs → Native → Web Speech
   // ═══════════════════════════════════
 
   async speak(text, lang = null) {
     const detectedLang = lang || this._detectLanguage(text)
     
-    // Try native TTS first
+    // 1. Try ElevenLabs first (sweet Priya voice)
+    try {
+      const { default: elevenlabsVoice } = await import('./elevenlabsVoice')
+      if (elevenlabsVoice && elevenlabsVoice.initialized && typeof elevenlabsVoice.speak === 'function') {
+        this._notifyStateChange('speaking')
+        await elevenlabsVoice.speak(text, { voice: 'priya' })
+        this._notifyStateChange(this.isListening ? 'listening' : 'idle')
+        return
+      }
+    } catch (e) {
+      console.warn('[JarvisVoice] ElevenLabs failed, trying native:', e.message)
+    }
+    
+    // 2. Try native TTS
     if (this._isNative && TextToSpeechPlugin) {
       try {
         this._notifyStateChange('speaking')

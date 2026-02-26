@@ -154,26 +154,17 @@ class NotificationPipeline {
   }
 
   _playSound(notif) {
+    // Only play beep for CRITICAL alerts, not normal notifications
+    if (!notif || notif.priority < PRIORITIES.CRITICAL) return
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)()
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.connect(gain)
       gain.connect(ctx.destination)
-
-      if (notif.priority >= PRIORITIES.CRITICAL) {
-        osc.frequency.value = 880
-        gain.gain.value = 0.3
-        osc.start(); osc.stop(ctx.currentTime + 0.3)
-      } else if (notif.priority >= PRIORITIES.HIGH) {
-        osc.frequency.value = 660
-        gain.gain.value = 0.2
-        osc.start(); osc.stop(ctx.currentTime + 0.2)
-      } else {
-        osc.frequency.value = 440
-        gain.gain.value = 0.1
-        osc.start(); osc.stop(ctx.currentTime + 0.15)
-      }
+      osc.frequency.value = 880
+      gain.gain.value = 0.15
+      osc.start(); osc.stop(ctx.currentTime + 0.2)
     } catch {}
   }
 

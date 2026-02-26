@@ -243,7 +243,12 @@ function AppInner() {
           onGreeting: (msg) => {
             try {
               sc(notificationPipeline, 'send', { title: '\u{1F441}\uFE0F JARVIS', message: msg, type: 'info', priority: 'normal' })
-              if (jarvisVoice && jarvisVoice._initialized && typeof jarvisVoice.speak === 'function') jarvisVoice.speak(msg, 'hi-IN')
+              // Use ElevenLabs with Priya voice for greeting (sweet female Hindi)
+              if (elevenlabsVoice && elevenlabsVoice.initialized && typeof elevenlabsVoice.speak === 'function') {
+                elevenlabsVoice.speak(msg, { voice: 'priya' })
+              } else if (jarvisVoice && jarvisVoice._initialized && typeof jarvisVoice.speak === 'function') {
+                jarvisVoice.speak(msg, 'hi-IN')
+              }
             } catch {}
           },
           onDeparture: (msg) => {

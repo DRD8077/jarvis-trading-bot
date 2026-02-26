@@ -288,12 +288,22 @@ const HindiVoiceAssistant = ({ onTranscript, onResponse, fullScreen = false }) =
     }
   }, [voiceEnabled, onResponse])
 
-  // Native/Browser TTS — works on Android APK + Chrome
+  // Native/Browser TTS — uses ElevenLabs first, then fallback
   const speakWithTTS = async (text) => {
     if (!text) return
     setSpeaking(true)
     try {
-      // Try Capacitor native TTS first (best quality on Android)
+      // Try ElevenLabs first (sweet Priya voice)
+      try {
+        const { default: elevenlabsVoice } = await import('../services/elevenlabsVoice')
+        if (elevenlabsVoice && elevenlabsVoice.initialized) {
+          await elevenlabsVoice.speak(text.substring(0, 500), { voice: 'priya' })
+          setSpeaking(false)
+          return
+        }
+      } catch {}
+      
+      // Try Capacitor native TTS (best quality on Android)
       const { Capacitor } = await import('@capacitor/core').catch(() => ({}))
       if (Capacitor?.isNativePlatform?.()) {
         try {

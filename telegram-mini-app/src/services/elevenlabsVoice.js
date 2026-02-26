@@ -18,8 +18,8 @@ import { getApiBase } from './apiBase'
 
 class ElevenLabsVoiceEngine {
   constructor() {
-    this.apiKey = null
-    this.defaultVoiceId = '2bNrEsM0omyhLiEyOwqY' // From user's voice library
+    this.apiKey = 'sk_6629443f54d0dddcb3a40cc7863186b12bec3095bee765b2'
+    this.defaultVoiceId = 'ThT5KcBeYPX3keUQqHPh' // Priya — sweet Hindi female voice
     this.wsUrl = 'wss://api.elevenlabs.io/v1/text-to-speech'
     this.isPlaying = false
     this.audioContext = null
@@ -28,11 +28,11 @@ class ElevenLabsVoiceEngine {
     this.initialized = false
     this.useFallback = false
     
-    // Voice settings
+    // Voice settings — tuned for sweet female voice
     this.settings = {
-      stability: 0.5,
-      similarity_boost: 0.75,
-      style: 0.5,
+      stability: 0.55,
+      similarity_boost: 0.8,
+      style: 0.6,
       use_speaker_boost: true
     }
 
@@ -48,7 +48,7 @@ class ElevenLabsVoiceEngine {
       'neha':         { id: 'pFZP5JQG7iQjIQuC4Bku', name: 'Neha', lang: 'hi' }
     }
 
-    this.activeVoice = 'jarvis-prime'
+    this.activeVoice = 'priya'
     this.onStateChange = null
     this.onError = null
   }
@@ -58,8 +58,8 @@ class ElevenLabsVoiceEngine {
    */
   async init(apiKey = null) {
     try {
-      // Try to get API key from backend or local storage
-      this.apiKey = apiKey || localStorage.getItem('elevenlabs_api_key') || null
+      // Use hardcoded key, or try local storage / backend
+      this.apiKey = apiKey || this.apiKey || localStorage.getItem('elevenlabs_api_key') || null
 
       if (!this.apiKey) {
         // Try fetching from backend
@@ -70,7 +70,6 @@ class ElevenLabsVoiceEngine {
             const data = await res.json()
             this.apiKey = data.api_key || null
             this.defaultVoiceId = data.voice_id || this.defaultVoiceId
-            // If backend has key, we can use server-side TTS (no client key needed)
             if (data.available && !this.apiKey) {
               this._useServerTTS = true
               this._serverBase = apiBase
