@@ -1,5 +1,7 @@
 package com.jarvis.trading;
 
+import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -14,7 +16,10 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        Log.i(TAG, "🚀 JARVIS Trading App started — standalone mode");
+        Log.i(TAG, "🚀 JARVIS AI v16.0 — Iron Man OS Edition started");
+        
+        // Start JARVIS Always-On Service
+        startJarvisService();
         
         // Enable WebView debugging for troubleshooting
         WebView.setWebContentsDebuggingEnabled(true);
@@ -86,6 +91,33 @@ public class MainActivity extends BridgeActivity {
             Log.i(TAG, "✅ VoskSTT plugin registered");
         } catch (Exception e) {
             Log.w(TAG, "⚠️ VoskSTT plugin skipped: " + e.getMessage());
+        }
+        
+        try {
+            registerPlugin(com.jarvis.trading.plugins.PersonalAssistantPlugin.class);
+            Log.i(TAG, "✅ PersonalAssistant plugin registered");
+        } catch (Exception e) {
+            Log.w(TAG, "⚠️ PersonalAssistant plugin skipped: " + e.getMessage());
+        }
+        
+        // Start JARVIS always-on background service
+        startJarvisService();
+    }
+    
+    /**
+     * Start the JARVIS always-on foreground service
+     */
+    private void startJarvisService() {
+        try {
+            Intent serviceIntent = new Intent(this, JarvisService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent);
+            } else {
+                startService(serviceIntent);
+            }
+            Log.i(TAG, "✅ JARVIS Service started — always-on mode ACTIVE");
+        } catch (Exception e) {
+            Log.w(TAG, "⚠️ JARVIS Service start failed: " + e.getMessage());
         }
     }
 }

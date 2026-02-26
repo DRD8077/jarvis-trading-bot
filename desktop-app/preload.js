@@ -12,8 +12,9 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('jarvisDesktop', {
   // ═══ Platform Info ═══
   isDesktop: true,
+  isJarvisOS: true,
   platform: process.platform,
-  version: '10.0.0',
+  version: '16.0.0',
 
   // ═══ System ═══
   getSystemInfo: () => ipcRenderer.invoke('get-system-info'),
@@ -51,6 +52,8 @@ contextBridge.exposeInMainWorld('jarvisDesktop', {
   maximize: () => ipcRenderer.invoke('maximize'),
   close: () => ipcRenderer.invoke('close'),
   setAlwaysOnTop: (value) => ipcRenderer.invoke('set-always-on-top', value),
+  toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),
+  getWindowState: () => ipcRenderer.invoke('get-window-state'),
 
   // ═══ File System ═══
   readFile: (path) => ipcRenderer.invoke('read-file', path),
@@ -132,4 +135,4 @@ contextBridge.exposeInMainWorld('jarvisDesktop', {
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
 })
 
-console.log('[JARVIS Desktop v8.0] Preload script loaded — Full OS Control APIs available')
+console.log('[JARVIS Desktop v16.0] Preload script loaded — Full OS Control + JARVIS OS Shell APIs available')

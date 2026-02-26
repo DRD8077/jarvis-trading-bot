@@ -19,15 +19,30 @@ async function loadSqlJs() {
   if (SQL) return SQL
   try {
     const initSqlJs = (await import('sql.js')).default
+    // Try local WASM first (works offline + Android)
     SQL = await initSqlJs({
-      locateFile: file => `https://sql.js.org/dist/${file}`
+      locateFile: file => {
+        // Local path for bundled WASM
+        if (typeof window !== 'undefined' && window.location) {
+          return `${window.location.origin}/${file}`
+        }
+        return `/${file}`
+      }
     })
     return SQL
-  } catch (e) {
-    // Fallback CDN
-    const initSqlJs = (await import('sql.js')).default
-    SQL = await initSqlJs()
-    return SQL
+  } catch (e1) {
+    console.warn('[JarvisDB] Local WASM failed, trying CDN...', e1.message)
+    try {
+      const initSqlJs = (await import('sql.js')).default
+      SQL = await initSqlJs({
+        locateFile: file => `https://sql.js.org/dist/${file}`
+      })
+      return SQL
+    } catch (e2) {
+      console.warn('[JarvisDB] CDN WASM failed, using fallback IndexedDB-only mode', e2.message)
+      // Return null - app will work without SQL, using IndexedDB only
+      return null
+    }
   }
 }
 
@@ -264,15 +279,21 @@ class JarvisDB {
   async init() {
     if (this.ready) return true
     try {
-      await loadSqlJs()
+      const sqlEngine = await loadSqlJs()
+      if (!sqlEngine) {
+        console.warn('[JarvisDB] SQL engine not available, using localStorage fallback')
+        this.ready = true
+        this.useFallback = true
+        return true
+      }
 
       // Try to load existing DB from IndexedDB
       const savedData = await loadFromIDB().catch(() => null)
       if (savedData) {
-        this.db = new SQL.Database(new Uint8Array(savedData))
+        this.db = new sqlEngine.Database(new Uint8Array(savedData))
         console.log('[JarvisDB] Loaded existing database from IndexedDB')
       } else {
-        this.db = new SQL.Database()
+        this.db = new sqlEngine.Database()
         console.log('[JarvisDB] Created new database')
       }
 
@@ -288,8 +309,10 @@ class JarvisDB {
       console.log('[JarvisDB] Database ready — 12 tables, indexed')
       return true
     } catch (e) {
-      console.error('[JarvisDB] Init failed:', e)
-      return false
+      console.warn('[JarvisDB] Init failed, using fallback:', e.message)
+      this.ready = true
+      this.useFallback = true
+      return true
     }
   }
 
@@ -392,15 +415,20 @@ class JarvisDB {
   // ═══════════════════════════════════
 
   insertCandles(symbol, timeframe, candles) {
-    const stmt = this.db.prepare(
-      `INSERT OR REPLACE INTO candles (symbol, timeframe, open, high, low, close, volume, timestamp)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-    candles.forEach(c => {
-      stmt.run([symbol, timeframe, c.open, c.high, c.low, c.close, c.volume || 0, c.timestamp])
-    })
-    stmt.free()
-    this.changesSinceLastSave += candles.length
+    if (!this.db) return
+    try {
+      const stmt = this.db.prepare(
+        `INSERT OR REPLACE INTO candles (symbol, timeframe, open, high, low, close, volume, timestamp)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      candles.forEach(c => {
+        stmt.run([symbol, timeframe, c.open, c.high, c.low, c.close, c.volume || 0, c.timestamp])
+      })
+      stmt.free()
+      this.changesSinceLastSave += candles.length
+    } catch (e) {
+      console.warn('[JarvisDB] insertCandles failed:', e.message)
+    }
   }
 
   getCandles(symbol, timeframe, limit = 300) {

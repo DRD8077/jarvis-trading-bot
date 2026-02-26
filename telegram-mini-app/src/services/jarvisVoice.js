@@ -13,7 +13,15 @@
  * Hindi TTS responses.
  */
 
-import { Capacitor } from '@capacitor/core'
+// Safe Capacitor import — won't crash if not available
+let Capacitor = { isNativePlatform: () => false, Plugins: {} }
+try {
+  if (typeof window !== 'undefined' && window.Capacitor) {
+    Capacitor = window.Capacitor
+  }
+} catch(e) {
+  // Not in Capacitor environment
+}
 
 let SpeechRecognitionPlugin = null
 let TextToSpeechPlugin = null

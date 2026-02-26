@@ -11,7 +11,20 @@
  * Jai Mahadev! 🙏
  */
 
-import { registerPlugin } from '@capacitor/core'
+// Safe dynamic Capacitor import — won't crash if not available
+let registerPlugin = (name) => {
+  console.warn(`[JarvisAI] registerPlugin('${name}') called but @capacitor/core not available`)
+  return null
+}
+
+try {
+  // Top-level await not supported in Vite services, so we use sync check
+  if (typeof window !== 'undefined' && window.Capacitor) {
+    registerPlugin = window.Capacitor.registerPlugin || registerPlugin
+  }
+} catch(e) {
+  // Not in Capacitor environment
+}
 
 // ═══════════════════════════════════════════════════════════
 //  Native Plugin Registration

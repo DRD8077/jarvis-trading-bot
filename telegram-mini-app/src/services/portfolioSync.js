@@ -10,8 +10,14 @@
  * All synced to local SQLite DB. Works 100% offline.
  */
 
-import jarvisDB from './jarvisDB'
-import encryptedVault from './encryptedVault'
+// Dynamic imports to prevent crash if modules fail to load
+let jarvisDB = null
+let encryptedVault = null
+
+async function loadDeps() {
+  try { jarvisDB = (await import('./jarvisDB')).default } catch(e) { console.warn('[PortfolioSync] jarvisDB not loaded:', e.message) }
+  try { encryptedVault = (await import('./encryptedVault')).default } catch(e) { console.warn('[PortfolioSync] encryptedVault not loaded:', e.message) }
+}
 
 class PortfolioSyncEngine {
   constructor() {
@@ -22,6 +28,7 @@ class PortfolioSyncEngine {
       binance: { name: 'Binance', enabled: false, baseUrl: 'https://api.binance.com' },
       manual: { name: 'Manual', enabled: true }
     }
+    this.depsLoaded = loadDeps()
   }
 
   // ═══════════════════════════════════

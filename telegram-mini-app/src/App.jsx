@@ -99,6 +99,7 @@ const JarvisVsMyra = lazy(() => import('./components/JarvisVsMyra'))
 const VoiceAutomation = lazy(() => import('./components/VoiceAutomation'))
 const JarvisHolographic = lazy(() => import('./components/JarvisHolographic'))
 const GamingCoach = lazy(() => import('./components/GamingCoach'))
+const SystemControl = lazy(() => import('./components/SystemControl'))
 
 const PageLoader = () => (
   <div className="p-4 bg-slate-900 min-h-screen space-y-3 animate-pulse">
@@ -322,7 +323,29 @@ function AppInner() {
       // Firebase push
       try { sc(firebasePush, 'init') } catch {}
 
-      console.log('[JARVIS v12.0] ⚡ ALL systems ONLINE — crash-proof boot complete')
+      // Phase 4: JARVIS Wake Word Engine — "Hey JARVIS" always-on listener
+      try {
+        const { getWakeWordEngine } = await import('./services/wakeWordEngine').catch(() => ({}));
+        if (getWakeWordEngine) {
+          const wakeEngine = getWakeWordEngine();
+          wakeEngine.onWakeWord((transcript) => {
+            console.log('[JARVIS] Wake word detected! Activating voice mode...');
+            // Navigate to voice assistant
+            window.dispatchEvent(new CustomEvent('jarvis-wake-word', { detail: { transcript } }));
+            // Try to navigate to voice page
+            try {
+              const navEvent = new CustomEvent('jarvis-navigate', { detail: { path: '/hindi-voice' } });
+              window.dispatchEvent(navEvent);
+            } catch {}
+          });
+          // Start wake word listening (non-blocking)
+          wakeEngine.start().catch(() => {});
+          window.__jarvisWakeEngine = wakeEngine;
+          console.log('[JARVIS] 🎙️ Wake word engine started — say "Hey JARVIS"');
+        }
+      } catch (e) { console.warn('[JARVIS] Wake word engine:', e.message) }
+
+      console.log('[JARVIS v16.0] ⚡ ALL systems ONLINE — JARVIS OS boot complete')
     }
 
     bootJarvis().catch(e => {
@@ -436,6 +459,9 @@ function SwipeableApp() {
               <Route path="/iron-man" element={<ErrorBoundary><JarvisHolographic /></ErrorBoundary>} />
               <Route path="/gaming" element={<ErrorBoundary><GamingCoach apiBase={API_BASE} /></ErrorBoundary>} />
               <Route path="/gaming-coach" element={<ErrorBoundary><GamingCoach apiBase={API_BASE} /></ErrorBoundary>} />
+              <Route path="/system-control" element={<ErrorBoundary><SystemControl /></ErrorBoundary>} />
+              <Route path="/device-control" element={<ErrorBoundary><SystemControl /></ErrorBoundary>} />
+              <Route path="/phone-control" element={<ErrorBoundary><SystemControl /></ErrorBoundary>} />
             </Routes>
           </main>
         </Suspense>

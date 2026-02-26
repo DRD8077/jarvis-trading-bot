@@ -27,8 +27,11 @@
  * Owner: Deepak Kumar | Jai Mahadev! 🙏
  */
 
-import jarvisAI from './jarvisAIEngine'
+let jarvisAI = null
 import { API_BASE } from './apiBase'
+
+// Load jarvisAI dynamically to prevent crash
+try { import('./jarvisAIEngine').then(m => { jarvisAI = m.default || m }).catch(() => {}) } catch(e) {}
 
 // ═══════════════════════════════════════════════════════════
 //  CONSTANTS & CONFIG

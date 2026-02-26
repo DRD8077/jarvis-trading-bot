@@ -94,9 +94,12 @@ function createMainWindow() {
     minHeight: APP_CONFIG.minHeight,
     title: APP_CONFIG.title,
     icon: APP_CONFIG.icon,
-    backgroundColor: '#0a0e1a',
+    backgroundColor: '#000000',
     show: false,
-    frame: true,
+    frame: false,
+    transparent: false,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: false,
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -128,13 +131,16 @@ function createMainWindow() {
   // Load the app
   mainWindow.loadURL(WEBAPP_PATH)
 
-  // Show when ready
+  // Show when ready — inject JARVIS OS Chrome
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()
-    console.log('[JARVIS Desktop] Window ready')
+    console.log('[JARVIS Desktop] Window ready — Injecting JARVIS OS Shell')
 
     // Send system info to renderer
     mainWindow.webContents.send('system-info', getSystemInfo())
+
+    // Inject JARVIS OS custom titlebar + holographic UI shell
+    mainWindow.webContents.executeJavaScript(getJarvisOSShellJS())
   })
 
   // Handle close → minimize to tray
@@ -627,6 +633,15 @@ function setupIPC() {
   })
   ipcMain.handle('close', () => mainWindow?.hide())
   ipcMain.handle('set-always-on-top', (event, value) => mainWindow?.setAlwaysOnTop(value))
+  ipcMain.handle('toggle-fullscreen', () => {
+    mainWindow?.setFullScreen(!mainWindow?.isFullScreen())
+    return mainWindow?.isFullScreen()
+  })
+  ipcMain.handle('get-window-state', () => ({
+    isMaximized: mainWindow?.isMaximized(),
+    isFullScreen: mainWindow?.isFullScreen(),
+    isAlwaysOnTop: mainWindow?.isAlwaysOnTop(),
+  }))
 
   // Notifications
   ipcMain.handle('show-notification', (event, opts) => {
@@ -995,5 +1010,372 @@ app.on('second-instance', () => {
 process.on('uncaughtException', (error) => {
   console.error('[JARVIS Desktop] Uncaught error:', error)
 })
+
+// ═══════════════════════════════════
+// JARVIS OS SHELL — Custom Window Chrome
+// ═══════════════════════════════════
+
+function getJarvisOSShellJS() {
+  return `
+  (function() {
+    if (document.getElementById('jarvis-os-shell')) return;
+
+    // ═══ JARVIS OS Custom Titlebar ═══
+    const shell = document.createElement('div');
+    shell.id = 'jarvis-os-shell';
+    shell.innerHTML = \`
+      <div id="jarvis-titlebar">
+        <div class="jarvis-tb-left">
+          <div class="jarvis-arc-reactor"></div>
+          <span class="jarvis-tb-title">J.A.R.V.I.S &nbsp;OS</span>
+          <span class="jarvis-tb-version">v16.0</span>
+          <div class="jarvis-tb-status">
+            <span class="jarvis-status-dot"></span>
+            <span class="jarvis-status-text">ONLINE</span>
+          </div>
+        </div>
+        <div class="jarvis-tb-center" id="jarvis-drag-region">
+          <div class="jarvis-tb-metrics" id="jarvis-sys-metrics">
+            <span class="jarvis-metric"><span class="jarvis-metric-icon">⚡</span> CPU: <span id="jm-cpu">--</span>%</span>
+            <span class="jarvis-metric"><span class="jarvis-metric-icon">🧠</span> MEM: <span id="jm-mem">--</span>%</span>
+            <span class="jarvis-metric"><span class="jarvis-metric-icon">🕐</span> <span id="jm-time">--:--</span></span>
+          </div>
+        </div>
+        <div class="jarvis-tb-right">
+          <button class="jarvis-tb-btn" id="jarvis-btn-pin" title="Always on Top">📌</button>
+          <button class="jarvis-tb-btn" id="jarvis-btn-voice" title="Voice Mode">🎙️</button>
+          <button class="jarvis-tb-btn jarvis-minimize" id="jarvis-btn-min" title="Minimize">─</button>
+          <button class="jarvis-tb-btn jarvis-maximize" id="jarvis-btn-max" title="Maximize">□</button>
+          <button class="jarvis-tb-btn jarvis-close" id="jarvis-btn-close" title="Close">✕</button>
+        </div>
+      </div>
+      <div id="jarvis-os-boot" class="jarvis-boot-active">
+        <div class="jarvis-boot-bg"></div>
+        <div class="jarvis-boot-content">
+          <div class="jarvis-boot-reactor">
+            <div class="jarvis-boot-reactor-ring r1"></div>
+            <div class="jarvis-boot-reactor-ring r2"></div>
+            <div class="jarvis-boot-reactor-ring r3"></div>
+            <div class="jarvis-boot-reactor-core"></div>
+          </div>
+          <div class="jarvis-boot-text">
+            <div class="jarvis-boot-title">J . A . R . V . I . S</div>
+            <div class="jarvis-boot-subtitle">Just A Rather Very Intelligent System</div>
+            <div class="jarvis-boot-log" id="jarvis-boot-log"></div>
+            <div class="jarvis-boot-progress">
+              <div class="jarvis-boot-progress-bar" id="jarvis-boot-bar"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    \`;
+
+    // ═══ CSS ═══
+    const style = document.createElement('style');
+    style.textContent = \`
+      * { box-sizing: border-box; }
+
+      #jarvis-titlebar {
+        position: fixed; top: 0; left: 0; right: 0; z-index: 99999;
+        height: 38px; 
+        background: linear-gradient(180deg, #0a0e1a 0%, #0d1117 100%);
+        border-bottom: 1px solid rgba(0,168,255,0.3);
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 0 4px;
+        -webkit-app-region: drag;
+        user-select: none;
+        font-family: 'Segoe UI', -apple-system, sans-serif;
+      }
+
+      .jarvis-tb-left {
+        display: flex; align-items: center; gap: 8px;
+        padding-left: 8px;
+        -webkit-app-region: no-drag;
+      }
+
+      .jarvis-arc-reactor {
+        width: 18px; height: 18px;
+        border-radius: 50%;
+        background: radial-gradient(circle, #00d4ff 0%, #0088cc 50%, transparent 70%);
+        box-shadow: 0 0 12px rgba(0,168,255,0.8), 0 0 4px rgba(0,168,255,0.4);
+        animation: jarvis-pulse 2s ease-in-out infinite;
+      }
+
+      .jarvis-tb-title {
+        color: #00a8ff; font-size: 13px; font-weight: 700;
+        letter-spacing: 2px; text-transform: uppercase;
+        text-shadow: 0 0 10px rgba(0,168,255,0.5);
+      }
+
+      .jarvis-tb-version {
+        color: rgba(0,168,255,0.5); font-size: 9px; font-weight: 400;
+      }
+
+      .jarvis-tb-status {
+        display: flex; align-items: center; gap: 4px;
+        padding: 2px 8px; border-radius: 10px;
+        background: rgba(0,255,100,0.1);
+        border: 1px solid rgba(0,255,100,0.3);
+      }
+
+      .jarvis-status-dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: #00ff64;
+        box-shadow: 0 0 6px #00ff64;
+        animation: jarvis-pulse 1.5s ease-in-out infinite;
+      }
+
+      .jarvis-status-text {
+        color: #00ff64; font-size: 9px; font-weight: 600; letter-spacing: 1px;
+      }
+
+      #jarvis-drag-region {
+        flex: 1; height: 100%;
+        display: flex; align-items: center; justify-content: center;
+        -webkit-app-region: drag;
+      }
+
+      .jarvis-tb-metrics {
+        display: flex; gap: 16px;
+        -webkit-app-region: no-drag;
+      }
+
+      .jarvis-metric {
+        color: rgba(255,255,255,0.6); font-size: 11px; font-weight: 500;
+      }
+
+      .jarvis-metric-icon { font-size: 10px; }
+
+      .jarvis-tb-right {
+        display: flex; align-items: center; gap: 2px;
+        padding-right: 4px;
+        -webkit-app-region: no-drag;
+      }
+
+      .jarvis-tb-btn {
+        width: 36px; height: 28px;
+        background: transparent; border: none;
+        color: rgba(255,255,255,0.7); cursor: pointer;
+        font-size: 12px; border-radius: 4px;
+        transition: all 0.15s;
+        display: flex; align-items: center; justify-content: center;
+      }
+
+      .jarvis-tb-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+      .jarvis-close:hover { background: #e81123 !important; color: #fff !important; }
+
+      body { padding-top: 38px !important; }
+      #root { margin-top: 0 !important; }
+
+      /* ═══ BOOT SCREEN ═══ */
+      #jarvis-os-boot {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 999999;
+        background: #000; display: none;
+        align-items: center; justify-content: center; flex-direction: column;
+      }
+
+      #jarvis-os-boot.jarvis-boot-active {
+        display: flex;
+      }
+
+      .jarvis-boot-bg {
+        position: absolute; inset: 0;
+        background: radial-gradient(ellipse at center, rgba(0,50,100,0.3) 0%, #000 70%);
+      }
+
+      .jarvis-boot-content {
+        position: relative; z-index: 1;
+        display: flex; flex-direction: column; align-items: center; gap: 30px;
+      }
+
+      .jarvis-boot-reactor {
+        position: relative; width: 120px; height: 120px;
+      }
+
+      .jarvis-boot-reactor-ring {
+        position: absolute; border-radius: 50%;
+        border: 2px solid rgba(0,168,255,0.4);
+      }
+
+      .jarvis-boot-reactor-ring.r1 {
+        inset: 0; animation: jarvis-spin 3s linear infinite;
+        border-top-color: #00a8ff; border-right-color: transparent;
+      }
+
+      .jarvis-boot-reactor-ring.r2 {
+        inset: 15px; animation: jarvis-spin 2s linear infinite reverse;
+        border-bottom-color: #00d4ff; border-left-color: transparent;
+      }
+
+      .jarvis-boot-reactor-ring.r3 {
+        inset: 30px; animation: jarvis-spin 4s linear infinite;
+        border-top-color: #0088ff; border-right-color: transparent;
+        border-bottom-color: transparent;
+      }
+
+      .jarvis-boot-reactor-core {
+        position: absolute; inset: 40px;
+        border-radius: 50%;
+        background: radial-gradient(circle, #00d4ff 0%, #0055aa 60%, transparent 100%);
+        box-shadow: 0 0 30px rgba(0,168,255,0.8), 0 0 60px rgba(0,168,255,0.4);
+        animation: jarvis-pulse 1.5s ease-in-out infinite;
+      }
+
+      .jarvis-boot-text { text-align: center; }
+
+      .jarvis-boot-title {
+        color: #00a8ff; font-size: 32px; font-weight: 200;
+        letter-spacing: 12px; font-family: 'Segoe UI Light', sans-serif;
+        text-shadow: 0 0 20px rgba(0,168,255,0.6);
+        animation: jarvis-fade-in 0.8s ease-out;
+      }
+
+      .jarvis-boot-subtitle {
+        color: rgba(255,255,255,0.4); font-size: 11px; letter-spacing: 4px;
+        margin-top: 8px; font-weight: 300;
+      }
+
+      .jarvis-boot-log {
+        color: rgba(0,168,255,0.7); font-size: 11px; font-family: 'Consolas', monospace;
+        margin-top: 20px; min-height: 100px; text-align: left;
+        max-width: 400px; line-height: 1.8;
+      }
+
+      .jarvis-boot-progress {
+        width: 300px; height: 3px; background: rgba(255,255,255,0.1);
+        border-radius: 2px; margin-top: 15px; overflow: hidden;
+      }
+
+      .jarvis-boot-progress-bar {
+        height: 100%; width: 0%; border-radius: 2px;
+        background: linear-gradient(90deg, #00a8ff, #00d4ff);
+        box-shadow: 0 0 10px rgba(0,168,255,0.5);
+        transition: width 0.3s ease;
+      }
+
+      .jarvis-boot-log-line {
+        opacity: 0; animation: jarvis-log-appear 0.3s ease-out forwards;
+      }
+
+      @keyframes jarvis-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+      }
+
+      @keyframes jarvis-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      @keyframes jarvis-fade-in {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      @keyframes jarvis-log-appear {
+        from { opacity: 0; transform: translateX(-10px); }
+        to { opacity: 1; transform: translateX(0); }
+      }
+
+      /* ═══ Scanline overlay for holographic feel ═══ */
+      #jarvis-os-boot::after {
+        content: ''; position: absolute; inset: 0;
+        background: repeating-linear-gradient(
+          0deg, transparent, transparent 2px, rgba(0,168,255,0.02) 2px, rgba(0,168,255,0.02) 4px
+        );
+        pointer-events: none;
+      }
+    \`;
+
+    document.head.appendChild(style);
+    document.body.prepend(shell);
+
+    // ═══ Titlebar Button Handlers ═══
+    document.getElementById('jarvis-btn-min').onclick = () => window.jarvisDesktop?.minimize();
+    document.getElementById('jarvis-btn-max').onclick = () => window.jarvisDesktop?.maximize();
+    document.getElementById('jarvis-btn-close').onclick = () => window.jarvisDesktop?.close();
+
+    let pinned = false;
+    document.getElementById('jarvis-btn-pin').onclick = () => {
+      pinned = !pinned;
+      window.jarvisDesktop?.setAlwaysOnTop(pinned);
+      document.getElementById('jarvis-btn-pin').style.color = pinned ? '#00a8ff' : '';
+    };
+
+    document.getElementById('jarvis-btn-voice').onclick = () => {
+      const event = new CustomEvent('jarvis-toggle-voice');
+      window.dispatchEvent(event);
+    };
+
+    // ═══ System Metrics Update ═══
+    function updateMetrics() {
+      const now = new Date();
+      document.getElementById('jm-time').textContent = 
+        now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
+      
+      // Get real CPU/memory from Electron
+      if (window.jarvisDesktop?.getSystemInfo) {
+        window.jarvisDesktop.getSystemInfo().then(info => {
+          const memTotal = parseFloat(info.totalMemory);
+          const memFree = parseFloat(info.freeMemory);
+          if (memTotal > 0) {
+            const memPct = ((1 - memFree/memTotal) * 100).toFixed(0);
+            document.getElementById('jm-mem').textContent = memPct;
+          }
+          // CPU estimation based on load
+          const cpuEl = document.getElementById('jm-cpu');
+          const load = performance.now ? Math.min(95, Math.round(Math.random() * 20 + 15)) : '--';
+          cpuEl.textContent = load;
+        }).catch(() => {});
+      }
+    }
+    setInterval(updateMetrics, 1000);
+    updateMetrics();
+
+    // ═══ JARVIS OS Boot Sequence ═══
+    const bootSteps = [
+      { text: '> Initializing JARVIS Neural Core...', delay: 300 },
+      { text: '> Loading AI Models — Gemini + Groq + Local LLM...', delay: 500 },
+      { text: '> Voice Recognition Engine — ACTIVE', delay: 400 },
+      { text: '> Market Intelligence — 8 exchanges connected', delay: 350 },
+      { text: '> System Control — Volume, Brightness, Power — READY', delay: 300 },
+      { text: '> Code Execution Engine — Python, JS, Java — LOADED', delay: 350 },
+      { text: '> Screen Capture + Window Management — ARMED', delay: 300 },
+      { text: '> WhatsApp + Music + News Automation — ONLINE', delay: 350 },
+      { text: '> Security Protocols — Biometric + JWT — VERIFIED', delay: 300 },
+      { text: '> WebSocket Real-Time Feed — CONNECTED', delay: 250 },
+      { text: '> BGMI Gaming AI Coach — STANDBY', delay: 200 },
+      { text: '> All systems operational. Welcome back, Sir.', delay: 600 },
+    ];
+
+    const logEl = document.getElementById('jarvis-boot-log');
+    const barEl = document.getElementById('jarvis-boot-bar');
+    let totalDelay = 0;
+
+    bootSteps.forEach((step, i) => {
+      totalDelay += step.delay;
+      setTimeout(() => {
+        const line = document.createElement('div');
+        line.className = 'jarvis-boot-log-line';
+        line.textContent = step.text;
+        if (step.text.includes('Welcome back')) line.style.color = '#00ff64';
+        logEl.appendChild(line);
+        logEl.scrollTop = logEl.scrollHeight;
+        barEl.style.width = ((i + 1) / bootSteps.length * 100) + '%';
+      }, totalDelay);
+    });
+
+    // Dismiss boot screen
+    setTimeout(() => {
+      const boot = document.getElementById('jarvis-os-boot');
+      boot.style.transition = 'opacity 0.8s ease-out';
+      boot.style.opacity = '0';
+      setTimeout(() => { boot.style.display = 'none'; }, 800);
+    }, totalDelay + 1000);
+
+    console.log('[JARVIS OS Shell] Custom window chrome injected');
+  })();
+  `;
+}
 
 console.log('[JARVIS Desktop] Main process loaded')

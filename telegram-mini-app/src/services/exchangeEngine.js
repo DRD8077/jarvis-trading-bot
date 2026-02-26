@@ -9,16 +9,23 @@
  * Features: Order routing, smart execution, rate limiting
  */
 
-import encryptedVault from './encryptedVault'
-import jarvisDB from './jarvisDB'
-import notificationPipeline from './notificationPipeline'
+// Dynamic imports to prevent crash if modules fail to load
+let encryptedVault = null
+let jarvisDB = null
+let notificationPipeline = null
+
+async function loadDeps() {
+  try { encryptedVault = (await import('./encryptedVault')).default } catch(e) { console.warn('[ExchangeEngine] encryptedVault not loaded:', e.message) }
+  try { jarvisDB = (await import('./jarvisDB')).default } catch(e) { console.warn('[ExchangeEngine] jarvisDB not loaded:', e.message) }
+  try { notificationPipeline = (await import('./notificationPipeline')).default } catch(e) { console.warn('[ExchangeEngine] notificationPipeline not loaded:', e.message) }
+}
 
 class ExchangeEngine {
   constructor() {
     try {
         this.activeExchange = 'paper'
       this.rateLimiter = new Map()
-  
+      this.depsLoaded = loadDeps()
     } catch(e) {
       console.warn('[exchangeEngine] Constructor init error:', e)
     }

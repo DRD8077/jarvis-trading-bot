@@ -9,8 +9,9 @@
 let Plugins = {};
 
 try {
-  const cap = require('@capacitor/core');
-  Plugins = cap.Capacitor?.Plugins || {};
+  if (typeof window !== 'undefined' && window.Capacitor?.Plugins) {
+    Plugins = window.Capacitor.Plugins;
+  }
 } catch (e) {
   // Running in browser, plugins not available
 }

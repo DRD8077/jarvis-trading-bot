@@ -13,10 +13,12 @@
  * No server needed — runs entirely in browser/Electron.
  */
 
-import cameraEngine from './cameraEngine'
+let cameraEngine = null
+try { import('./cameraEngine').then(m => { cameraEngine = m.default || m }).catch(() => {}) } catch(e) {}
 
 class EmotionEngine {
   constructor() {
+    try {
     this.currentEmotion = null
     this.emotionHistory = []
     this.moodScore = 50 // 0=very sad, 100=very happy
@@ -91,6 +93,9 @@ class EmotionEngine {
         "Good evening, sir. Shall I dim the interface?",
         "Evening already. Time flies when you're building empires.",
       ],
+    }
+    } catch (e) {
+      console.warn('[EmotionEngine] Constructor error:', e.message);
     }
   }
 
