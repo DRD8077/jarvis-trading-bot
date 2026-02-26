@@ -37,13 +37,22 @@ public class JarvisService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.i(TAG, "🚀 JARVIS Service started — entering foreground");
+        Log.i(TAG, "JARVIS Service started");
 
-        // Create notification for foreground service
-        Notification notification = buildNotification();
-        startForeground(NOTIFICATION_ID, notification);
+        try {
+            // Create notification for foreground service
+            Notification notification = buildNotification();
+            startForeground(NOTIFICATION_ID, notification);
+        } catch (Exception e) {
+            Log.e(TAG, "startForeground failed: " + e.getMessage());
+            stopSelf();
+            return START_NOT_STICKY;
+        } catch (Error e) {
+            Log.e(TAG, "startForeground error: " + e.getMessage());
+            stopSelf();
+            return START_NOT_STICKY;
+        }
 
-        // Return START_STICKY so Android restarts us if killed
         return START_STICKY;
     }
 
