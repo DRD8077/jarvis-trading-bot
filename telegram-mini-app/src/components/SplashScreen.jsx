@@ -10,11 +10,13 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Bot, Zap, Shield, Wifi } from 'lucide-react'
 
 const BOOT_STEPS = [
-  { text: 'Initializing JARVIS...', icon: Bot, duration: 400 },
-  { text: 'Loading AI Engine...', icon: Zap, duration: 500 },
-  { text: 'Connecting Markets...', icon: Wifi, duration: 400 },
-  { text: 'Security Check...', icon: Shield, duration: 300 },
-  { text: 'Ready! 🚀', icon: Zap, duration: 200 },
+  { text: 'JARVIS OS Booting...', icon: Bot, duration: 300 },
+  { text: 'Neural AI Core Loading...', icon: Zap, duration: 400 },
+  { text: 'Connecting Trading Networks...', icon: Wifi, duration: 350 },
+  { text: 'Security Protocols Active...', icon: Shield, duration: 300 },
+  { text: 'Voice Recognition Online...', icon: Bot, duration: 250 },
+  { text: 'Gaming AI Engine Ready...', icon: Zap, duration: 200 },
+  { text: 'All Systems Online! 🚀', icon: Shield, duration: 200 },
 ]
 
 const SplashScreen = ({ onFinish }) => {
@@ -118,9 +120,9 @@ const SplashScreen = ({ onFinish }) => {
 
         {/* Title */}
         <h1 className="text-3xl font-black text-white mb-1 tracking-wider">
-          JARVIS <span className="text-blue-400">AI</span>
+          J.A.R.V.I.S <span className="text-cyan-400">OS</span>
         </h1>
-        <p className="text-slate-500 text-xs mb-10 tracking-widest uppercase">Trading Intelligence</p>
+        <p className="text-slate-500 text-xs mb-10 tracking-widest uppercase">Just A Rather Very Intelligent System</p>
 
         {/* Boot status */}
         <div className="flex items-center space-x-2 mb-4">
@@ -140,7 +142,7 @@ const SplashScreen = ({ onFinish }) => {
 
       {/* Bottom branding */}
       <div className="absolute bottom-8 text-center">
-        <p className="text-slate-700 text-[10px]">v5.0 • Mahadev Tech</p>
+        <p className="text-slate-700 text-[10px]">v15.0 • JARVIS AI Operating System • Iron Man Edition</p>
       </div>
     </div>
   )

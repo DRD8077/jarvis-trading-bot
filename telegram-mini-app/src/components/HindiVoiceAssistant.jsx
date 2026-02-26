@@ -68,21 +68,73 @@ const HindiVoiceAssistant = ({ onTranscript, onResponse, fullScreen = false }) =
     }).catch(() => {})
   }, [])
 
-  // Start voice recording
+  // Start voice recording — uses native Capacitor on Android, browser fallback on web
   const startListening = async () => {
     hapticFeedback?.('impact')
     try {
+      // Try native Capacitor speech recognition first (works on Android APK)
+      const { Capacitor } = await import('@capacitor/core').catch(() => ({}))
+      if (Capacitor?.isNativePlatform?.()) {
+        try {
+          const { SpeechRecognition } = await import('@capacitor-community/speech-recognition')
+          const perm = await SpeechRecognition.requestPermissions()
+          if (perm?.speechRecognition === 'granted') {
+            setListening(true)
+            const result = await SpeechRecognition.start({
+              language: 'hi-IN',
+              maxResults: 1,
+              prompt: 'JARVIS sun raha hai...',
+              partialResults: false,
+              popup: true,
+            })
+            setListening(false)
+            const text = result?.matches?.[0] || ''
+            if (text) {
+              setTranscript(text)
+              if (onTranscript) onTranscript(text)
+              await getAIResponse(text)
+            } else {
+              addNotification?.('Sunai nahi diya, dubara boliye! 😊', 'info')
+            }
+            return
+          }
+        } catch (nativeErr) {
+          console.warn('[Voice] Native STT failed, trying browser:', nativeErr)
+        }
+      }
+
+      // Try browser Web Speech API (works on Chrome, Edge)
+      if (window.webkitSpeechRecognition || window.SpeechRecognition) {
+        const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition
+        const recognition = new SpeechRecognitionAPI()
+        recognition.lang = 'hi-IN'
+        recognition.continuous = false
+        recognition.interimResults = false
+        
+        recognition.onresult = (event) => {
+          const text = event.results[0]?.[0]?.transcript || ''
+          setListening(false)
+          if (text) {
+            setTranscript(text)
+            if (onTranscript) onTranscript(text)
+            getAIResponse(text)
+          }
+        }
+        recognition.onerror = () => setListening(false)
+        recognition.onend = () => setListening(false)
+        
+        recognition.start()
+        setListening(true)
+        return
+      }
+
+      // Fallback: MediaRecorder (send audio to server for transcription)
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: { 
-          echoCancellation: true, 
-          noiseSuppression: true,
-          sampleRate: 16000 
-        } 
+        audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 16000 } 
       })
       const mediaRecorder = new MediaRecorder(stream, { 
         mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
-          ? 'audio/webm;codecs=opus' 
-          : 'audio/webm' 
+          ? 'audio/webm;codecs=opus' : 'audio/webm' 
       })
       mediaRecorderRef.current = mediaRecorder
       chunksRef.current = []
@@ -190,12 +242,21 @@ const HindiVoiceAssistant = ({ onTranscript, onResponse, fullScreen = false }) =
       if (onResponse) onResponse(data)
       
       // Auto-play voice if enabled
-      if (voiceEnabled && data.voice_url && audioRef.current) {
-        const baseUrl = API_BASE.replace('/api/miniapp', '')
-        audioRef.current.src = `${baseUrl}${data.voice_url}`
-        setSpeaking(true)
-        audioRef.current.play().catch(() => setSpeaking(false))
-        audioRef.current.onended = () => setSpeaking(false)
+      if (voiceEnabled) {
+        // Try server voice first
+        if (data.voice_url && audioRef.current) {
+          const baseUrl = API_BASE.replace('/api/miniapp', '')
+          audioRef.current.src = `${baseUrl}${data.voice_url}`
+          setSpeaking(true)
+          audioRef.current.play().catch(() => {
+            // Server audio failed — use native/browser TTS
+            speakWithTTS(data.text)
+          })
+          audioRef.current.onended = () => setSpeaking(false)
+        } else {
+          // No server voice URL — use native/browser TTS
+          speakWithTTS(data.text)
+        }
       }
       
     } catch (e) {
@@ -209,12 +270,9 @@ const HindiVoiceAssistant = ({ onTranscript, onResponse, fullScreen = false }) =
         const replyText = result?.text || result?.response || (typeof result === 'string' ? result : 'Main soch raha hoon...')
         const aiMsg = { role: 'assistant', text: replyText, mood: 'happy', time: new Date() }
         setChatHistory(prev => [...prev, aiMsg])
-        // Use browser TTS for voice since server is down
-        if (voiceEnabled && window.speechSynthesis) {
-          const utterance = new SpeechSynthesisUtterance(replyText)
-          utterance.lang = 'hi-IN'
-          utterance.rate = 0.95
-          window.speechSynthesis.speak(utterance)
+        // Use native/browser TTS since server is down
+        if (voiceEnabled) {
+          await speakWithTTS(replyText)
         }
       } catch (e2) {
         const errorMsg = { 
@@ -230,6 +288,45 @@ const HindiVoiceAssistant = ({ onTranscript, onResponse, fullScreen = false }) =
     }
   }, [voiceEnabled, onResponse])
 
+  // Native/Browser TTS — works on Android APK + Chrome
+  const speakWithTTS = async (text) => {
+    if (!text) return
+    setSpeaking(true)
+    try {
+      // Try Capacitor native TTS first (best quality on Android)
+      const { Capacitor } = await import('@capacitor/core').catch(() => ({}))
+      if (Capacitor?.isNativePlatform?.()) {
+        try {
+          const { TextToSpeech } = await import('@capacitor-community/text-to-speech')
+          await TextToSpeech.speak({
+            text: text.substring(0, 500),
+            lang: 'hi-IN',
+            rate: 0.95,
+            pitch: 1.1,
+            volume: 1.0,
+            category: 'playback',
+          })
+          setSpeaking(false)
+          return
+        } catch {}
+      }
+      // Fallback: browser speechSynthesis
+      if (window.speechSynthesis) {
+        const utterance = new SpeechSynthesisUtterance(text.substring(0, 500))
+        utterance.lang = 'hi-IN'
+        utterance.rate = 0.95
+        utterance.pitch = 1.1
+        utterance.onend = () => setSpeaking(false)
+        utterance.onerror = () => setSpeaking(false)
+        window.speechSynthesis.speak(utterance)
+      } else {
+        setSpeaking(false)
+      }
+    } catch {
+      setSpeaking(false)
+    }
+  }
+
   // Handle text submit
   const handleTextSubmit = async (e) => {
     e?.preventDefault()
@@ -240,13 +337,14 @@ const HindiVoiceAssistant = ({ onTranscript, onResponse, fullScreen = false }) =
     await getAIResponse(msg)
   }
 
-  // Speak a specific text
+  // Speak a specific text (tap-to-speak on messages)
   const speakText = async (text) => {
     if (!text) return
     setSpeaking(true)
     hapticFeedback?.('impact')
     
     try {
+      // Try server voice first
       const formData = new FormData()
       formData.append('text', text)
       
@@ -265,10 +363,12 @@ const HindiVoiceAssistant = ({ onTranscript, onResponse, fullScreen = false }) =
           URL.revokeObjectURL(url)
         }
       } else {
-        setSpeaking(false)
+        // Server failed — use native/browser TTS
+        await speakWithTTS(text)
       }
     } catch {
-      setSpeaking(false)
+      // Server unreachable — use native/browser TTS
+      await speakWithTTS(text)
     }
   }
 
