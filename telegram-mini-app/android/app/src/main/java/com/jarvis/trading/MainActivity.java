@@ -16,97 +16,69 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        Log.i(TAG, "🚀 JARVIS AI v16.0 — Iron Man OS Edition started");
+        Log.i(TAG, "JARVIS AI v17.0 started");
         
-        // Start JARVIS Always-On Service
-        startJarvisService();
-        
-        // Enable WebView debugging for troubleshooting
-        WebView.setWebContentsDebuggingEnabled(true);
-        
-        // ═══════════════════════════════════════════
-        //  WebView Performance Optimizations
-        // ═══════════════════════════════════════════
+        // Enable WebView debugging
         try {
-            WebView webView = getBridge().getWebView();
-            WebSettings ws = webView.getSettings();
-            
-            // Hardware acceleration
-            webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-            
-            // Enable DOM storage & caching for faster loads
-            ws.setDomStorageEnabled(true);
-            ws.setDatabaseEnabled(true);
-            ws.setCacheMode(WebSettings.LOAD_DEFAULT);
-            ws.setAllowFileAccess(true);
-            
-            // JavaScript performance
-            ws.setJavaScriptEnabled(true);
-            ws.setJavaScriptCanOpenWindowsAutomatically(true);
-            
-            // Rendering performance
-            ws.setRenderPriority(WebSettings.RenderPriority.HIGH);
-            ws.setEnableSmoothTransition(true);
-            ws.setLoadWithOverviewMode(true);
-            ws.setUseWideViewPort(true);
-            
-            // Disable slow features
-            ws.setBlockNetworkImage(false);
-            ws.setLoadsImagesAutomatically(true);
-            ws.setGeolocationEnabled(false);
-            
-            // Mixed content for API calls
-            ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-            
-            Log.i(TAG, "✅ WebView performance optimizations applied");
+            WebView.setWebContentsDebuggingEnabled(true);
         } catch (Exception e) {
-            Log.w(TAG, "⚠️ WebView optimization failed: " + e.getMessage());
+            Log.w(TAG, "WebView debug init failed: " + e.getMessage());
         }
         
-        // Try to register native plugins safely (won't crash if they fail)
+        // WebView Performance Optimizations - null-safe
         try {
-            registerPlugin(com.jarvis.trading.plugins.DeviceCommandsPlugin.class);
-            Log.i(TAG, "✅ DeviceCommands plugin registered");
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                WebView webView = getBridge().getWebView();
+                WebSettings ws = webView.getSettings();
+                
+                webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+                ws.setDomStorageEnabled(true);
+                ws.setDatabaseEnabled(true);
+                ws.setCacheMode(WebSettings.LOAD_DEFAULT);
+                ws.setAllowFileAccess(true);
+                ws.setJavaScriptEnabled(true);
+                ws.setJavaScriptCanOpenWindowsAutomatically(true);
+                ws.setLoadWithOverviewMode(true);
+                ws.setUseWideViewPort(true);
+                ws.setBlockNetworkImage(false);
+                ws.setLoadsImagesAutomatically(true);
+                ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                
+                Log.i(TAG, "WebView optimizations applied");
+            }
         } catch (Exception e) {
-            Log.w(TAG, "⚠️ DeviceCommands plugin skipped: " + e.getMessage());
+            Log.w(TAG, "WebView optimization failed: " + e.getMessage());
         }
         
-        try {
-            registerPlugin(com.jarvis.trading.plugins.LocalTTSPlugin.class);
-            Log.i(TAG, "✅ LocalTTS plugin registered");
-        } catch (Exception e) {
-            Log.w(TAG, "⚠️ LocalTTS plugin skipped: " + e.getMessage());
-        }
+        // Register native plugins safely - catches both Exception AND Error
+        safeRegisterPlugin(com.jarvis.trading.plugins.DeviceCommandsPlugin.class, "DeviceCommands");
+        safeRegisterPlugin(com.jarvis.trading.plugins.LocalTTSPlugin.class, "LocalTTS");
+        safeRegisterPlugin(com.jarvis.trading.plugins.LocalLLMPlugin.class, "LocalLLM");
+        safeRegisterPlugin(com.jarvis.trading.plugins.VoskSTTPlugin.class, "VoskSTT");
+        safeRegisterPlugin(com.jarvis.trading.plugins.PersonalAssistantPlugin.class, "PersonalAssistant");
         
-        // These plugins need external libs — safe-register
+        // Start service AFTER delay to let app fully initialize
         try {
-            registerPlugin(com.jarvis.trading.plugins.LocalLLMPlugin.class);
-            Log.i(TAG, "✅ LocalLLM plugin registered");
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                getBridge().getWebView().postDelayed(this::startJarvisService, 3000);
+            }
         } catch (Exception e) {
-            Log.w(TAG, "⚠️ LocalLLM plugin skipped: " + e.getMessage());
+            Log.w(TAG, "Delayed service start setup failed: " + e.getMessage());
         }
-        
-        try {
-            registerPlugin(com.jarvis.trading.plugins.VoskSTTPlugin.class);
-            Log.i(TAG, "✅ VoskSTT plugin registered");
-        } catch (Exception e) {
-            Log.w(TAG, "⚠️ VoskSTT plugin skipped: " + e.getMessage());
-        }
-        
-        try {
-            registerPlugin(com.jarvis.trading.plugins.PersonalAssistantPlugin.class);
-            Log.i(TAG, "✅ PersonalAssistant plugin registered");
-        } catch (Exception e) {
-            Log.w(TAG, "⚠️ PersonalAssistant plugin skipped: " + e.getMessage());
-        }
-        
-        // Start JARVIS always-on background service
-        startJarvisService();
     }
     
-    /**
-     * Start the JARVIS always-on foreground service
-     */
+    @SuppressWarnings("unchecked")
+    private void safeRegisterPlugin(Class<?> pluginClass, String name) {
+        try {
+            registerPlugin((Class<? extends com.getcapacitor.Plugin>) pluginClass);
+            Log.i(TAG, name + " plugin registered");
+        } catch (Exception e) {
+            Log.w(TAG, name + " plugin skipped: " + e.getMessage());
+        } catch (Error e) {
+            Log.w(TAG, name + " plugin error: " + e.getMessage());
+        }
+    }
+    
     private void startJarvisService() {
         try {
             Intent serviceIntent = new Intent(this, JarvisService.class);
@@ -115,9 +87,9 @@ public class MainActivity extends BridgeActivity {
             } else {
                 startService(serviceIntent);
             }
-            Log.i(TAG, "✅ JARVIS Service started — always-on mode ACTIVE");
+            Log.i(TAG, "JARVIS Service started");
         } catch (Exception e) {
-            Log.w(TAG, "⚠️ JARVIS Service start failed: " + e.getMessage());
+            Log.w(TAG, "JARVIS Service start failed: " + e.getMessage());
         }
     }
 }
