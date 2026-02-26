@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   User, Bell, Shield, Globe, Moon, Sun, Volume2, Activity, ChevronRight,
@@ -7,18 +7,20 @@ import {
   Palette, Monitor, Smartphone, Languages, Vibrate, HeartPulse
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
-import pushNotifications from '../services/pushNotifications'
-import biometricAuth from '../services/biometricAuth'
-import offlineCache from '../services/offlineCache'
-import backgroundAlerts from '../services/backgroundAlerts'
-import themeEngine from '../services/themeEngine'
-import i18n, { LANGUAGES } from '../services/i18n'
-import haptics from '../services/hapticEngine'
-import crashAnalytics from '../services/crashAnalytics'
 
 const Settings = () => {
   const { user, hapticFeedback, theme, setTheme, paperTradingMode, togglePaperTrading } = useApp()
   const navigate = useNavigate()
+
+  // Service refs (loaded dynamically to avoid crash on Android WebView)
+  const pushNotificationsRef = useRef(null)
+  const biometricAuthRef = useRef(null)
+  const offlineCacheRef = useRef(null)
+  const backgroundAlertsRef = useRef(null)
+  const i18nRef = useRef(null)
+  const hapticsRef = useRef(null)
+  const crashAnalyticsRef = useRef(null)
+
   const [settings, setSettings] = useState({
     notifications: true,
     sound: true,
@@ -26,19 +28,45 @@ const Settings = () => {
     language: 'en',
     riskLevel: 'medium'
   })
-  const [biometricEnabled, setBiometricEnabled] = useState(biometricAuth.isEnabled())
+  const [biometricEnabled, setBiometricEnabled] = useState(false)
   const [pushEnabled, setPushEnabled] = useState(false)
   const [cacheStats, setCacheStats] = useState(null)
   const [alertCount, setAlertCount] = useState(0)
-  const [currentLang, setCurrentLang] = useState(i18n.getLanguage())
-  const [hapticsEnabled, setHapticsEnabled] = useState(haptics.isEnabled())
+  const [currentLang, setCurrentLang] = useState('en')
+  const [hapticsEnabled, setHapticsEnabled] = useState(true)
   const [appHealth, setAppHealth] = useState(null)
+  const [languages, setLanguages] = useState([])
 
   useEffect(() => {
     setPushEnabled(typeof Notification !== 'undefined' && Notification.permission === 'granted')
-    offlineCache.getCacheStats().then(setCacheStats)
-    setAlertCount(backgroundAlerts.getActiveAlerts().length)
-    try { setAppHealth(crashAnalytics.getSummary()) } catch(e) {}
+
+    // Load all services dynamically
+    import('../services/pushNotifications').then(m => { pushNotificationsRef.current = m?.default || m }).catch(() => {})
+    import('../services/biometricAuth').then(m => {
+      biometricAuthRef.current = m?.default || m
+      if (biometricAuthRef.current?.isEnabled) setBiometricEnabled(biometricAuthRef.current.isEnabled())
+    }).catch(() => {})
+    import('../services/offlineCache').then(m => {
+      offlineCacheRef.current = m?.default || m
+      if (offlineCacheRef.current?.getCacheStats) offlineCacheRef.current.getCacheStats().then(setCacheStats)
+    }).catch(() => {})
+    import('../services/backgroundAlerts').then(m => {
+      backgroundAlertsRef.current = m?.default || m
+      if (backgroundAlertsRef.current?.getActiveAlerts) setAlertCount(backgroundAlertsRef.current.getActiveAlerts().length)
+    }).catch(() => {})
+    import('../services/i18n').then(m => {
+      i18nRef.current = m?.default || m
+      if (i18nRef.current?.getLanguage) setCurrentLang(i18nRef.current.getLanguage())
+      if (m?.LANGUAGES) setLanguages(m.LANGUAGES)
+    }).catch(() => {})
+    import('../services/hapticEngine').then(m => {
+      hapticsRef.current = m?.default || m
+      if (hapticsRef.current?.isEnabled) setHapticsEnabled(hapticsRef.current.isEnabled())
+    }).catch(() => {})
+    import('../services/crashAnalytics').then(m => {
+      crashAnalyticsRef.current = m?.default || m
+      try { if (crashAnalyticsRef.current?.getSummary) setAppHealth(crashAnalyticsRef.current.getSummary()) } catch(e) {}
+    }).catch(() => {})
   }, [])
 
   const updateSetting = (key, value) => {
@@ -48,25 +76,26 @@ const Settings = () => {
 
   const togglePush = async () => {
     if (!pushEnabled) {
-      const ok = await pushNotifications.requestPermission()
-      setPushEnabled(ok)
+      const ok = pushNotificationsRef.current ? await pushNotificationsRef.current.requestPermission() : false
+      setPushEnabled(!!ok)
     }
   }
 
   const toggleBiometric = async () => {
     if (biometricEnabled) {
-      biometricAuth.disable()
+      biometricAuthRef.current?.disable?.()
       setBiometricEnabled(false)
     } else {
-      const ok = await biometricAuth.enable()
-      setBiometricEnabled(ok)
+      const ok = biometricAuthRef.current ? await biometricAuthRef.current.enable() : false
+      setBiometricEnabled(!!ok)
     }
     hapticFeedback('impact')
   }
 
   const clearCache = async () => {
-    await offlineCache.clearAll()
-    setCacheStats(await offlineCache.getCacheStats())
+    if (!offlineCacheRef.current) return
+    await offlineCacheRef.current.clearAll()
+    setCacheStats(await offlineCacheRef.current.getCacheStats())
     hapticFeedback('success')
   }
 
@@ -227,8 +256,8 @@ const Settings = () => {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              {LANGUAGES.map(lang => (
-                <button key={lang.code} onClick={() => { i18n.setLanguage(lang.code); setCurrentLang(lang.code); hapticFeedback('impact') }}
+              {languages.map(lang => (
+                <button key={lang.code} onClick={() => { if (i18nRef.current?.setLanguage) i18nRef.current.setLanguage(lang.code); setCurrentLang(lang.code); hapticFeedback('impact') }}
                   className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                     currentLang === lang.code ? 'bg-cyan-600 text-white ring-2 ring-cyan-400/50' : 'bg-slate-700 text-slate-400'
                   }`}>{lang.flag} {lang.nativeName}</button>
@@ -247,7 +276,7 @@ const Settings = () => {
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" checked={hapticsEnabled}
-                onChange={e => { haptics.setEnabled(e.target.checked); setHapticsEnabled(e.target.checked); haptics.trigger('success') }} />
+                onChange={e => { if (hapticsRef.current?.setEnabled) hapticsRef.current.setEnabled(e.target.checked); setHapticsEnabled(e.target.checked); if (hapticsRef.current?.trigger) hapticsRef.current.trigger('success') }} />
               <div className="w-11 h-6 bg-slate-700 peer-checked:bg-pink-600 rounded-full
                 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white 
                 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>

@@ -63,16 +63,40 @@ const Trading = () => {
     return () => clearInterval(iv)
   }, [])
 
+  // Listen for real-time signal updates from WebSocket
+  useEffect(() => {
+    const handleSignal = (e) => {
+      try {
+        const signal = e.detail
+        if (!signal) return
+        setSignals(prev => [signal, ...prev.slice(0, 19)])
+        addNotification(`New AI Signal: ${signal.signal || signal.type} ${signal.symbol}`, 'info')
+      } catch {}
+    }
+    window.addEventListener('jarvis-signal', handleSignal)
+    return () => window.removeEventListener('jarvis-signal', handleSignal)
+  }, [])
+
   const handleExecuteTrade = async (signal) => {
     hapticFeedback('impact')
     addNotification(`Executing ${signal.signal || signal.type} on ${signal.symbol}...`, 'info')
-    // The actual trade would go through the auto-trader or manual execution
     try {
-      // For now, show confirmation
-      addNotification(`${signal.signal || signal.type} order placed for ${signal.symbol}`, 'success')
+      const action = (signal.signal || signal.type || '').toUpperCase()
+      if (action === 'SELL') {
+        const res = await sellPosition(signal.symbol, signal.quantity || 1)
+        addNotification(`SELL order executed for ${signal.symbol} ✅`, 'success')
+      } else {
+        // BUY — route through auto-trader
+        const { startAutoTrader } = await import('../services/api')
+        const res = await startAutoTrader(
+          signal.strategy || 'ai_signal',
+          signal.amount || signal.price || 100
+        )
+        addNotification(`BUY order placed for ${signal.symbol} at ${signal.entry || signal.price || 'market'} ✅`, 'success')
+      }
       hapticFeedback('success')
     } catch (e) {
-      addNotification('Trade failed: ' + e.message, 'error')
+      addNotification('Trade failed: ' + (e?.response?.data?.detail || e.message), 'error')
       hapticFeedback('error')
     }
   }

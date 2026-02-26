@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Mic, MicOff, Volume2, VolumeX, Loader, Send, Sparkles, Heart, SmilePlus, Globe, Brain } from 'lucide-react'
 import { useApp } from '../context/AppContext'
-import jarvisAuth from '../services/smartAuth'
 
 /**
  * 🎙️💕 JARVIS Hindi Voice Assistant — Super Sweet & Smiling Voice
@@ -38,6 +37,8 @@ const SWEET_PLACEHOLDERS = [
 
 const HindiVoiceAssistant = ({ onTranscript, onResponse, fullScreen = false }) => {
   const { addNotification, hapticFeedback } = useApp()
+  const jarvisAuthRef = useRef(null)
+  const [isOwner, setIsOwner] = useState(false)
   const [listening, setListening] = useState(false)
   const [speaking, setSpeaking] = useState(false)
   const [thinking, setThinking] = useState(false)
@@ -58,6 +59,14 @@ const HindiVoiceAssistant = ({ onTranscript, onResponse, fullScreen = false }) =
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [chatHistory])
+
+  // Load smartAuth service dynamically
+  useEffect(() => {
+    import('../services/smartAuth').then(m => {
+      jarvisAuthRef.current = m?.default || m
+      if (jarvisAuthRef.current?.isOwner) setIsOwner(true)
+    }).catch(() => {})
+  }, [])
 
   // Start voice recording
   const startListening = async () => {
@@ -153,9 +162,9 @@ const HindiVoiceAssistant = ({ onTranscript, onResponse, fullScreen = false }) =
     try {
       const formData = new FormData()
       formData.append('message', message)
-      formData.append('user_id', jarvisAuth.user?.chat_id || '0')
-      formData.append('user_name', jarvisAuth.user?.first_name || '')
-      formData.append('is_owner', jarvisAuth.isOwner ? 'true' : 'false')
+      formData.append('user_id', jarvisAuthRef.current?.user?.chat_id || '0')
+      formData.append('user_name', jarvisAuthRef.current?.user?.first_name || '')
+      formData.append('is_owner', jarvisAuthRef.current?.isOwner ? 'true' : 'false')
       
       const resp = await fetch(`${VOICE_BASE}/chat`, {
         method: 'POST',
@@ -190,13 +199,32 @@ const HindiVoiceAssistant = ({ onTranscript, onResponse, fullScreen = false }) =
       }
       
     } catch (e) {
-      const errorMsg = { 
-        role: 'assistant', 
-        text: 'Arre sorry jee! Thodi der mein try kijiye 😊💕', 
-        mood: 'neutral',
-        time: new Date() 
+      // Backend failed — try freeAI as fallback
+      try {
+        const { default: freeAI } = await import('../services/freeAI')
+        if (!freeAI._initialized) freeAI.init()
+        const result = await freeAI.chat(
+          `You are JARVIS, a Hindi-speaking sweet AI assistant. Reply in Hinglish with emojis. User said: ${message}`
+        )
+        const replyText = result?.text || result?.response || (typeof result === 'string' ? result : 'Main soch raha hoon...')
+        const aiMsg = { role: 'assistant', text: replyText, mood: 'happy', time: new Date() }
+        setChatHistory(prev => [...prev, aiMsg])
+        // Use browser TTS for voice since server is down
+        if (voiceEnabled && window.speechSynthesis) {
+          const utterance = new SpeechSynthesisUtterance(replyText)
+          utterance.lang = 'hi-IN'
+          utterance.rate = 0.95
+          window.speechSynthesis.speak(utterance)
+        }
+      } catch (e2) {
+        const errorMsg = { 
+          role: 'assistant', 
+          text: 'Arre sorry jee! Thodi der mein try kijiye 😊💕', 
+          mood: 'neutral',
+          time: new Date() 
+        }
+        setChatHistory(prev => [...prev, errorMsg])
       }
-      setChatHistory(prev => [...prev, errorMsg])
     } finally {
       setThinking(false)
     }
@@ -266,7 +294,7 @@ const HindiVoiceAssistant = ({ onTranscript, onResponse, fullScreen = false }) =
           >
             {voiceEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
           </button>
-          {jarvisAuth.isOwner && (
+          {isOwner && (
             <span className="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold">
               👑 OWNER
             </span>

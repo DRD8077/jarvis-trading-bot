@@ -15,11 +15,16 @@ const STORE_NAME = 'cache'
 
 class OfflineCacheEngine {
   constructor() {
-    this.db = null
-    this.isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true
-    this.pendingWrites = []
-    this._init()
-  }
+    try {
+        this.db = null
+      this.isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true
+      this.pendingWrites = []
+      this._init()
+  
+    } catch(e) {
+      console.warn('[offlineCache] Constructor init error:', e)
+    }
+}
 
   async _init() {
     if (typeof window === 'undefined' || !window.indexedDB) return

@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Radio, Link2, Unlink, RefreshCw, ArrowLeft, Check, AlertCircle, Wallet } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import portfolioSync from '../services/portfolioSync'
-import exchangeEngine from '../services/exchangeEngine'
 
 const ExchangeConnect = () => {
   const navigate = useNavigate()
+  const portfolioSyncRef = useRef(null)
+  const exchangeEngineRef = useRef(null)
   const [exchanges, setExchanges] = useState([])
   const [showConnect, setShowConnect] = useState(null)
   const [credentials, setCredentials] = useState({ apiKey: '', apiSecret: '' })
@@ -20,6 +20,8 @@ const ExchangeConnect = () => {
   ]
 
   useEffect(() => {
+    import('../services/portfolioSync').then(m => { portfolioSyncRef.current = m?.default || m }).catch(() => {})
+    import('../services/exchangeEngine').then(m => { exchangeEngineRef.current = m?.default || m }).catch(() => {})
     loadExchanges()
   }, [])
 
@@ -37,7 +39,7 @@ const ExchangeConnect = () => {
   const handleConnect = async (exchangeId) => {
     if (exchangeId === 'paper') {
       localStorage.setItem(`jarvis_exchange_paper`, JSON.stringify({ connectedAt: Date.now() }))
-      exchangeEngine.setActiveExchange('paper')
+      exchangeEngineRef.current?.setActiveExchange?.('paper')
       setShowConnect(null)
       loadExchanges()
       return
@@ -49,9 +51,9 @@ const ExchangeConnect = () => {
     }
 
     try {
-      await portfolioSync.connectExchange(exchangeId, credentials)
+      if (portfolioSyncRef.current) await portfolioSyncRef.current.connectExchange(exchangeId, credentials)
       localStorage.setItem(`jarvis_exchange_${exchangeId}`, JSON.stringify({ connectedAt: Date.now() }))
-      exchangeEngine.setActiveExchange(exchangeId)
+      exchangeEngineRef.current?.setActiveExchange?.(exchangeId)
       setCredentials({ apiKey: '', apiSecret: '' })
       setShowConnect(null)
       setError('')
@@ -62,7 +64,7 @@ const ExchangeConnect = () => {
   }
 
   const handleDisconnect = (exchangeId) => {
-    portfolioSync.disconnectExchange(exchangeId)
+    portfolioSyncRef.current?.disconnectExchange?.(exchangeId)
     localStorage.removeItem(`jarvis_exchange_${exchangeId}`)
     loadExchanges()
   }
@@ -70,7 +72,7 @@ const ExchangeConnect = () => {
   const handleSync = async () => {
     setSyncing(true)
     try {
-      const data = await portfolioSync.syncAll()
+      const data = portfolioSyncRef.current ? await portfolioSyncRef.current.syncAll() : null
       setPortfolio(data)
     } catch (e) {
       setError('Sync failed: ' + (e.message || 'Unknown error'))

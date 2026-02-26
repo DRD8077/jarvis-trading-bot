@@ -207,7 +207,17 @@ const AIChat = () => {
       setMessages(prev => [...prev, { role: 'assistant', content: reply, model: selectedModel }])
       hapticFeedback?.('success')
     } catch (e) {
-      setMessages(prev => [...prev, { role: 'assistant', content: `**Error:** ${e.message}` }])
+      // Backend failed — use freeAI (client-side AI with embedded keys)
+      try {
+        const { default: freeAI } = await import('../services/freeAI')
+        if (!freeAI._initialized) freeAI.init()
+        const result = await freeAI.chat(msg, { streaming: false })
+        const reply = result?.text || result?.response || result || 'JARVIS is thinking...'
+        setMessages(prev => [...prev, { role: 'assistant', content: typeof reply === 'string' ? reply : JSON.stringify(reply), model: 'freeAI' }])
+        hapticFeedback?.('success')
+      } catch (e2) {
+        setMessages(prev => [...prev, { role: 'assistant', content: `**Error:** ${e.message}. Offline AI also failed: ${e2.message}` }])
+      }
     } finally {
       setLoading(false)
     }

@@ -6,7 +6,19 @@
  * Smart refresh, WebSocket-first, polling fallback
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
-import realtime from '../services/realtime'
+// Dynamic import — do NOT import realtime at module scope
+let _realtimeCache = null
+async function getRealtime() {
+  if (_realtimeCache) return _realtimeCache
+  try {
+    const mod = await import('../services/realtime')
+    _realtimeCache = mod?.default || mod
+    return _realtimeCache
+  } catch (e) {
+    console.warn('[useRealTime] realtime load failed:', e.message)
+    return null
+  }
+}
 
 /**
  * Hook to subscribe to real-time data channel
@@ -73,10 +85,14 @@ export function useRealTime(channel, fetcher, opts = {}) {
       return
     }
 
-    const unsub = realtime.subscribe(channel, handleData, {
-      interval,
-      fetcher
-    })
+    let unsub = () => {}
+    getRealtime().then(rt => {
+      if (!rt || typeof rt.subscribe !== 'function' || !mountedRef.current) return
+      unsub = rt.subscribe(channel, handleData, {
+        interval,
+        fetcher
+      })
+    }).catch(() => {})
 
     return () => {
       mountedRef.current = false
@@ -95,13 +111,17 @@ export function useTickerData() {
   const [connected, setConnected] = useState(false)
 
   useEffect(() => {
-    const unsubTicker = realtime.subscribe('ticker', (data) => {
-      if (Array.isArray(data)) setTickers(data)
-    })
-
-    const unsubStatus = realtime.subscribe('_status', (status) => {
-      setConnected(status.connected)
-    })
+    let unsubTicker = () => {}
+    let unsubStatus = () => {}
+    getRealtime().then(rt => {
+      if (!rt || typeof rt.subscribe !== 'function') return
+      unsubTicker = rt.subscribe('ticker', (data) => {
+        if (Array.isArray(data)) setTickers(data)
+      })
+      unsubStatus = rt.subscribe('_status', (status) => {
+        setConnected(status.connected)
+      })
+    }).catch(() => {})
 
     return () => { unsubTicker(); unsubStatus() }
   }, [])

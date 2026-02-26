@@ -8,40 +8,104 @@
  * "JARVIS, mera portfolio dikhao"
  * "JARVIS, NIFTY ka options chain dikhao"
  * 
- * Uses Web Speech API (works offline in Android).
+ * Uses Capacitor native plugins on Android, Web Speech API on desktop.
  * Natural language command parsing.
  * Hindi TTS responses.
  */
 
+import { Capacitor } from '@capacitor/core'
+
+let SpeechRecognitionPlugin = null
+let TextToSpeechPlugin = null
+
+// Lazy-load Capacitor plugins
+async function loadCapPlugins() {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const srMod = await import('@capacitor-community/speech-recognition')
+      SpeechRecognitionPlugin = srMod.SpeechRecognition
+      const ttsMod = await import('@capacitor-community/text-to-speech')
+      TextToSpeechPlugin = ttsMod.TextToSpeech
+    }
+  } catch (e) {
+    console.warn('[JarvisVoice] Capacitor plugins not available:', e.message)
+  }
+}
+
 class JarvisVoiceEngine {
   constructor() {
     this.recognition = null
-    this.synthesis = window.speechSynthesis || null
+    this.synthesis = null
     this.isListening = false
     this.wakeWord = 'jarvis'
-    this.language = 'hi-IN' // Hindi default, auto-detects English
+    this.language = 'hi-IN'
     this.commands = new Map()
     this.onCommand = null
     this.onTranscript = null
     this.onStateChange = null
     this.conversationHistory = []
-    this.personality = 'jarvis' // jarvis, assistant, friend
+    this.personality = 'jarvis'
+    this._isNative = false
+    this._initialized = false
+    this._listeners = {}
 
     this._registerDefaultCommands()
+  }
+
+  on(event, handler) {
+    this._listeners[event] = handler
+  }
+
+  _notifyStateChange(state) {
+    if (this._listeners['stateChange']) this._listeners['stateChange'](state)
+    if (this.onStateChange) this.onStateChange(state)
+  }
+
+  _notifyResult(text, isFinal) {
+    if (this._listeners['result']) this._listeners['result']({ text, isFinal })
+    if (this.onTranscript) this.onTranscript(text, isFinal)
   }
 
   // ═══════════════════════════════════
   // SPEECH RECOGNITION
   // ═══════════════════════════════════
 
-  init() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SpeechRecognition) {
+  async init() {
+    if (this._initialized) return true
+    
+    await loadCapPlugins()
+    this._isNative = Capacitor.isNativePlatform() && !!SpeechRecognitionPlugin
+
+    if (this._isNative) {
+      // Native Android/iOS — use Capacitor plugin
+      try {
+        const permResult = await SpeechRecognitionPlugin.requestPermissions()
+        console.log('[JarvisVoice] Native permissions:', permResult)
+        
+        // Listen for partial results
+        SpeechRecognitionPlugin.addListener('partialResults', (data) => {
+          const text = data.matches?.[0] || ''
+          if (text) this._notifyResult(text, false)
+        })
+        
+        this._initialized = true
+        console.log('[JarvisVoice] Initialized — Native Capacitor (Hindi + English)')
+        return true
+      } catch (e) {
+        console.warn('[JarvisVoice] Native init failed, falling back to Web API:', e)
+        this._isNative = false
+      }
+    }
+
+    // Fallback: Web Speech API (desktop/browsers)
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognitionAPI) {
       console.warn('[JarvisVoice] Speech recognition not supported')
+      this._initialized = true
       return false
     }
 
-    this.recognition = new SpeechRecognition()
+    this.recognition = new SpeechRecognitionAPI()
     this.recognition.continuous = true
     this.recognition.interimResults = true
     this.recognition.lang = this.language
@@ -51,22 +115,67 @@ class JarvisVoiceEngine {
     this.recognition.onerror = (event) => this._handleError(event)
     this.recognition.onend = () => {
       if (this.isListening) {
-        // Auto-restart if user hasn't stopped
         setTimeout(() => {
           try { this.recognition.start() } catch {}
         }, 500)
       }
     }
 
-    console.log('[JarvisVoice] Initialized — Hindi + English')
+    this.synthesis = window.speechSynthesis || null
+    this._initialized = true
+    console.log('[JarvisVoice] Initialized — Web Speech API (Hindi + English)')
     return true
   }
 
-  startListening() {
-    if (!this.recognition) this.init()
-    if (!this.recognition) return false
+  async startListening(lang) {
+    if (!this._initialized) await this.init()
+    if (lang) this.language = lang
 
+    if (this._isNative) {
+      try {
+        await SpeechRecognitionPlugin.start({
+          language: this.language,
+          maxResults: 3,
+          partialResults: true,
+          popup: false
+        })
+        this.isListening = true
+        this._notifyStateChange('listening')
+        
+        // Listen for final results
+        SpeechRecognitionPlugin.addListener('listeningState', (state) => {
+          if (state.status === 'stopped' && this.isListening) {
+            // Auto-restart
+            setTimeout(() => this.startListening(this.language), 500)
+          }
+        })
+        
+        // Get results
+        const resultHandler = async (data) => {
+          const text = data.matches?.[0] || ''
+          if (text) {
+            this._notifyResult(text, true)
+            await this.handleCommand(text.trim())
+          }
+        }
+        SpeechRecognitionPlugin.addListener('results', resultHandler)
+        
+        console.log('[JarvisVoice] Native listening...')
+        return true
+      } catch (e) {
+        console.warn('[JarvisVoice] Native start failed:', e)
+        return false
+      }
+    }
+
+    // Web Speech API fallback
+    if (!this.recognition) {
+      this.init()
+      if (!this.recognition) return false
+    }
+    
     try {
+      this.recognition.lang = this.language
       this.recognition.start()
       this.isListening = true
       this._notifyStateChange('listening')
@@ -78,8 +187,16 @@ class JarvisVoiceEngine {
     }
   }
 
-  stopListening() {
+  async stopListening() {
     this.isListening = false
+    
+    if (this._isNative) {
+      try {
+        await SpeechRecognitionPlugin.stop()
+        await SpeechRecognitionPlugin.removeAllListeners()
+      } catch {}
+    }
+    
     if (this.recognition) {
       try { this.recognition.stop() } catch {}
     }
@@ -91,19 +208,17 @@ class JarvisVoiceEngine {
     const lastResult = results[results.length - 1]
 
     if (!lastResult.isFinal) {
-      // Interim result — show live transcript
       const interim = lastResult[0].transcript
-      if (this.onTranscript) this.onTranscript(interim, false)
+      this._notifyResult(interim, false)
       return
     }
 
     const transcript = lastResult[0].transcript.trim().toLowerCase()
     const confidence = lastResult[0].confidence
 
-    if (this.onTranscript) this.onTranscript(transcript, true)
+    this._notifyResult(transcript, true)
     console.log(`[JarvisVoice] Heard: "${transcript}" (${(confidence * 100).toFixed(0)}%)`)
 
-    // Check for wake word or process command
     if (transcript.includes(this.wakeWord) || this.isListening) {
       const command = transcript.replace(this.wakeWord, '').trim()
       if (command) this._processCommand(command, confidence)
@@ -121,20 +236,43 @@ class JarvisVoiceEngine {
   // TEXT-TO-SPEECH (Hindi + English)
   // ═══════════════════════════════════
 
-  speak(text, lang = null) {
-    if (!this.synthesis) return Promise.resolve()
+  async speak(text, lang = null) {
+    const detectedLang = lang || this._detectLanguage(text)
+    
+    // Try native TTS first
+    if (this._isNative && TextToSpeechPlugin) {
+      try {
+        this._notifyStateChange('speaking')
+        await TextToSpeechPlugin.speak({
+          text,
+          lang: detectedLang,
+          rate: 1.0,
+          pitch: 1.0,
+          volume: 1.0,
+          category: 'playback'
+        })
+        this._notifyStateChange(this.isListening ? 'listening' : 'idle')
+        return
+      } catch (e) {
+        console.warn('[JarvisVoice] Native TTS failed, using web fallback:', e)
+      }
+    }
+
+    // Web Speech API fallback
+    if (!this.synthesis) {
+      this.synthesis = window.speechSynthesis || null
+    }
+    if (!this.synthesis) return
 
     return new Promise((resolve) => {
-      // Cancel any ongoing speech
       this.synthesis.cancel()
 
       const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = lang || this._detectLanguage(text)
+      utterance.lang = detectedLang
       utterance.rate = 1.0
       utterance.pitch = 1.0
       utterance.volume = 1.0
 
-      // Find best voice
       const voices = this.synthesis.getVoices()
       const hindiVoice = voices.find(v => v.lang.includes('hi'))
       const englishVoice = voices.find(v => v.lang.includes('en-IN')) || voices.find(v => v.lang.includes('en'))
@@ -145,15 +283,17 @@ class JarvisVoiceEngine {
         utterance.voice = englishVoice
       }
 
-      utterance.onend = () => resolve()
-      utterance.onerror = () => resolve()
-
-      this.synthesis.speak(utterance)
       this._notifyStateChange('speaking')
       utterance.onend = () => {
         this._notifyStateChange(this.isListening ? 'listening' : 'idle')
         resolve()
       }
+      utterance.onerror = () => {
+        this._notifyStateChange(this.isListening ? 'listening' : 'idle')
+        resolve()
+      }
+
+      this.synthesis.speak(utterance)
     })
   }
 
@@ -353,18 +493,13 @@ class JarvisVoiceEngine {
   // STATE
   // ═══════════════════════════════════
 
-  _notifyStateChange(state) {
-    if (this.onStateChange) this.onStateChange(state)
-    window.dispatchEvent(new CustomEvent('jarvis-voice-state', { detail: { state } }))
-  }
-
   getState() {
     return {
       isListening: this.isListening,
       language: this.language,
       wakeWord: this.wakeWord,
-      supported: !!(window.SpeechRecognition || window.webkitSpeechRecognition),
-      ttsSupported: !!this.synthesis,
+      supported: this._isNative || !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+      ttsSupported: this._isNative || !!this.synthesis,
       history: this.conversationHistory.slice(-20)
     }
   }
@@ -380,9 +515,12 @@ class JarvisVoiceEngine {
     return this.language
   }
 
-  destroy() {
-    this.stopListening()
+  async destroy() {
+    await this.stopListening()
     if (this.synthesis) this.synthesis.cancel()
+    if (this._isNative && SpeechRecognitionPlugin) {
+      try { await SpeechRecognitionPlugin.removeAllListeners() } catch {}
+    }
   }
 }
 

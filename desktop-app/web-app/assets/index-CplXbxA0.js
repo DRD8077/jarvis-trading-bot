@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/web-C34X64Ql.js","assets/index-CNHTL47a.js"])))=>i.map(i=>d[i]);
+import{_ as o}from"./index-CgyISwKQ.js";import{registerPlugin as i}from"./index-CNHTL47a.js";import"./vendor-react-DwoDrinR.js";import"./vendor-ui-D35vr7Mu.js";const _=i("SpeechRecognition",{web:()=>o(()=>import("./web-C34X64Ql.js"),__vite__mapDeps([0,1])).then(e=>new e.SpeechRecognitionWeb)});export{_ as SpeechRecognition};

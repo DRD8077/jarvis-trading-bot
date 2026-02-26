@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Wifi, WifiOff, Zap, RefreshCw } from 'lucide-react'
-import realtime from '../services/realtime'
-import autoRefresh from '../services/autoRefreshEngine'
+// NO static service imports — loaded dynamically
 
 /**
  * 🟢 Connection Status Bar — Shows real-time connection health
@@ -20,10 +19,16 @@ const ConnectionStatus = () => {
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
 
-    // Subscribe to WS status
-    const unsub = realtime.subscribe('_status', (data) => {
-      setWsConnected(data?.connected || false)
-    })
+    // Dynamically load realtime service
+    let unsub = null
+    import('../services/realtime').then(mod => {
+      const rt = mod?.default
+      if (rt && typeof rt.subscribe === 'function') {
+        unsub = rt.subscribe('_status', (data) => {
+          setWsConnected(data?.connected || false)
+        })
+      }
+    }).catch(() => {})
 
     // Show briefly on mount to confirm connected
     setShowStatus(true)
@@ -39,7 +44,10 @@ const ConnectionStatus = () => {
 
   const handleForceRefresh = () => {
     setRefreshing(true)
-    autoRefresh.forceRefresh()
+    import('../services/autoRefreshEngine').then(mod => {
+      const ar = mod?.default
+      if (ar && typeof ar.forceRefresh === 'function') ar.forceRefresh()
+    }).catch(() => {})
     setTimeout(() => setRefreshing(false), 1000)
   }
 

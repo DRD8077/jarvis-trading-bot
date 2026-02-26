@@ -17,9 +17,14 @@ try {
 
 class JarvisDeviceService {
   constructor() {
-    this.isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform();
-    this.platform = this.isNative ? window.Capacitor.getPlatform() : 'web';
-  }
+    try {
+        this.isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform();
+      this.platform = this.isNative ? window.Capacitor.getPlatform() : 'web';
+  
+    } catch(e) {
+      console.warn('[JarvisDeviceService] Constructor init error:', e)
+    }
+}
 
   // ═══════════════════════════════════
   // DEVICE INFO

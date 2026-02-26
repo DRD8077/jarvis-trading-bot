@@ -13,13 +13,18 @@ import { getApiBase } from './apiBase'
 
 class BackgroundAlertEngine {
   constructor() {
-    this.alerts = this._loadAlerts()
-    this.worker = null
-    this.checkInterval = null
-    this.isRunning = false
-    this.lastPrices = {}
-    this.onAlertTriggered = null
-  }
+    try {
+        this.alerts = this._loadAlerts()
+      this.worker = null
+      this.checkInterval = null
+      this.isRunning = false
+      this.lastPrices = {}
+      this.onAlertTriggered = null
+  
+    } catch(e) {
+      console.warn('[backgroundAlerts] Constructor init error:', e)
+    }
+}
 
   _loadAlerts() {
     try {

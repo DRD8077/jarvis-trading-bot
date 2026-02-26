@@ -9,8 +9,13 @@
 
 class ChartCaptureEngine {
   constructor() {
-    this.watermark = 'JARVIS AI Trading • jarvis.trading'
-  }
+    try {
+        this.watermark = 'JARVIS AI Trading • jarvis.trading'
+  
+    } catch(e) {
+      console.warn('[chartCapture] Constructor init error:', e)
+    }
+}
 
   // ═══════════════════════════════════
   // CAPTURE ELEMENT AS IMAGE

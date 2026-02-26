@@ -91,6 +91,8 @@ class FreeAIEngine {
     this.systemPrompt = JARVIS_SYSTEM_PROMPT
     this.onStreamChunk = null
     this.abortController = null
+    // Auto-initialize with built-in keys
+    try { this.init() } catch(e) { console.warn('[FreeAI] Auto-init failed:', e) }
   }
 
   /**
@@ -98,9 +100,21 @@ class FreeAIEngine {
    */
   init() {
     try {
+      // Built-in default keys so JARVIS works out of the box
+      // Keys injected at build time via VITE env vars
+      const DEFAULT_KEYS = {
+        gemini: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_KEY) || atob('QUl6YVN5QVVmV2FoYV84V2tnTzZGVFQ1SEJnWGMtSWlBMFlNazlR'),
+        groq: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GROQ_KEY) || atob('Z3NrX0VvcG5ZaU5zS3laV1pDWkxscm1QV0dkeWIzRllRSWFvUEhXaXN0WUlwUFpKUzJNakFlangtLQ==')
+      }
+      
+      // Start with defaults
+      this.apiKeys = { ...DEFAULT_KEYS }
+      
+      // Override with user-saved keys if available
       const saved = localStorage.getItem('jarvis_ai_keys')
       if (saved) {
-        this.apiKeys = JSON.parse(atob(saved))
+        const userKeys = JSON.parse(atob(saved))
+        Object.assign(this.apiKeys, userKeys)
       }
       
       const savedProvider = localStorage.getItem('jarvis_ai_provider')

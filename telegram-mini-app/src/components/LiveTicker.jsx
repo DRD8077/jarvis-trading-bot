@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { TrendingUp, TrendingDown, Minus, Wifi, WifiOff } from 'lucide-react'
+// api.js no longer triggers realtime.init() at import — safe to import
 import { fetchTicker } from '../services/api'
+// useAutoRefresh also safe now (realtime loaded dynamically)
 import { useAutoRefresh } from '../hooks/useRealTime'
 
 const LiveTicker = () => {
@@ -20,6 +22,28 @@ const LiveTicker = () => {
       })))
     }
   }, [data])
+
+  // Listen for real-time WebSocket price updates from wsHub
+  useEffect(() => {
+    const handlePriceUpdate = (e) => {
+      try {
+        const update = e.detail
+        if (!update) return
+        setTickers(prev => prev.map(t => {
+          const match = (update.symbol === t.symbol) || (update.s === t.symbol)
+          if (!match) return t
+          return {
+            ...t,
+            price: update.price_inr || update.price || update.p || t.price,
+            priceUsd: update.price_usd || update.p || t.priceUsd,
+            change: update.change_24h ?? update.change ?? t.change
+          }
+        }))
+      } catch {}
+    }
+    window.addEventListener('jarvis-price-update', handlePriceUpdate)
+    return () => window.removeEventListener('jarvis-price-update', handlePriceUpdate)
+  }, [])
 
   useEffect(() => {
     const el = scrollRef.current

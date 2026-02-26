@@ -13,16 +13,21 @@ import { getApiBase } from './apiBase'
 
 class GeminiVoiceEngine {
   constructor() {
-    this.recognition = null
-    this.synthesis = window.speechSynthesis || null
-    this.isListening = false
-    this.language = 'en-IN'
-    this.onResult = null
-    this.onCommand = null
-    this.onError = null
-    this.commandHistory = []
-    this._initRecognition()
-  }
+    try {
+        this.recognition = null
+      this.synthesis = window.speechSynthesis || null
+      this.isListening = false
+      this.language = 'en-IN'
+      this.onResult = null
+      this.onCommand = null
+      this.onError = null
+      this.commandHistory = []
+      this._initRecognition()
+  
+    } catch(e) {
+      console.warn('[voiceCommandEngine] Constructor init error:', e)
+    }
+}
 
   _initRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition

@@ -14,13 +14,18 @@
 
 class CodeExecutionEngine {
   constructor() {
-    this.isDesktop = !!window.jarvisDesktop
-    this.pyodideReady = false
-    this.pyodide = null
-    this.runningProcesses = new Map()
-    this.executionHistory = []
-    this.maxHistory = 50
-  }
+    try {
+        this.isDesktop = !!window.jarvisDesktop
+      this.pyodideReady = false
+      this.pyodide = null
+      this.runningProcesses = new Map()
+      this.executionHistory = []
+      this.maxHistory = 50
+  
+    } catch(e) {
+      console.warn('[codeExecutionEngine] Constructor init error:', e)
+    }
+}
 
   /**
    * Execute code in specified language

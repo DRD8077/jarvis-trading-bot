@@ -16,21 +16,26 @@ const VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkOs-qy02
 
 class PushNotificationEngine {
   constructor() {
-    this.permission = 'default'
-    this.subscription = null
-    this.listeners = new Map()
-    this.alerts = JSON.parse(localStorage.getItem('jarvis_price_alerts') || '[]')
-    this.preferences = JSON.parse(localStorage.getItem('jarvis_notif_prefs') || JSON.stringify({
-      priceAlerts: true,
-      whaleAlerts: true,
-      signals: true,
-      tradeUpdates: true,
-      news: false,
-      sound: true,
-      vibrate: true
-    }))
-    this._init()
-  }
+    try {
+        this.permission = 'default'
+      this.subscription = null
+      this.listeners = new Map()
+      this.alerts = JSON.parse(localStorage.getItem('jarvis_price_alerts') || '[]')
+      this.preferences = JSON.parse(localStorage.getItem('jarvis_notif_prefs') || JSON.stringify({
+        priceAlerts: true,
+        whaleAlerts: true,
+        signals: true,
+        tradeUpdates: true,
+        news: false,
+        sound: true,
+        vibrate: true
+      }))
+      this._init()
+  
+    } catch(e) {
+      console.warn('[pushNotifications] Constructor init error:', e)
+    }
+}
 
   async _init() {
     if (typeof window === 'undefined') return

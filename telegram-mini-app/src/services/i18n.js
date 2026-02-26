@@ -179,9 +179,14 @@ const TRANSLATIONS = {
 
 class I18nEngine {
   constructor() {
-    this.currentLang = localStorage.getItem('jarvis_language') || this._detectLanguage()
-    this.listeners = new Set()
-  }
+    try {
+        this.currentLang = localStorage.getItem('jarvis_language') || this._detectLanguage()
+      this.listeners = new Set()
+  
+    } catch(e) {
+      console.warn('[i18n] Constructor init error:', e)
+    }
+}
 
   _detectLanguage() {
     const browserLang = navigator.language?.split('-')[0] || 'en'

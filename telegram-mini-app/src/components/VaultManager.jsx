@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Lock, Unlock, Key, Shield, Eye, EyeOff, Plus, Trash2, ArrowLeft, Copy, Check } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import encryptedVault from '../services/encryptedVault'
 
 const VaultManager = () => {
   const navigate = useNavigate()
+  const encryptedVaultRef = useRef(null)
   const [isUnlocked, setIsUnlocked] = useState(false)
   const [pin, setPin] = useState('')
   const [keys, setKeys] = useState([])
@@ -14,12 +14,16 @@ const VaultManager = () => {
   const [copiedId, setCopiedId] = useState(null)
   const [showValues, setShowValues] = useState({})
 
+  useEffect(() => {
+    import('../services/encryptedVault').then(m => { encryptedVaultRef.current = m?.default || m }).catch(() => {})
+  }, [])
+
   const handleUnlock = async () => {
     if (pin.length < 4) {
       setError('PIN minimum 4 digits')
       return
     }
-    const ok = await encryptedVault.unlock(pin)
+    const ok = encryptedVaultRef.current ? await encryptedVaultRef.current.unlock(pin) : false
     if (ok) {
       setIsUnlocked(true)
       setError('')
@@ -33,7 +37,7 @@ const VaultManager = () => {
     const stored = []
     const categories = ['api', 'exchange', 'personal', 'other']
     for (const cat of categories) {
-      const items = await encryptedVault.retrieve(`vault_list_${cat}`)
+      const items = encryptedVaultRef.current ? await encryptedVaultRef.current.retrieve(`vault_list_${cat}`) : null
       if (items) {
         items.forEach(item => stored.push({ ...item, category: cat }))
       }
@@ -44,26 +48,26 @@ const VaultManager = () => {
   const handleAdd = async () => {
     if (!newKey.name || !newKey.value) return
     const item = { name: newKey.name, id: Date.now().toString() }
-    await encryptedVault.store(`vault_${item.id}`, newKey.value)
+    if (encryptedVaultRef.current) await encryptedVaultRef.current.store(`vault_${item.id}`, newKey.value)
     const listKey = `vault_list_${newKey.category}`
-    const existing = (await encryptedVault.retrieve(listKey)) || []
+    const existing = (encryptedVaultRef.current ? await encryptedVaultRef.current.retrieve(listKey) : null) || []
     existing.push(item)
-    await encryptedVault.store(listKey, existing)
+    if (encryptedVaultRef.current) await encryptedVaultRef.current.store(listKey, existing)
     setNewKey({ name: '', value: '', category: 'api' })
     setShowAdd(false)
     loadKeys()
   }
 
   const handleDelete = async (item) => {
-    await encryptedVault.remove(`vault_${item.id}`)
+    if (encryptedVaultRef.current) await encryptedVaultRef.current.remove(`vault_${item.id}`)
     const listKey = `vault_list_${item.category}`
-    const existing = (await encryptedVault.retrieve(listKey)) || []
-    await encryptedVault.store(listKey, existing.filter(e => e.id !== item.id))
+    const existing = (encryptedVaultRef.current ? await encryptedVaultRef.current.retrieve(listKey) : null) || []
+    if (encryptedVaultRef.current) await encryptedVaultRef.current.store(listKey, existing.filter(e => e.id !== item.id))
     loadKeys()
   }
 
   const handleCopy = async (item) => {
-    const value = await encryptedVault.retrieve(`vault_${item.id}`)
+    const value = encryptedVaultRef.current ? await encryptedVaultRef.current.retrieve(`vault_${item.id}`) : null
     if (value) {
       await navigator.clipboard.writeText(value)
       setCopiedId(item.id)
@@ -75,7 +79,7 @@ const VaultManager = () => {
     if (showValues[item.id]) {
       setShowValues(prev => ({ ...prev, [item.id]: null }))
     } else {
-      const value = await encryptedVault.retrieve(`vault_${item.id}`)
+      const value = encryptedVaultRef.current ? await encryptedVaultRef.current.retrieve(`vault_${item.id}`) : null
       setShowValues(prev => ({ ...prev, [item.id]: value }))
     }
   }
@@ -134,7 +138,7 @@ const VaultManager = () => {
           </div>
         </div>
         <button
-          onClick={() => { encryptedVault.lock(); setIsUnlocked(false); setPin('') }}
+          onClick={() => { encryptedVaultRef.current?.lock?.(); setIsUnlocked(false); setPin('') }}
           className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-xs flex items-center gap-1"
         >
           <Lock size={14} /> Lock

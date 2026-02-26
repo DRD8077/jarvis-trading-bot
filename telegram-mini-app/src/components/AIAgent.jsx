@@ -8,9 +8,6 @@ import {
   PlayCircle, StopCircle, AlertCircle, CheckCircle2, Info
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
-import jarvisAI from '../services/jarvisAIEngine'
-import jarvisSPOC, { MODEL_REGISTRY } from '../services/jarvisNuclearSPOC'
-import { batteryOptimizer } from '../services/securityBatteryPerf'
 import { useApp } from '../context/AppContext'
 
 // ═══ Markdown Renderer ═══
@@ -107,6 +104,11 @@ const suggestions = [
 const AIAgent = () => {
   const { hapticFeedback, addNotification } = useApp()
   
+  // Service refs (loaded dynamically to avoid crash on Android WebView)
+  const jarvisAIRef = useRef(null)
+  const jarvisSPOCRef = useRef(null)
+  const [modelRegistry, setModelRegistry] = useState({})
+  
   // ═══ State ═══
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
@@ -144,25 +146,40 @@ const AIAgent = () => {
 
   // ═══ Init ═══
   useEffect(() => {
-    loadStatus()
-    
-    // Subscribe to events
-    const unsubs = [
-      jarvisAI.on('speechResult', (e) => {
-        if (e.partial) setPartialText(e.partial)
-        if (e.isFinal && e.text) {
-          setPartialText('')
-          setInput(e.text)
-          // Auto-send if voice mode
-          if (e.isComplete) handleSend(e.text)
-        }
-      }),
-      jarvisAI.on('agentStep', (e) => setAgentStep(e.message)),
-      jarvisAI.on('speakingEnd', () => setIsSpeaking(false)),
-      jarvisAI.on('downloadProgress', (e) => setDownloadProgress(e.progress || 0)),
-    ]
-    
-    return () => unsubs.forEach(u => u())
+    // Load services dynamically
+    import('../services/jarvisAIEngine').then(m => {
+      jarvisAIRef.current = m?.default || m
+      // Subscribe to events
+      const unsubs = [
+        jarvisAIRef.current?.on?.('speechResult', (e) => {
+          if (e.partial) setPartialText(e.partial)
+          if (e.isFinal && e.text) {
+            setPartialText('')
+            setInput(e.text)
+            if (e.isComplete) handleSend(e.text)
+          }
+        }),
+        jarvisAIRef.current?.on?.('agentStep', (e) => setAgentStep(e.message)),
+        jarvisAIRef.current?.on?.('speakingEnd', () => setIsSpeaking(false)),
+        jarvisAIRef.current?.on?.('downloadProgress', (e) => setDownloadProgress(e.progress || 0)),
+      ].filter(Boolean)
+      // Store for cleanup
+      window.__jarvisAIUnsubs = unsubs
+      loadStatus()
+    }).catch(() => {})
+
+    import('../services/jarvisNuclearSPOC').then(m => {
+      jarvisSPOCRef.current = m?.default || m
+      if (m?.MODEL_REGISTRY) setModelRegistry(m.MODEL_REGISTRY)
+    }).catch(() => {})
+
+    // batteryOptimizer not actively used, skip
+
+    return () => {
+      const unsubs = window.__jarvisAIUnsubs || []
+      unsubs.forEach(u => u?.())
+      delete window.__jarvisAIUnsubs
+    }
   }, [])
 
   // Auto-scroll
@@ -172,17 +189,17 @@ const AIAgent = () => {
 
   const loadStatus = async () => {
     try {
-      const status = await jarvisAI.getFullStatus()
+      if (!jarvisAIRef.current) return
+      const status = await jarvisAIRef.current.getFullStatus()
       setLlmReady(status.llm?.loaded || false)
       setSttReady(status.stt?.modelReady || false)
       setTtsReady(status.tts?.ready || false)
       setCurrentModel(status.llm?.currentModel || '')
       
-      // Load model lists
-      const llmModels = await jarvisAI.getModels()
+      const llmModels = await jarvisAIRef.current.getModels()
       setModels(llmModels.models || [])
       
-      const sttModelList = await jarvisAI.getSTTModels()
+      const sttModelList = await jarvisAIRef.current.getSTTModels()
       setSttModels(sttModelList.models || [])
     } catch (e) {
       console.warn('Status load error:', e)
@@ -205,7 +222,7 @@ const AIAgent = () => {
     
     try {
       // Use Nuclear SPOC — agentic pipeline: classify → RAG → CoT → tools → self-reflect
-      const result = await jarvisSPOC.query(text)
+      const result = jarvisSPOCRef.current ? await jarvisSPOCRef.current.query(text) : { text: 'AI engine loading... please try again.', model: '', tokensUsed: 0 }
       
       const displayText = result.text || result.response || 'No response'
       const meta = []
@@ -226,7 +243,7 @@ const AIAgent = () => {
       
       if (autoSpeak && voiceEnabled) {
         setIsSpeaking(true)
-        jarvisAI.speak(displayText, { language }).catch(() => setIsSpeaking(false))
+        jarvisAIRef.current?.speak?.(displayText, { language })?.catch?.(() => setIsSpeaking(false))
       }
     } catch (e) {
       setMessages(prev => [...prev, { 
@@ -244,7 +261,7 @@ const AIAgent = () => {
     
     if (isListening) {
       setIsListening(false)
-      await jarvisAI.stopListening()
+      await jarvisAIRef.current?.stopListening?.()
       return
     }
     
@@ -252,12 +269,12 @@ const AIAgent = () => {
     setPartialText('')
     
     try {
-      await jarvisAI.startListening()
+      await jarvisAIRef.current?.startListening?.()
       // Auto-stop after 10 seconds
       setTimeout(() => {
         if (isListening) {
           setIsListening(false)
-          jarvisAI.stopListening()
+          jarvisAIRef.current?.stopListening?.()
         }
       }, 10000)
     } catch (e) {
@@ -267,7 +284,7 @@ const AIAgent = () => {
   }
 
   const handleStopSpeaking = () => {
-    jarvisAI.stopSpeaking()
+    jarvisAIRef.current?.stopSpeaking?.()
     setIsSpeaking(false)
   }
 
@@ -275,7 +292,7 @@ const AIAgent = () => {
     hapticFeedback?.('impact')
     setIsLoading(true)
     try {
-      await jarvisAI.loadModel(model.path, { threads: 4, contextSize: 2048 })
+      await jarvisAIRef.current?.loadModel?.(model.path, { threads: 4, contextSize: 2048 })
       setLlmReady(true)
       setCurrentModel(model.name)
       addNotification?.(`✅ Model loaded: ${model.name}`, 'success')
@@ -291,7 +308,7 @@ const AIAgent = () => {
     setDownloadProgress(0)
     try {
       // Download a small but powerful model
-      await jarvisAI.downloadModel(
+      await jarvisAIRef.current?.downloadModel?.(
         'https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf',
         'tinyllama-1.1b-chat-Q4_K_M.gguf'
       )
@@ -307,8 +324,8 @@ const AIAgent = () => {
   const handleDownloadSTT = async (lang) => {
     setDownloading(true)
     try {
-      await jarvisAI.downloadSTTModel(lang)
-      await jarvisAI.initSTT(lang)
+      await jarvisAIRef.current?.downloadSTTModel?.(lang)
+      await jarvisAIRef.current?.initSTT?.(lang)
       setSttReady(true)
       addNotification?.(`✅ STT model (${lang}) downloaded!`, 'success')
     } catch (e) {
@@ -321,10 +338,10 @@ const AIAgent = () => {
   const handleInitAll = async () => {
     setIsLoading(true)
     try {
-      const result = await jarvisAI.init({ sttLanguage: 'en-us' })
-      setLlmReady(result.llm)
-      setSttReady(result.stt)
-      setTtsReady(result.tts)
+      const result = jarvisAIRef.current ? await jarvisAIRef.current.init({ sttLanguage: 'en-us' }) : {}
+      setLlmReady(result.llm || false)
+      setSttReady(result.stt || false)
+      setTtsReady(result.tts || false)
       addNotification?.('✅ AI Engine initialized!', 'success')
     } catch (e) {
       addNotification?.('Init error: ' + e.message, 'error')
@@ -342,8 +359,8 @@ const AIAgent = () => {
 
   const clearChat = () => {
     setMessages([])
-    jarvisAI.clearHistory()
-    jarvisSPOC.memory?.clearShortTerm?.()
+    jarvisAIRef.current?.clearHistory?.()
+    jarvisSPOCRef.current?.memory?.clearShortTerm?.()
     hapticFeedback?.('impact')
   }
 
@@ -360,7 +377,7 @@ const AIAgent = () => {
               </div>
               <div>
                 <h1 className="text-sm font-bold text-white">JARVIS Nuclear AI</h1>
-                <p className="text-[10px] text-slate-400">Nuclear SPOC • CoT+RAG • {Object.keys(MODEL_REGISTRY).length} Models • Offline</p>
+                <p className="text-[10px] text-slate-400">Nuclear SPOC • CoT+RAG • {Object.keys(modelRegistry).length} Models • Offline</p>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
@@ -489,7 +506,7 @@ const AIAgent = () => {
                         </span>
                         {msg.role === 'assistant' && (
                           <div className="flex items-center gap-1">
-                            <button onClick={() => { setIsSpeaking(true); jarvisAI.speak(msg.content, { language }) }}
+                            <button onClick={() => { setIsSpeaking(true); jarvisAIRef.current?.speak?.(msg.content, { language }) }}
                               className="p-0.5 rounded active:scale-90">
                               <Volume2 size={10} className="text-white/30" />
                             </button>
@@ -531,25 +548,25 @@ const AIAgent = () => {
             <div className="grid grid-cols-4 gap-2">
               <QuickCmd icon={Battery} label="Battery" color="from-green-600 to-emerald-700"
                 onClick={async () => {
-                  const b = await jarvisAI.getBattery()
+                  const b = jarvisAIRef.current ? await jarvisAIRef.current.getBattery() : { level: '--', status: 'unknown', chargingType: 'N/A', temperature: '--' }
                   const msg = `🔋 Battery: ${b.level}%\n${b.status}\nCharging: ${b.chargingType}\nTemp: ${b.temperature}°C`
                   setMessages(prev => [...prev, { role: 'assistant', content: msg, time: new Date(), isQuick: true }])
                   setActiveTab('chat')
-                  if (autoSpeak) jarvisAI.speak(`Battery ${b.level} percent hai, ${b.status}`, { language })
+                  if (autoSpeak) jarvisAIRef.current?.speak?.(`Battery ${b.level} percent hai, ${b.status}`, { language })
                 }} />
               
               <QuickCmd icon={Clock} label="Time" color="from-blue-600 to-cyan-700"
                 onClick={async () => {
-                  const dt = await jarvisAI.getDateTime()
+                  const dt = jarvisAIRef.current ? await jarvisAIRef.current.getDateTime() : { time: new Date().toLocaleTimeString(), day: new Date().toLocaleDateString(), date: '' }
                   const msg = `🕐 ${dt.time}\n📅 ${dt.day}, ${dt.date}`
                   setMessages(prev => [...prev, { role: 'assistant', content: msg, time: new Date(), isQuick: true }])
                   setActiveTab('chat')
-                  if (autoSpeak) jarvisAI.speak(`Abhi ${dt.time} baj rahe hain, ${dt.day}`, { language })
+                  if (autoSpeak) jarvisAIRef.current?.speak?.(`Abhi ${dt.time} baj rahe hain, ${dt.day}`, { language })
                 }} />
               
               <QuickCmd icon={Wifi} label="Network" color="from-purple-600 to-violet-700"
                 onClick={async () => {
-                  const n = await jarvisAI.getNetwork()
+                  const n = jarvisAIRef.current ? await jarvisAIRef.current.getNetwork() : { connected: navigator.onLine, type: 'unknown', ssid: '' }
                   const msg = `📶 ${n.connected ? '✅ Connected' : '❌ Disconnected'}\nType: ${n.type}\nWiFi: ${n.ssid || 'Off'}`
                   setMessages(prev => [...prev, { role: 'assistant', content: msg, time: new Date(), isQuick: true }])
                   setActiveTab('chat')
@@ -557,43 +574,43 @@ const AIAgent = () => {
               
               <QuickCmd icon={Smartphone} label="Device" color="from-orange-600 to-amber-700"
                 onClick={async () => {
-                  const d = await jarvisAI.getDeviceInfo()
+                  const d = jarvisAIRef.current ? await jarvisAIRef.current.getDeviceInfo() : { brand: 'Unknown', model: 'Unknown', androidVersion: '--', sdkVersion: '--', processors: '--', maxMemoryMB: '--' }
                   const msg = `📱 **${d.brand} ${d.model}**\nAndroid ${d.androidVersion} (SDK ${d.sdkVersion})\n${d.processors} CPU cores\nRAM: ${d.maxMemoryMB}MB`
                   setMessages(prev => [...prev, { role: 'assistant', content: msg, time: new Date(), isQuick: true }])
                   setActiveTab('chat')
                 }} />
               
               <QuickCmd icon={Volume2} label="Vol Up" color="from-teal-600 to-cyan-700"
-                onClick={() => jarvisAI.setVolume(80, 'media')} />
+                onClick={() => jarvisAIRef.current?.setVolume?.(80, 'media')} />
               
               <QuickCmd icon={VolumeX} label="Vol Down" color="from-slate-600 to-slate-700"
-                onClick={() => jarvisAI.setVolume(30, 'media')} />
+                onClick={() => jarvisAIRef.current?.setVolume?.(30, 'media')} />
               
               <QuickCmd icon={Vibrate} label="Vibrate" color="from-pink-600 to-rose-700"
-                onClick={() => jarvisAI.vibrate(300)} />
+                onClick={() => jarvisAIRef.current?.vibrate?.(300)} />
               
               <QuickCmd icon={Settings2} label="Settings" color="from-slate-600 to-gray-700"
-                onClick={() => jarvisAI.openSettings('')} />
+                onClick={() => jarvisAIRef.current?.openSettings?.('')} />
             </div>
 
             <h3 className="text-xs font-bold text-white mt-4">🌐 Quick Actions</h3>
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => jarvisAI.openUrl('https://www.google.com')}
+              <button onClick={() => jarvisAIRef.current?.openUrl?.('https://www.google.com')}
                 className="flex items-center gap-2 p-3 rounded-xl bg-slate-800 active:scale-95">
                 <Globe size={16} className="text-blue-400" />
                 <span className="text-xs text-white">Open Browser</span>
               </button>
-              <button onClick={() => jarvisAI.openSettings('wifi')}
+              <button onClick={() => jarvisAIRef.current?.openSettings?.('wifi')}
                 className="flex items-center gap-2 p-3 rounded-xl bg-slate-800 active:scale-95">
                 <Wifi size={16} className="text-purple-400" />
                 <span className="text-xs text-white">WiFi Settings</span>
               </button>
-              <button onClick={() => jarvisAI.openSettings('bluetooth')}
+              <button onClick={() => jarvisAIRef.current?.openSettings?.('bluetooth')}
                 className="flex items-center gap-2 p-3 rounded-xl bg-slate-800 active:scale-95">
                 <Zap size={16} className="text-blue-400" />
                 <span className="text-xs text-white">Bluetooth</span>
               </button>
-              <button onClick={() => jarvisAI.openSettings('tts')}
+              <button onClick={() => jarvisAIRef.current?.openSettings?.('tts')}
                 className="flex items-center gap-2 p-3 rounded-xl bg-slate-800 active:scale-95">
                 <Languages size={16} className="text-green-400" />
                 <span className="text-xs text-white">TTS Settings</span>
@@ -607,7 +624,7 @@ const AIAgent = () => {
                 id="phoneInput" />
               <button onClick={() => {
                 const num = document.getElementById('phoneInput')?.value
-                if (num) jarvisAI.makeCall(num)
+                if (num) jarvisAIRef.current?.makeCall?.(num)
               }} className="px-4 py-2 bg-green-600 rounded-xl text-xs text-white font-medium active:scale-95">
                 <Phone size={14} />
               </button>
@@ -670,7 +687,7 @@ const AIAgent = () => {
               <h3 className="text-xs font-bold text-white mb-2">🔬 2026 SOTA Nuclear Models</h3>
               <p className="text-[9px] text-slate-400 mb-2">DeepSeek-R1, Qwen3, Phi-4, Gemma-3n, Llama-3.2 — PhD-level reasoning</p>
               <div className="space-y-2">
-                {Object.entries(MODEL_REGISTRY).map(([key, m]) => (
+                {Object.entries(modelRegistry).map(([key, m]) => (
                   <div key={key} className="p-3 rounded-xl bg-slate-800/30 border border-slate-700/30">
                     <div className="flex items-center justify-between mb-1">
                       <p className="text-[11px] font-bold text-white">{m.name}</p>
@@ -694,7 +711,7 @@ const AIAgent = () => {
                       setDownloading(true)
                       setDownloadProgress(0)
                       try {
-                        await jarvisAI.downloadModel(m.url, m.filename)
+                        await jarvisAIRef.current?.downloadModel?.(m.url, m.filename)
                         addNotification?.(`✅ ${m.name} downloaded!`, 'success')
                         await loadStatus()
                       } catch (e) { addNotification?.(e.message, 'error') }
@@ -787,7 +804,7 @@ const AIAgent = () => {
                   { code: 'en-IN', label: 'English IN' },
                   { code: 'en-US', label: 'English US' },
                 ].map(l => (
-                  <button key={l.code} onClick={() => { setLanguage(l.code); jarvisAI.setTTSLanguage(l.code) }}
+                  <button key={l.code} onClick={() => { setLanguage(l.code); jarvisAIRef.current?.setTTSLanguage?.(l.code) }}
                     className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
                       language === l.code ? 'bg-green-600 text-white' : 'bg-slate-700 text-slate-300'
                     }`}>{l.label}</button>
@@ -830,7 +847,7 @@ const AIAgent = () => {
             </div>
 
             {/* Open Phone TTS Settings */}
-            <button onClick={() => jarvisAI.openSettings('tts')}
+            <button onClick={() => jarvisAIRef.current?.openSettings?.('tts')}
               className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-800 active:scale-[0.98]">
               <div className="flex items-center gap-2">
                 <Settings2 size={16} className="text-slate-400" />
@@ -849,7 +866,7 @@ const AIAgent = () => {
               </h4>
               <div className="space-y-1 text-[9px] text-slate-400">
                 <p>🔬 Nuclear SPOC: Agentic AI — CoT + Self-Reflection + RAG + Tool Calling</p>
-                <p>🧠 LLM: llama.cpp + MLC LLM + ONNX — {Object.keys(MODEL_REGISTRY).length} SOTA 2026 models</p>
+                <p>🧠 LLM: llama.cpp + MLC LLM + ONNX — {Object.keys(modelRegistry).length} SOTA 2026 models</p>
                 <p>📚 RAG: IndexedDB vector search — TF-IDF + cosine similarity</p>
                 <p>🛠️ Tools: Calculator, Market, Battery, DateTime, Network + more</p>
                 <p>🎤 STT: Vosk — offline speech (Hindi + English)</p>

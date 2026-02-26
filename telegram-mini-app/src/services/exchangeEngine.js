@@ -15,9 +15,14 @@ import notificationPipeline from './notificationPipeline'
 
 class ExchangeEngine {
   constructor() {
-    this.activeExchange = 'paper'
-    this.rateLimiter = new Map()
-  }
+    try {
+        this.activeExchange = 'paper'
+      this.rateLimiter = new Map()
+  
+    } catch(e) {
+      console.warn('[exchangeEngine] Constructor init error:', e)
+    }
+}
 
   setActiveExchange(exchange) {
     this.activeExchange = exchange

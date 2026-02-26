@@ -22,13 +22,18 @@ const FIREBASE_CONFIG = {
 
 class FirebasePushService {
   constructor() {
-    this.messaging = null
-    this.token = null
-    this.isInitialized = false
-    this.listeners = new Map()
-    this.topics = ['price_alerts', 'whale_alerts', 'signals', 'news']
-    this.subscribedTopics = JSON.parse(localStorage.getItem('jarvis_fcm_topics') || '[]')
-  }
+    try {
+        this.messaging = null
+      this.token = null
+      this.isInitialized = false
+      this.listeners = new Map()
+      this.topics = ['price_alerts', 'whale_alerts', 'signals', 'news']
+      this.subscribedTopics = JSON.parse(localStorage.getItem('jarvis_fcm_topics') || '[]')
+  
+    } catch(e) {
+      console.warn('[firebasePush] Constructor init error:', e)
+    }
+}
 
   /**
    * Initialize Firebase + get FCM token

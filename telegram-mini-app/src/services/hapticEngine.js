@@ -40,11 +40,16 @@ const PATTERNS = {
 
 class HapticEngine {
   constructor() {
-    this.enabled = localStorage.getItem('jarvis_haptics') !== 'false'
-    this.intensity = parseFloat(localStorage.getItem('jarvis_haptic_intensity') || '1.0')
-    this.nativeAvailable = false
-    this._checkNative()
-  }
+    try {
+        this.enabled = localStorage.getItem('jarvis_haptics') !== 'false'
+      this.intensity = parseFloat(localStorage.getItem('jarvis_haptic_intensity') || '1.0')
+      this.nativeAvailable = false
+      this._checkNative()
+  
+    } catch(e) {
+      console.warn('[hapticEngine] Constructor init error:', e)
+    }
+}
 
   async _checkNative() {
     try {

@@ -10,7 +10,6 @@ import {
   addPortfolioHolding, sellPortfolioHolding
 } from '../services/api'
 import { useApp } from '../context/AppContext'
-import exportEngine from '../services/exportEngine'
 
 const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#84cc16']
 
@@ -100,17 +99,23 @@ const PortfolioAnalytics = () => {
           <p className="text-slate-400 text-sm">Cross-asset analytics</p>
         </div>
         <div className="flex items-center space-x-2">
-          <button onClick={() => {
-            exportEngine.exportPortfolio(holdings)
-            hapticFeedback('success')
-            addNotification('Portfolio CSV downloading...', 'success')
+          <button onClick={async () => {
+            try {
+              const { default: ee } = await import('../services/exportEngine')
+              ee.exportPortfolio(holdings)
+              hapticFeedback('success')
+              addNotification('Portfolio CSV downloading...', 'success')
+            } catch(e) { console.warn('Export failed', e) }
           }} className="p-2 bg-emerald-600 rounded-full" title="Export CSV">
             <Download size={16} />
           </button>
-          <button onClick={() => {
-            const report = exportEngine.generatePnLSummary(holdings, [])
-            exportEngine.exportPDF(report)
-            hapticFeedback('success')
+          <button onClick={async () => {
+            try {
+              const { default: ee } = await import('../services/exportEngine')
+              const report = ee.generatePnLSummary(holdings, [])
+              ee.exportPDF(report)
+              hapticFeedback('success')
+            } catch(e) { console.warn('PDF export failed', e) }
           }} className="p-2 bg-blue-600 rounded-full" title="PDF Report">
             <FileText size={16} />
           </button>

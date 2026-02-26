@@ -1,9 +1,8 @@
 import axios from 'axios'
-import realtime from './realtime'
 import { API_BASE } from './apiBase'
 
-// Initialize real-time engine
-realtime.init(API_BASE)
+// Realtime init moved to App.jsx bootJarvis() — NOT at module scope
+// This prevents WebSocket crashes when components import api.js
 
 const api = axios.create({
   baseURL: API_BASE,

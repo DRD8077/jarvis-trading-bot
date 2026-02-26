@@ -6,7 +6,6 @@
  */
 import React, { useState, useEffect } from 'react'
 import { Mail, User, Shield, Sparkles, Bot, ArrowRight, Eye, EyeOff, LogOut, Crown } from 'lucide-react'
-import gmailAuth from '../services/gmailAuth'
 
 const LoginScreen = ({ onLogin }) => {
   const [step, setStep] = useState('welcome') // welcome, login, profile
@@ -25,6 +24,9 @@ const LoginScreen = ({ onLogin }) => {
     setError('')
 
     try {
+      const mod = await import('../services/gmailAuth')
+      const gmailAuth = mod?.default || mod
+      if (!gmailAuth) throw new Error('Auth service unavailable')
       const result = await gmailAuth.loginManual(name.trim(), email.trim())
       if (result.success) {
         onLogin(result.user)

@@ -277,6 +277,16 @@ function AppInner() {
         }
       } catch {}
 
+      // Phase 2.5: Initialize realtime engine for WebSocket prices
+      try {
+        const rtModule = await loadService(import('./services/realtime'), 'realtime')
+        if (rtModule) {
+          sc(rtModule, 'init', API_BASE)
+          window.__jarvisRealtime = rtModule
+          console.log('[JARVIS] RealTime WebSocket engine initialized')
+        }
+      } catch (e) { console.warn('[JARVIS] realtime init:', e.message) }
+
       // Phase 3: Initialize all remaining services
       try { sc(autoRefreshEngine, 'start') } catch {}
       try { sc(hapticEngine, 'init') } catch {}

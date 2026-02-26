@@ -28,14 +28,19 @@
 
 class ZeroDependencyEngine {
   constructor() {
-    this.isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true
-    this.syncQueue = this._loadQueue()
-    this.syncInProgress = false
-    this.dataVersions = new Map()  // key → version counter
-    this.onlineCallbacks = new Set()
-    this.offlineCallbacks = new Set()
-    this._setupListeners()
-  }
+    try {
+        this.isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true
+      this.syncQueue = this._loadQueue()
+      this.syncInProgress = false
+      this.dataVersions = new Map()  // key → version counter
+      this.onlineCallbacks = new Set()
+      this.offlineCallbacks = new Set()
+      this._setupListeners()
+  
+    } catch(e) {
+      console.warn('[offlineEngine] Constructor init error:', e)
+    }
+}
 
   // ══════════════════════════════════════════════
   // NETWORK STATE MANAGEMENT

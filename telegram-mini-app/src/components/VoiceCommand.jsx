@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Mic, MicOff, Volume2, VolumeX, Settings, Bot, Send, Globe, ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import jarvisVoice from '../services/jarvisVoice'
-import systemControl from '../services/systemControl'
 
 const VoiceCommand = () => {
   const navigate = useNavigate()
+  const jarvisVoiceRef = useRef(null)
+  const systemControlRef = useRef(null)
   const [isListening, setIsListening] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [transcript, setTranscript] = useState('')
@@ -15,25 +15,35 @@ const VoiceCommand = () => {
   const chatEndRef = useRef(null)
 
   useEffect(() => {
-    if (!jarvisVoice._initialized) {
-      jarvisVoice.init()
-    }
+    import('../services/jarvisVoice').then(m => {
+      const jarvisVoice = m?.default || m
+      jarvisVoiceRef.current = jarvisVoice
+      if (!jarvisVoice) return
 
-    jarvisVoice.on('result', async ({ text, isFinal }) => {
-      setTranscript(text)
-      if (isFinal && text.trim()) {
-        await handleCommand(text.trim())
-        setTranscript('')
+      if (!jarvisVoice._initialized) {
+        jarvisVoice.init()
       }
-    })
 
-    jarvisVoice.on('stateChange', (state) => {
-      setIsListening(state === 'listening')
-      setIsSpeaking(state === 'speaking')
-    })
+      jarvisVoice.on('result', async ({ text, isFinal }) => {
+        setTranscript(text)
+        if (isFinal && text.trim()) {
+          await handleCommand(text.trim())
+          setTranscript('')
+        }
+      })
+
+      jarvisVoice.on('stateChange', (state) => {
+        setIsListening(state === 'listening')
+        setIsSpeaking(state === 'speaking')
+      })
+    }).catch(() => {})
+
+    import('../services/systemControl').then(m => {
+      systemControlRef.current = m?.default || m
+    }).catch(() => {})
 
     return () => {
-      jarvisVoice.stopListening()
+      jarvisVoiceRef.current?.stopListening?.()
     }
   }, [])
 
@@ -45,33 +55,33 @@ const VoiceCommand = () => {
     setConversation(prev => [...prev, { role: 'user', text, time: new Date() }])
 
     // Try system control first
-    const sysResult = await systemControl.executeNaturalCommand(text)
+    const sysResult = systemControlRef.current ? await systemControlRef.current.executeNaturalCommand(text) : null
     if (sysResult) {
       const reply = sysResult.response
       setConversation(prev => [...prev, { role: 'jarvis', text: reply, time: new Date() }])
-      jarvisVoice.speak(reply, language)
+      jarvisVoiceRef.current?.speak?.(reply, language)
       return
     }
 
     // Try voice command handler
-    const result = await jarvisVoice.handleCommand(text)
+    const result = jarvisVoiceRef.current ? await jarvisVoiceRef.current.handleCommand(text) : null
     if (result) {
       setConversation(prev => [...prev, { role: 'jarvis', text: result.response, time: new Date() }])
-      jarvisVoice.speak(result.response, language)
+      jarvisVoiceRef.current?.speak?.(result.response, language)
     } else {
       const fallback = language === 'hi-IN'
         ? `Sir, "${text}" ke baare mein main soch raha hoon... Abhi ye feature develop ho raha hai.`
         : `Sir, I'm thinking about "${text}"... This feature is being enhanced.`
       setConversation(prev => [...prev, { role: 'jarvis', text: fallback, time: new Date() }])
-      jarvisVoice.speak(fallback, language)
+      jarvisVoiceRef.current?.speak?.(fallback, language)
     }
   }
 
   const toggleListening = () => {
     if (isListening) {
-      jarvisVoice.stopListening()
+      jarvisVoiceRef.current?.stopListening?.()
     } else {
-      jarvisVoice.startListening(language)
+      jarvisVoiceRef.current?.startListening?.(language)
     }
   }
 

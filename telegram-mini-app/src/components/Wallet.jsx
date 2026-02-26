@@ -32,7 +32,17 @@ const WalletPage = () => {
     }
   }
 
-  useEffect(() => { loadWallet() }, [])
+  useEffect(() => {
+    loadWallet()
+    // Auto-refresh wallet every 15 seconds for real-time balance
+    const iv = setInterval(() => {
+      fetchWallet().then(res => {
+        const d = res.data?.data || res.data || {}
+        if (d) setWalletData(d)
+      }).catch(() => {})
+    }, 15000)
+    return () => clearInterval(iv)
+  }, [])
 
   const handleDeposit = async () => {
     if (!depositAmount || parseFloat(depositAmount) < 1) {

@@ -12,7 +12,6 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import jarvisGameVision from '../services/jarvisGameVision';
 
 // ════════════════════════════════════════
 // PRO PLAYER DATA (Client-side mirror)
@@ -319,20 +318,105 @@ const GamingCoach = ({ onBack, apiBase }) => {
   const [weaponTip, setWeaponTip] = useState(null);
   const [frameCount, setFrameCount] = useState(0);
   const [shareMode, setShareMode] = useState('');
+  const [detectedGames, setDetectedGames] = useState([]);
   
   const chatEndRef = useRef(null);
+  const jarvisGameVisionRef = useRef(null);
   const base = apiBase || window.API_BASE || 'http://127.0.0.1:8000';
+
+  // Known game packages for auto-detection
+  const GAME_PACKAGES = {
+    'com.pubg.imobile': { name: 'BGMI', emoji: '🎮' },
+    'com.tencent.ig': { name: 'PUBG Mobile', emoji: '🔫' },
+    'com.activision.callofduty.shooter': { name: 'COD Mobile', emoji: '💥' },
+    'com.garena.game.codm': { name: 'Free Fire', emoji: '🔥' },
+  };
+
+  // Auto-detect installed games on Android
+  useEffect(() => {
+    const detectGames = async () => {
+      try {
+        const { Capacitor } = await import('@capacitor/core');
+        if (Capacitor.isNativePlatform()) {
+          // On native, try to detect via App plugin or intent check
+          const detected = [];
+          for (const [pkg, info] of Object.entries(GAME_PACKAGES)) {
+            try {
+              // Try opening the app URL scheme — if it resolves, it's installed
+              const canOpen = await new Promise(resolve => {
+                const timeout = setTimeout(() => resolve(false), 500);
+                // Use Android's package manager via a custom plugin or URL check
+                if (window.Capacitor?.Plugins?.App?.canOpenUrl) {
+                  window.Capacitor.Plugins.App.canOpenUrl({ url: `market://details?id=${pkg}` })
+                    .then(r => { clearTimeout(timeout); resolve(true); })
+                    .catch(() => { clearTimeout(timeout); resolve(false); });
+                } else {
+                  clearTimeout(timeout);
+                  resolve(false);
+                }
+              });
+              if (canOpen) detected.push({ ...info, package: pkg });
+            } catch {}
+          }
+          // Always show BGMI as the primary game (it's what user wants)
+          if (detected.length === 0) {
+            detected.push({ name: 'BGMI', emoji: '🎮', package: 'com.pubg.imobile' });
+          }
+          setDetectedGames(detected);
+        }
+      } catch {}
+    };
+    detectGames();
+    
+    // Show welcome message
+    setChatMessages([{
+      role: 'jarvis',
+      text: '🎮 JARVIS Gaming Coach activated! Select a pro player profile and tap "Start Coaching" to begin real-time game analysis. I\'ll give you callouts, weapon tips, and strategy advice like a pro coach!',
+    }]);
+  }, []);
+
+  // Launch a game on Android
+  const launchGame = async (packageName) => {
+    try {
+      const { Capacitor } = await import('@capacitor/core');
+      if (Capacitor.isNativePlatform() && window.Capacitor?.Plugins?.App) {
+        await window.Capacitor.Plugins.App.openUrl({ url: `intent://#Intent;package=${packageName};end` });
+        setChatMessages(prev => [...prev, {
+          role: 'jarvis',
+          text: '🚀 Launching BGMI... I\'ll be ready to coach you when you start screen sharing!',
+        }]);
+      } else {
+        setChatMessages(prev => [...prev, {
+          role: 'jarvis',
+          text: '📱 Open BGMI manually, then come back and tap "Start Coaching" for real-time analysis!',
+        }]);
+      }
+    } catch {
+      setChatMessages(prev => [...prev, {
+        role: 'jarvis',
+        text: '📱 Please open BGMI manually, then tap "Start Coaching" to begin!',
+      }]);
+    }
+  };
+
+  // Load jarvisGameVision dynamically
+  useEffect(() => {
+    import('../services/jarvisGameVision').then(m => {
+      jarvisGameVisionRef.current = m?.default || m;
+    }).catch(() => {});
+  }, []);
 
   // Set API base for game vision
   useEffect(() => {
-    jarvisGameVision.apiBase = base;
+    if (jarvisGameVisionRef.current) jarvisGameVisionRef.current.apiBase = base;
   }, [base]);
 
   // Register analysis callbacks
   useEffect(() => {
-    jarvisGameVision.onAnalysis((analysis) => {
+    if (!jarvisGameVisionRef.current) return;
+    jarvisGameVisionRef.current.onAnalysis((analysis) => {
       setGameState(analysis.analysis || {});
-      setFrameCount(jarvisGameVision.getFrameCount());
+      setFrameCount(jarvisGameVisionRef.current?.getFrameCount?.() || 0);
 
       if (analysis.callouts) {
         setCallouts(prev => [...prev.slice(-20), ...analysis.callouts.map(c => ({
@@ -343,20 +427,20 @@ const GamingCoach = ({ onBack, apiBase }) => {
       }
     });
 
-    jarvisGameVision.onCallout((text) => {
+    jarvisGameVisionRef.current.onCallout((text) => {
       setLatestCallout(text);
     });
 
     return () => {
-      jarvisGameVision.onAnalysis(null);
-      jarvisGameVision.onCallout(null);
+      jarvisGameVisionRef.current?.onAnalysis?.(null);
+      jarvisGameVisionRef.current?.onCallout?.(null);
     };
   }, []);
 
   // ─── Profile Switch ──────────────────
   const handleProfileSwitch = useCallback(async (profileKey) => {
     setSelectedProfile(profileKey);
-    jarvisGameVision.gamingProfile = profileKey;
+    if (jarvisGameVisionRef.current) jarvisGameVisionRef.current.gamingProfile = profileKey;
     
     try {
       const res = await fetch(`${base}/api/gaming/profile`, {
@@ -381,7 +465,7 @@ const GamingCoach = ({ onBack, apiBase }) => {
   // ─── Screen Share Toggle ──────────────
   const toggleScreenShare = useCallback(async () => {
     if (isSharing) {
-      const result = jarvisGameVision.stopScreenCapture();
+      const result = jarvisGameVisionRef.current?.stopScreenCapture?.() || { framesAnalyzed: 0 };
       setIsSharing(false);
       setShareMode('');
       setChatMessages(prev => [...prev, {
@@ -389,7 +473,8 @@ const GamingCoach = ({ onBack, apiBase }) => {
         text: `📺 Screen sharing stopped. Analyzed ${result.framesAnalyzed} frames. Good game!`,
       }]);
     } else {
-      const result = await jarvisGameVision.startScreenCapture();
+      if (!jarvisGameVisionRef.current) return;
+      const result = await jarvisGameVisionRef.current.startScreenCapture();
       if (result.success) {
         setIsSharing(true);
         setShareMode(result.mode);
@@ -644,8 +729,31 @@ const GamingCoach = ({ onBack, apiBase }) => {
         </div>
       </div>
 
-      {/* ══ SCREEN SHARE BUTTON ══ */}
+      {/* ══ LAUNCH GAME + SCREEN SHARE ══ */}
       <div style={{ padding: '0 20px 16px' }}>
+        {detectedGames.length > 0 && (
+          <button
+            onClick={() => launchGame(detectedGames[0].package)}
+            style={{
+              width: '100%',
+              padding: '14px',
+              borderRadius: '14px',
+              border: '2px solid #10b981',
+              background: 'linear-gradient(135deg, #10b98122, #059669)',
+              color: '#fff',
+              fontWeight: 'bold',
+              fontSize: '16px',
+              cursor: 'pointer',
+              marginBottom: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}
+          >
+            🚀 Launch {detectedGames[0].name} & Start Coaching
+          </button>
+        )}
         <button style={styles.screenShareBtn(isSharing)} onClick={toggleScreenShare}>
           {isSharing ? (
             <>📺 Stop Screen Sharing</>

@@ -1,9 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import jarvisCore from '../services/jarvisCore'
-import jarvisPersonality from '../services/jarvisPersonality'
-import jarvisBrain from '../services/jarvisBrain'
-import offlineEngine from '../services/offlineEngine'
-import crashAnalytics from '../services/crashAnalytics'
 import { API_BASE } from '../services/apiBase'
 
 /**
@@ -32,6 +27,10 @@ const JarvisCommandCenter = () => {
   const [activeTab, setActiveTab] = useState('chat') // chat, brain, health, signals
   const [brainStats, setBrainStats] = useState(null)
   const chatRef = useRef(null)
+  const jarvisCoreRef = useRef(null)
+  const jarvisPersonalityRef = useRef(null)
+  const jarvisBrainRef = useRef(null)
+  const offlineEngineRef = useRef(null)
 
   // Initialize JARVIS Core
   useEffect(() => {
@@ -39,33 +38,48 @@ const JarvisCommandCenter = () => {
 
     const boot = async () => {
       try {
-        await jarvisCore.init(API_BASE)
+        // Load services dynamically
+        const [coreM, personM, brainM, offM] = await Promise.allSettled([
+          import('../services/jarvisCore'),
+          import('../services/jarvisPersonality'),
+          import('../services/jarvisBrain'),
+          import('../services/offlineEngine'),
+        ])
+        jarvisCoreRef.current = coreM.status === 'fulfilled' ? (coreM.value?.default || coreM.value) : null
+        jarvisPersonalityRef.current = personM.status === 'fulfilled' ? (personM.value?.default || personM.value) : null
+        jarvisBrainRef.current = brainM.status === 'fulfilled' ? (brainM.value?.default || brainM.value) : null
+        offlineEngineRef.current = offM.status === 'fulfilled' ? (offM.value?.default || offM.value) : null
+
+        if (jarvisCoreRef.current) await jarvisCoreRef.current.init(API_BASE)
         if (!mounted) return
         setIsInitialized(true)
 
         // Boot greeting
-        const greeting = jarvisPersonality.getGreeting()
+        const greeting = jarvisPersonalityRef.current?.getGreeting?.() || 'Good day, Sir. JARVIS is online.'
         setMessages([{ role: 'jarvis', text: greeting, ts: Date.now() }])
 
         // Start autonomous brain monitoring
-        jarvisBrain.startMonitoring(() => jarvisCore.getAllPrices(), 15000)
+        if (jarvisBrainRef.current && jarvisCoreRef.current) {
+          jarvisBrainRef.current.startMonitoring(() => jarvisCoreRef.current.getAllPrices(), 15000)
+        }
 
         // Periodic health updates
         const healthTimer = setInterval(() => {
           if (mounted) {
-            setSystemHealth(jarvisCore.getSystemHealth())
-            setBrainStats(jarvisBrain.getStats())
-            setSignals(jarvisBrain.getLatestSignals(5))
+            if (jarvisCoreRef.current) setSystemHealth(jarvisCoreRef.current.getSystemHealth())
+            if (jarvisBrainRef.current) setBrainStats(jarvisBrainRef.current.getStats())
+            if (jarvisBrainRef.current) setSignals(jarvisBrainRef.current.getLatestSignals(5))
           }
         }, 5000)
 
         // Initial health check
-        setSystemHealth(jarvisCore.getSystemHealth())
+        if (jarvisCoreRef.current) setSystemHealth(jarvisCoreRef.current.getSystemHealth())
 
         return () => clearInterval(healthTimer)
       } catch (e) {
         console.error('[JARVIS CC] Boot error:', e)
-        setMessages([{ role: 'jarvis', text: jarvisPersonality.getErrorMessage(e.message), ts: Date.now() }])
+        const errMsg = jarvisPersonalityRef.current?.getErrorMessage?.(e.message) || `Boot error: ${e.message}`
+        setMessages([{ role: 'jarvis', text: errMsg, ts: Date.now() }])
         setIsInitialized(true)
       }
     }
@@ -90,7 +104,7 @@ const JarvisCommandCenter = () => {
     try {
       // Special commands
       if (msg.toLowerCase() === 'status' || msg.toLowerCase() === 'health') {
-        const health = jarvisCore.getSystemHealth()
+        const health = jarvisCoreRef.current?.getSystemHealth?.() || {}
         const statusMsg = `🤖 JARVIS System Status:\n\n` +
           `Overall: ${health.overall?.toUpperCase()} (${health.score}%)\n` +
           `Uptime: ${health.uptimeFormatted}\n` +
@@ -105,13 +119,13 @@ const JarvisCommandCenter = () => {
       }
 
       if (msg.toLowerCase() === 'quote') {
-        setMessages(prev => [...prev, { role: 'jarvis', text: jarvisPersonality.getIronManQuote(), ts: Date.now() }])
+        setMessages(prev => [...prev, { role: 'jarvis', text: jarvisPersonalityRef.current?.getIronManQuote?.() || 'I am Iron Man.', ts: Date.now() }])
         setIsThinking(false)
         return
       }
 
       if (msg.toLowerCase().startsWith('signals')) {
-        const sigs = jarvisBrain.getLatestSignals(5)
+        const sigs = jarvisBrainRef.current?.getLatestSignals?.(5) || []
         const sigMsg = sigs.length > 0 ?
           `📊 Latest JARVIS Signals:\n\n${sigs.map(s => `${s.signal === 'BUY' ? '🟢' : s.signal === 'SELL' ? '🔴' : '🟡'} ${s.symbol?.toUpperCase()} — ${s.signal} (${s.confidence}%)\n   ${s.reason}`).join('\n\n')}` :
           'No signals yet. The autonomous brain needs a few cycles to analyze patterns.'
@@ -122,7 +136,7 @@ const JarvisCommandCenter = () => {
       }
 
       // Regular AI chat — uses failover chain
-      const response = await jarvisCore.ask(msg)
+      const response = jarvisCoreRef.current ? await jarvisCoreRef.current.ask(msg) : { text: 'JARVIS core is loading...', provider: '' }
       const jarvisReply = response.text || 'I processed your request but couldn\'t generate a response. Try rephrasing.'
       const providerNote = response.provider && response.provider !== 'backend' ?
         `\n\n_[via ${response.provider}${response.isOffline ? ' — offline mode' : ''}]_` : ''
@@ -130,12 +144,12 @@ const JarvisCommandCenter = () => {
       // Add personality comment
       let personalNote = ''
       if (msg.toLowerCase().includes('buy') || msg.toLowerCase().includes('sell') || msg.toLowerCase().includes('signal')) {
-        personalNote = '\n\n' + jarvisPersonality.commentOnSignal({ action: msg.toLowerCase().includes('buy') ? 'BUY' : msg.toLowerCase().includes('sell') ? 'SELL' : 'HOLD', confidence: 70, symbol: 'Market' })
+        personalNote = '\n\n' + (jarvisPersonalityRef.current?.commentOnSignal?.({ action: msg.toLowerCase().includes('buy') ? 'BUY' : msg.toLowerCase().includes('sell') ? 'SELL' : 'HOLD', confidence: 70, symbol: 'Market' }) || '')
       }
 
       setMessages(prev => [...prev, { role: 'jarvis', text: jarvisReply + personalNote + providerNote, ts: Date.now() }])
     } catch (e) {
-      setMessages(prev => [...prev, { role: 'jarvis', text: jarvisPersonality.getErrorMessage(e.message), ts: Date.now() }])
+      setMessages(prev => [...prev, { role: 'jarvis', text: jarvisPersonalityRef.current?.getErrorMessage?.(e.message) || `Error: ${e.message}`, ts: Date.now() }])
     }
 
     setIsThinking(false)
@@ -224,7 +238,7 @@ const JarvisCommandCenter = () => {
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
           <h4 className="text-sm font-semibold text-cyan-400 mb-2">Offline Storage</h4>
           {(() => {
-            const stats = offlineEngine.getStorageStats()
+            const stats = offlineEngineRef.current?.getStorageStats?.() || { jarvisItems: 0, totalSizeKB: 0, queueSize: 0, isOnline: navigator.onLine }
             return (
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div><span className="text-slate-400">Items:</span> <span className="text-white">{stats.jarvisItems}</span></div>
@@ -240,7 +254,7 @@ const JarvisCommandCenter = () => {
   }
 
   const renderBrainTab = () => {
-    const stats = brainStats || jarvisBrain.getStats()
+    const stats = brainStats || jarvisBrainRef.current?.getStats?.() || { isRunning: false, totalSignals: 0, confidenceThreshold: 60, mode: 'OBSERVER', activePositions: 0 }
 
     return (
       <div className="space-y-3">
@@ -276,7 +290,7 @@ const JarvisCommandCenter = () => {
             <p className="text-xs text-slate-400 mb-2">Decision Mode</p>
             <div className="flex space-x-2">
               {['OBSERVER', 'ADVISOR', 'AUTONOMOUS'].map(mode => (
-                <button key={mode} onClick={() => { jarvisBrain.mode = mode; setBrainStats({ ...stats, mode }) }}
+                <button key={mode} onClick={() => { if (jarvisBrainRef.current) jarvisBrainRef.current.mode = mode; setBrainStats({ ...stats, mode }) }}
                   className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
                     stats.mode === mode
                       ? mode === 'AUTONOMOUS' ? 'bg-red-600 text-white ring-2 ring-red-400/50' :
@@ -355,14 +369,14 @@ const JarvisCommandCenter = () => {
               </div>
             )}
             <p className="text-[10px] text-slate-500 mt-1">
-              {jarvisPersonality.commentOnSignal(s)}
+              {jarvisPersonalityRef.current?.commentOnSignal?.(s) || ''}
             </p>
           </div>
         )) : (
           <div className="text-center py-8">
             <p className="text-4xl mb-2">🔍</p>
             <p className="text-sm text-slate-400">JARVIS Brain is analyzing markets...</p>
-            <p className="text-xs text-slate-500 mt-1">Signals appear when confidence exceeds {jarvisBrain.confidenceThreshold}%</p>
+            <p className="text-xs text-slate-500 mt-1">Signals appear when confidence exceeds {jarvisBrainRef.current?.confidenceThreshold ?? 60}%</p>
           </div>
         )}
       </div>

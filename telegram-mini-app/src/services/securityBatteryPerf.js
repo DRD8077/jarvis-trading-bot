@@ -32,10 +32,15 @@
 // ═══════════════════════════════════════════════════════════
 class EncryptedStorage {
   constructor() {
-    this.key = null
-    this.salt = 'JARVIS-NUCLEAR-2026'
-    this.ready = false
-  }
+    try {
+        this.key = null
+      this.salt = 'JARVIS-NUCLEAR-2026'
+      this.ready = false
+  
+    } catch(e) {
+      console.warn('[securityBatteryPerf] Constructor init error:', e)
+    }
+}
 
   async init() {
     try {

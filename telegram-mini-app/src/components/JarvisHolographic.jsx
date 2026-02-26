@@ -14,9 +14,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import './JarvisHolographic.css'
-import freeAI from '../services/freeAI'
-import cameraEngine from '../services/cameraEngine'
-import codeEngine from '../services/codeExecutionEngine'
 
 // ═══════════════════════════════════
 // MAIN JARVIS HOLOGRAPHIC COMPONENT
@@ -53,10 +50,25 @@ export default function JarvisHolographic() {
   const inputRef = useRef(null)
   const recognitionRef = useRef(null)
   const synthRef = useRef(window.speechSynthesis)
+  const freeAIRef = useRef(null)
+  const cameraEngineRef = useRef(null)
+  const codeEngineRef = useRef(null)
+  const [supportedLangs, setSupportedLangs] = useState([])
 
   // ── Initialize ──
   useEffect(() => {
-    freeAI.init()
+    // Load services dynamically
+    import('../services/freeAI').then(m => {
+      freeAIRef.current = m?.default || m
+      freeAIRef.current?.init?.()
+    }).catch(() => {})
+    import('../services/cameraEngine').then(m => {
+      cameraEngineRef.current = m?.default || m
+    }).catch(() => {})
+    import('../services/codeExecutionEngine').then(m => {
+      codeEngineRef.current = m?.default || m
+      if (codeEngineRef.current?.getSupportedLanguages) setSupportedLangs(codeEngineRef.current.getSupportedLanguages())
+    }).catch(() => {})
     
     // Update time every second
     const timer = setInterval(() => setSystemTime(new Date()), 1000)
@@ -76,7 +88,7 @@ export default function JarvisHolographic() {
     return () => {
       clearInterval(timer)
       window.removeEventListener('keydown', handleKeyDown)
-      cameraEngine.stopCamera()
+      cameraEngineRef.current?.stopCamera?.()
     }
   }, [])
 
@@ -173,15 +185,15 @@ export default function JarvisHolographic() {
     }
 
     // Stream callback
-    freeAI.onStreamChunk = (chunk, full) => {
+    if (freeAIRef.current) freeAIRef.current.onStreamChunk = (chunk, full) => {
       setStreamText(full)
     }
 
-    const result = await freeAI.chat(text, { 
+    const result = freeAIRef.current ? await freeAIRef.current.chat(text, { 
       stream: true,
       emotion,
       context: proximity !== 'away' ? `User is ${proximity} to the device.` : ''
-    })
+    }) : { response: 'AI service loading...', provider: 'none' }
 
     setStreamText('')
     setMessages(prev => [...prev, { 
@@ -309,14 +321,14 @@ export default function JarvisHolographic() {
   // ── Camera Toggle ──
   const toggleCamera = async () => {
     if (cameraActive) {
-      cameraEngine.stopCamera()
+      cameraEngineRef.current?.stopCamera?.()
       setCameraActive(false)
       setFaces([])
       setEmotion(null)
       setProximity('unknown')
     } else {
-      if (videoRef.current) {
-        cameraEngine.init({
+      if (videoRef.current && cameraEngineRef.current) {
+        cameraEngineRef.current.init({
           onFaceDetected: (detected) => setFaces(detected),
           onEmotionDetected: (emo) => setEmotion(emo),
           onProximityChange: (prox) => {
@@ -333,7 +345,7 @@ export default function JarvisHolographic() {
             }
           }
         })
-        const result = await cameraEngine.startCamera(videoRef.current)
+        const result = await cameraEngineRef.current.startCamera(videoRef.current)
         setCameraActive(result.success)
       }
     }
@@ -343,7 +355,7 @@ export default function JarvisHolographic() {
   const runCode = async () => {
     setCodeRunning(true)
     setCodeOutput(null)
-    const result = await codeEngine.execute(codeText, codeLang)
+    const result = codeEngineRef.current ? await codeEngineRef.current.execute(codeText, codeLang) : { success: false, error: 'Code engine not loaded' }
     setCodeOutput(result)
     setCodeRunning(false)
   }
@@ -351,8 +363,8 @@ export default function JarvisHolographic() {
   // ── Save API Key ──
   const saveApiKey = () => {
     if (apiKeyInput.trim()) {
-      freeAI.setApiKey(aiProvider, apiKeyInput.trim())
-      freeAI.setProvider(aiProvider)
+      freeAIRef.current?.setApiKey?.(aiProvider, apiKeyInput.trim())
+      freeAIRef.current?.setProvider?.(aiProvider)
       setApiKeyInput('')
       setShowSettings(false)
       setMessages(prev => [...prev, { 
@@ -519,7 +531,7 @@ export default function JarvisHolographic() {
                   <span>CODE ENGINE</span>
                 </div>
                 <select value={codeLang} onChange={(e) => setCodeLang(e.target.value)}>
-                  {codeEngine.getSupportedLanguages().map(l => (
+                  {(supportedLangs.length > 0 ? supportedLangs : [{ id: 'javascript', icon: 'JS', name: 'JavaScript' }]).map(l => (
                     <option key={l.id} value={l.id}>{l.icon} {l.name}</option>
                   ))}
                 </select>
@@ -621,7 +633,7 @@ export default function JarvisHolographic() {
                     onClick={() => setAiProvider(key)}
                     style={aiProvider === key ? { background: 'rgba(0,212,255,0.2)', borderColor: '#00d4ff' } : {}}
                   >
-                    {label} {freeAI.apiKeys[key] ? '✓' : ''}
+                    {label} {freeAIRef.current?.apiKeys?.[key] ? '✓' : ''}
                   </button>
                 ))}
               </div>

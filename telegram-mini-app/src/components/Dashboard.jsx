@@ -8,7 +8,6 @@ import {
 } from 'lucide-react'
 import { fetchDashboard, fetchNews, fetchSentiment } from '../services/api'
 import { useApp } from '../context/AppContext'
-import realtime from '../services/realtime'
 
 const Dashboard = () => {
   const { user, addNotification, hapticFeedback } = useApp()
@@ -46,23 +45,58 @@ const Dashboard = () => {
   // Real-time WebSocket for live price tickers
   useEffect(() => {
     let unsub
-    try {
-      unsub = realtime.subscribe('dashboard', (liveData) => {
-        if (liveData?.market_ticker) {
-          setData(prev => prev ? { ...prev, market_ticker: liveData.market_ticker } : prev)
-        }
-        if (liveData?.portfolio) {
-          setData(prev => prev ? { ...prev, portfolio: { ...prev.portfolio, ...liveData.portfolio } } : prev)
-        }
-        if (liveData?.fear_greed) {
-          setData(prev => prev ? { ...prev, fear_greed: liveData.fear_greed } : prev)
-        }
-      }, { pollInterval: 10000, pollUrl: '/dashboard' })
-    } catch (e) {
-      console.warn('[Dashboard] Realtime subscribe failed, using polling only')
-    }
+    import('../services/realtime').then(m => {
+      const realtime = m?.default || m
+      if (!realtime) return
+      try {
+        unsub = realtime.subscribe('dashboard', (liveData) => {
+          if (liveData?.market_ticker) {
+            setData(prev => prev ? { ...prev, market_ticker: liveData.market_ticker } : prev)
+          }
+          if (liveData?.portfolio) {
+            setData(prev => prev ? { ...prev, portfolio: { ...prev.portfolio, ...liveData.portfolio } } : prev)
+          }
+          if (liveData?.fear_greed) {
+            setData(prev => prev ? { ...prev, fear_greed: liveData.fear_greed } : prev)
+          }
+        }, { pollInterval: 10000, pollUrl: '/dashboard' })
+      } catch (e) {
+        console.warn('[Dashboard] Realtime subscribe failed, using polling only')
+      }
+    }).catch(() => {})
 
-    return () => { if (unsub) unsub() }
+    // Also listen for wsHub events for instant WebSocket updates
+    const handlePriceUpdate = (e) => {
+      try {
+        const update = e.detail
+        if (!update) return
+        setData(prev => {
+          if (!prev?.market_ticker) return prev
+          const tickers = prev.market_ticker.map(t => {
+            if (t.symbol === (update.symbol || update.s)) {
+              return { ...t, price_usd: update.price || update.p || t.price_usd, change_24h: update.change_24h ?? t.change_24h }
+            }
+            return t
+          })
+          return { ...prev, market_ticker: tickers }
+        })
+      } catch {}
+    }
+    const handleSignal = (e) => {
+      try {
+        const signal = e.detail
+        if (!signal) return
+        setData(prev => prev ? { ...prev, signals: [signal, ...(prev.signals || []).slice(0, 9)] } : prev)
+      } catch {}
+    }
+    window.addEventListener('jarvis-price-update', handlePriceUpdate)
+    window.addEventListener('jarvis-signal', handleSignal)
+
+    return () => {
+      if (unsub) unsub()
+      window.removeEventListener('jarvis-price-update', handlePriceUpdate)
+      window.removeEventListener('jarvis-signal', handleSignal)
+    }
   }, [])
 
   // Fallback auto-refresh every 15s

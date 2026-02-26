@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import gmailAuth from '../services/gmailAuth'
-import themeEngine from '../services/themeEngine'
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
+// NO static service imports — all loaded dynamically to prevent crashes
 
 const AppContext = createContext(null)
 
@@ -11,7 +10,9 @@ export const AppProvider = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [authLoading, setAuthLoading] = useState(true)
-  const [theme, setTheme] = useState(themeEngine.getTheme())
+  const [theme, setTheme] = useState('dark')
+  const gmailAuthRef = useRef(null)
+  const themeEngineRef = useRef(null)
   const [notifications, setNotifications] = useState([])
   const [isOnline, setIsOnline] = useState(true)
   const [onboardingDone, setOnboardingDone] = useState(
@@ -23,15 +24,13 @@ export const AppProvider = ({ children }) => {
 
   // Theme change handler
   const changeTheme = useCallback((themeId) => {
-    themeEngine.setTheme(themeId)
-    setTheme(themeId)
+    try { if (themeEngineRef.current) { themeEngineRef.current.setTheme(themeId); setTheme(themeId) } } catch {}
   }, [])
 
   const toggleTheme = useCallback(() => {
-    const next = themeEngine.toggle()
-    setTheme(next)
-    return next
-  }, [])
+    try { if (themeEngineRef.current) { const next = themeEngineRef.current.toggle(); setTheme(next); return next } } catch {}
+    return theme
+  }, [theme])
 
   const completeOnboarding = useCallback(() => {
     localStorage.setItem('jarvis_onboarding_done', 'true')
@@ -47,32 +46,41 @@ export const AppProvider = ({ children }) => {
   }, [])
 
   useEffect(() => {
-    // Check for saved Gmail/manual login (defensive: fallback if method missing)
-    const savedUser = typeof gmailAuth.getCurrentUser === 'function'
-      ? gmailAuth.getCurrentUser()
-      : gmailAuth.getUser?.() || gmailAuth.user || null
-
-    if (savedUser) {
-      setUser(savedUser)
-      setIsLoggedIn(true)
-      setIsAdmin(savedUser.isAdmin || false)
+    // Dynamically load gmailAuth and themeEngine — crash-proof
+    let unsubscribe = () => {}
+    async function loadServices() {
+      try {
+        const gmod = await import('../services/gmailAuth').catch(() => null)
+        const ga = gmod?.default || gmod
+        if (ga) {
+          gmailAuthRef.current = ga
+          const savedUser = typeof ga.getCurrentUser === 'function'
+            ? ga.getCurrentUser()
+            : ga.getUser?.() || ga.user || null
+          if (savedUser) {
+            setUser(savedUser)
+            setIsLoggedIn(true)
+            setIsAdmin(savedUser.isAdmin || false)
+          }
+          if (typeof ga.onAuthChange === 'function') {
+            unsubscribe = ga.onAuthChange((authUser) => {
+              if (authUser) { setUser(authUser); setIsLoggedIn(true); setIsAdmin(authUser.isAdmin || false) }
+              else { setUser(null); setIsLoggedIn(false); setIsAdmin(false) }
+            })
+          }
+        }
+      } catch (e) { console.warn('[JARVIS] gmailAuth load:', e.message) }
+      try {
+        const tmod = await import('../services/themeEngine').catch(() => null)
+        const te = tmod?.default || tmod
+        if (te) {
+          themeEngineRef.current = te
+          setTheme(typeof te.getTheme === 'function' ? te.getTheme() : 'dark')
+        }
+      } catch (e) { console.warn('[JARVIS] themeEngine load:', e.message) }
+      setAuthLoading(false)
     }
-    // else: not logged in, show LoginScreen
-
-    setAuthLoading(false)
-
-    // Listen for auth changes (login/logout from gmailAuth)
-    const unsubscribe = gmailAuth.onAuthChange((authUser) => {
-      if (authUser) {
-        setUser(authUser)
-        setIsLoggedIn(true)
-        setIsAdmin(authUser.isAdmin || false)
-      } else {
-        setUser(null)
-        setIsLoggedIn(false)
-        setIsAdmin(false)
-      }
-    })
+    loadServices()
 
     // Online/offline detection
     const handleOnline = () => setIsOnline(true)
@@ -93,7 +101,7 @@ export const AppProvider = ({ children }) => {
   }, [])
 
   const handleLogout = useCallback(() => {
-    gmailAuth.logout()
+    try { if (gmailAuthRef.current) gmailAuthRef.current.logout() } catch {}
     setUser(null)
     setIsLoggedIn(false)
     setIsAdmin(false)

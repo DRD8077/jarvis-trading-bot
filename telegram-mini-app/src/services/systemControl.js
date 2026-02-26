@@ -17,10 +17,15 @@
 
 class SystemControlEngine {
   constructor() {
-    this.isDesktop = !!window.jarvisDesktop
-    this.capabilities = this._detectCapabilities()
-    this.commandHistory = []
-  }
+    try {
+        this.isDesktop = !!window.jarvisDesktop
+      this.capabilities = this._detectCapabilities()
+      this.commandHistory = []
+  
+    } catch(e) {
+      console.warn('[systemControl] Constructor init error:', e)
+    }
+}
 
   _detectCapabilities() {
     const caps = {

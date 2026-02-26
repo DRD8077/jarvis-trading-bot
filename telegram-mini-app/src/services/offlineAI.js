@@ -9,13 +9,18 @@
 
 class OfflineAIEngine {
   constructor() {
-    this.isNative = false
-    this.isReady = false
-    this.isLoading = false
-    this.currentModel = null
-    this.modelInfo = null
-    this.listeners = new Map()
-  }
+    try {
+        this.isNative = false
+      this.isReady = false
+      this.isLoading = false
+      this.currentModel = null
+      this.modelInfo = null
+      this.listeners = new Map()
+  
+    } catch(e) {
+      console.warn('[offlineAI] Constructor init error:', e)
+    }
+}
 
   /**
    * Initialize the offline AI engine
