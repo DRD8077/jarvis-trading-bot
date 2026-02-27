@@ -4,7 +4,7 @@ import {
   Home, TrendingUp, Wallet, Zap, MoreHorizontal, X,
   Globe, Copy, Activity, PieChart, Waves,
   BarChart3, Settings, Search, Brain, Mic, Flame, LineChart, Gauge,
-  Rocket, Crown, LogOut,
+  Rocket, Crown, LogOut, Target,
   Star, Calculator, Lock, Radio, Bot
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
@@ -27,6 +27,8 @@ const Navigation = () => {
     { path: '/voice', icon: Mic, label: '🎤 Voice JARVIS', color: 'from-pink-500 to-rose-600', desc: 'Hindi voice assistant' },
     
     // ═══ Trading ═══
+    { path: '/moonshot', icon: Rocket, label: '🔥 MoonShot Hunter', color: 'from-yellow-500 to-red-600', desc: '₹2K→₹2Cr+ 100x gems' },
+    { path: '/auto-sniper', icon: Target, label: '🤖 AI Auto Sniper', color: 'from-emerald-500 to-cyan-500', desc: 'Auto-trade moonshot gems' },
     { path: '/auto-trader', icon: Zap, label: 'Auto Trader', color: 'from-amber-500 to-orange-500', desc: 'AI trading bot' },
     { path: '/mega-trader', icon: Rocket, label: '🤖 MEGA Trader', color: 'from-red-600 to-yellow-500', desc: 'Autonomous AI trader' },
     { path: '/copy-trading', icon: Copy, label: 'Copy Trading', color: 'from-blue-500 to-cyan-500', desc: 'Copy top traders' },

@@ -93,6 +93,8 @@ const ExchangeConnect = lazy(() => import('./components/ExchangeConnect'))
 const Web3MegaScanner = lazy(() => import('./components/Web3MegaScanner'))
 const CryptoTop1000 = lazy(() => import('./components/CryptoTop1000'))
 const AICandleBrain = lazy(() => import('./components/AICandleBrain'))
+const MoonShotHunter = lazy(() => import('./components/MoonShotHunter'))
+const AIAutoSniper = lazy(() => import('./components/AIAutoSniper'))
 
 const PageLoader = () => (
   <div className="p-4 bg-slate-900 min-h-screen space-y-3 animate-pulse">
@@ -371,6 +373,8 @@ function SwipeableApp() {
               <Route path="/web3-scanner" element={<ErrorBoundary><Web3MegaScanner /></ErrorBoundary>} />
               <Route path="/crypto-top1000" element={<ErrorBoundary><CryptoTop1000 /></ErrorBoundary>} />
               <Route path="/candle-brain" element={<ErrorBoundary><AICandleBrain /></ErrorBoundary>} />
+              <Route path="/moonshot" element={<ErrorBoundary><MoonShotHunter /></ErrorBoundary>} />
+              <Route path="/auto-sniper" element={<ErrorBoundary><AIAutoSniper /></ErrorBoundary>} />
             </Routes>
           </main>
         </Suspense>

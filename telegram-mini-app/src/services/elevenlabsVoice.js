@@ -146,7 +146,12 @@ class ElevenLabsVoiceEngine {
    * PRIMARY: Speak text using ElevenLabs or fallback
    */
   async speak(text, options = {}) {
-    if (!text || !this.initialized) return false
+    if (!text) return false
+    
+    // Auto-initialize if not done yet
+    if (!this.initialized) {
+      try { await this.init() } catch {}
+    }
 
     const voiceProfile = options.voice ? this.voices[options.voice] : this.voices[this.activeVoice]
     const voiceId = voiceProfile?.id || this.defaultVoiceId
@@ -192,10 +197,10 @@ class ElevenLabsVoiceEngine {
 
       // Fallback
       console.warn('[ElevenLabs] Server TTS failed, using Web Speech')
-      return this._speakWebSpeech(text, 'en')
+      return this._speakWebSpeech(text, 'hi')
     } catch (e) {
       console.warn('[ElevenLabs] Server error:', e.message)
-      return this._speakWebSpeech(text, 'en')
+      return this._speakWebSpeech(text, 'hi')
     }
   }
 
@@ -228,7 +233,7 @@ class ElevenLabsVoiceEngine {
 
       if (!res.ok) {
         console.warn(`[ElevenLabs] TTS failed (${res.status}), using fallback`)
-        return this._speakWebSpeech(text, 'en')
+        return this._speakWebSpeech(text, 'hi')
       }
 
       const audioBuffer = await res.arrayBuffer()
@@ -236,7 +241,7 @@ class ElevenLabsVoiceEngine {
       return true
     } catch (e) {
       console.warn('[ElevenLabs] TTS error:', e.message)
-      return this._speakWebSpeech(text, 'en')
+      return this._speakWebSpeech(text, 'hi')
     }
   }
 

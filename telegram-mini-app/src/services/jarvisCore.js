@@ -914,7 +914,8 @@ class JarvisCore {
     })
 
     this.ai.registerProvider('groq-direct', 2, async (prompt) => {
-      const key = localStorage.getItem('jarvis_groq_key') || atob('Z3NrX0VvcG5ZaU5zS3laV1pDWkxscm1QV0dkeWIzRllRSWFvUEhXaXN0WUlwUFpKUzJNakFlangtLQ==')
+      const key = localStorage.getItem('jarvis_groq_key') || ''
+      if (!key) throw new Error('No Groq key — use backend')
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
@@ -926,7 +927,8 @@ class JarvisCore {
     })
 
     this.ai.registerProvider('gemini-direct', 3, async (prompt) => {
-      const key = localStorage.getItem('jarvis_gemini_key') || atob('QUl6YVN5QVVmV2FoYV84V2tnTzZGVFQ1SEJnWGMtSWlBMFlNazlR')
+      const key = localStorage.getItem('jarvis_gemini_key') || ''
+      if (!key) throw new Error('No Gemini key — use backend')
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
