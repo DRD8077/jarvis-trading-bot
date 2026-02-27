@@ -171,10 +171,11 @@ async function backgroundScan() {
       const btcPrice = btcData?.bitcoin?.usd || 0
       const btcChange = btcData?.bitcoin?.usd_24h_change || 0
 
-      // EMERGENCY: BTC crash detection
+      // EMERGENCY: BTC crash detection — v33: silent, no auto-speech
       if (btcChange <= CRASH_THRESHOLD && canAlert('crash')) {
-        jarvisSpeak(PROACTIVE_LINES.crashAlert('BITCOIN', btcChange), 'high')
-        window.dispatchEvent(new CustomEvent('jarvis-emergency', { detail: { type: 'crash', symbol: 'BTC', change: btcChange } }))
+        console.log(`[JARVIS Brain] BTC CRASH ALERT: ${btcChange.toFixed(1)}%`)
+        // Visual-only emergency event, no speech
+        window.dispatchEvent(new CustomEvent('jarvis-emergency-visual', { detail: { type: 'crash', symbol: 'BTC', change: btcChange } }))
       }
 
       // Track BTC price for change detection

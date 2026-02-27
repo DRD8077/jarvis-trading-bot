@@ -130,18 +130,11 @@ async function updatePrices() {
     _save()
     window.dispatchEvent(new CustomEvent('jarvis-battle-update', { detail: { targets } }))
 
-    // Alert on target hit or SL hit
+    // v33: Silent target/SL alerts — no speech (was causing boot-time noise)
+    // Visual-only alerts via jarvis-battle-update event
     const hits = targets.filter(t => t.status === 'TARGET_HIT' || t.status === 'SL_HIT')
     hits.forEach(t => {
-      if (t.status === 'TARGET_HIT') {
-        window.dispatchEvent(new CustomEvent('jarvis-speak', {
-          detail: { text: `Sir, TARGET HIT! ${t.symbol} ne ${t.targetPrice} dollar touch kar liya! Position close karna chahenge?`, priority: 'high' }
-        }))
-      } else if (t.status === 'SL_HIT') {
-        window.dispatchEvent(new CustomEvent('jarvis-speak', {
-          detail: { text: `WARNING Sir! ${t.symbol} ne stop loss ${t.stopLoss} dollar hit kiya! Emergency action needed!`, priority: 'high' }
-        }))
-      }
+      console.log(`[Battle HUD] ${t.status}: ${t.symbol}`)
     })
 
   } catch (e) {

@@ -26,6 +26,15 @@ let speechQueue = []
 let initialized = false
 let capacitorTTS = null // Capacitor TTS plugin — works on Android natively
 
+// v33: BOOT GUARD — NO speech for 15 seconds after app start
+// This prevents ALL unwanted sounds during startup from services, timers, events
+let bootGuardActive = true
+const BOOT_GUARD_MS = 15000
+setTimeout(() => {
+  bootGuardActive = false
+  console.log('[JARVIS Voice] Boot guard lifted — voice now available')
+}, BOOT_GUARD_MS)
+
 // ═══ JARVIS PAGE ANNOUNCEMENTS — what JARVIS says on each page ═══
 const PAGE_GREETINGS = {
   '/': 'Sir, Dashboard ready hai. Market ka overview dekh rahe hain. Koi specific analysis chahiye toh bolo.',
@@ -158,6 +167,11 @@ async function initVoice() {
 // ═══ SPEAK — queued, no overlap, Capacitor TTS priority ═══
 async function speak(text, priority = 'normal') {
   if (!text) return
+  // v33: Boot guard — absolutely NO speech during first 15 seconds
+  if (bootGuardActive) {
+    console.log('[JARVIS Voice] Boot guard active — speech blocked:', text.slice(0, 50))
+    return
+  }
   // Only check VOICE flag — NOT __JARVIS_MUTE (that's for sound effects only)
   if (window.__JARVIS_VOICE_ENABLED === false) return
 

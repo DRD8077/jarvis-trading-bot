@@ -273,9 +273,8 @@ function deactivateProtocol() {
   const name = activeProtocol.codename
   console.log(`[JARVIS Protocols] Deactivating: ${name}`)
 
-  window.dispatchEvent(new CustomEvent('jarvis-speak', {
-    detail: { text: `Sir, ${name} Protocol deactivated. Normal operations resumed. Standard mode active.`, priority: 'high' }
-  }))
+  // v33: Silent deactivation — no speech (was triggering on boot when restored timer expires)
+  console.log(`[JARVIS Protocols] ${name} Protocol deactivated. Normal operations resumed.`)
 
   // Reset to standard
   import('./jarvisSuitModes.js').then(m => {

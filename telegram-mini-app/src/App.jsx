@@ -217,25 +217,11 @@ function AppInner() {
       try { sc(themeEngine, 'init') } catch {}
       try { sc(elevenlabsVoice, 'init') } catch {}
 
-      // ═══ JARVIS BOOT GREETING — ONLY speaks on first touch (Android needs user gesture for audio) ═══
+      // ═══ JARVIS BOOT GREETING — DISABLED (v33: was causing unwanted speech on first touch) ═══
+      // JARVIS will only speak when user explicitly asks via voice command or chat
       try {
-        const companionMod = await import('./services/jarvisVoiceCompanion.js').catch(() => null)
-        const companion = companionMod?.default || companionMod
-        
-        if (companion?.announceWelcome) {
-          // Only speak after first user touch (Android WebView requires user gesture for TTS)
-          // No auto-speak on boot — waits for user interaction
-          const speakOnTouch = () => {
-            if (!window.__jarvisGreeted) {
-              window.__jarvisGreeted = true
-              companion.announceWelcome()
-            }
-            document.removeEventListener('touchstart', speakOnTouch)
-            document.removeEventListener('click', speakOnTouch)
-          }
-          document.addEventListener('touchstart', speakOnTouch, { once: true })
-          document.addEventListener('click', speakOnTouch, { once: true })
-        }
+        // Pre-load voice companion module (for when user wants to speak)
+        await import('./services/jarvisVoiceCompanion.js').catch(() => null)
       } catch {}
 
       // Pre-cache for offline mode
@@ -246,73 +232,15 @@ function AppInner() {
         }
       } catch {}
 
-      // Phase 4: JARVIS Wake Word Engine — "Hey JARVIS" always-on listener
+      // Phase 4: JARVIS Wake Word Engine — DISABLED on auto-start (v33: was picking up ambient noise and triggering speech)
+      // User can manually enable "Hey JARVIS" from Settings or Voice page
       try {
         const { getWakeWordEngine } = await import('./services/wakeWordEngine').catch(() => ({}));
         if (getWakeWordEngine) {
           const wakeEngine = getWakeWordEngine();
-          wakeEngine.onWakeWord((transcript) => {
-            // Handle sleep command
-            if (transcript === '__JARVIS_SLEEP__') {
-              console.log('[JARVIS] 😴 Going to sleep...');
-              window.dispatchEvent(new CustomEvent('jarvis-sleep', { detail: { sleeping: true } }));
-              // Speak goodnight via companion
-              try {
-                import('./services/jarvisVoiceCompanion.js').then(m => {
-                  const c = m.default || m;
-                  if (c?.announceGoodnight) c.announceGoodnight();
-                });
-              } catch {}
-              return;
-            }
-            // If waking from sleep, announce
-            if (wakeEngine.isSleeping === false && transcript) {
-              try {
-                import('./services/jarvisVoiceCompanion.js').then(m => {
-                  const c = m.default || m;
-                  if (c?.announceWakeUp) c.announceWakeUp();
-                });
-              } catch {}
-            }
-            console.log('[JARVIS] Wake word detected! Processing command...');
-            window.dispatchEvent(new CustomEvent('jarvis-wake-word', { detail: { transcript } }));
-            // Smart Voice Commands — try to match a command first, then fallback to chat
-            import('./services/jarvisSmartCommands.js').then(cmds => {
-              const smartCmds = cmds.default || cmds;
-              if (smartCmds?.processVoiceCommand) {
-                smartCmds.processVoiceCommand(transcript).then(result => {
-                  if (result?.matched) {
-                    console.log('[JARVIS] Smart command matched:', result.action);
-                  } else {
-                    // No command matched — JARVIS acknowledges and opens chat
-                    window.dispatchEvent(new CustomEvent('jarvis-speak', { 
-                      detail: { text: 'Haan Sir, bataiye! Main sun rahi hoon. Aap chat mein likh ke ya bol ke baat kar sakte hain.', priority: 'high' } 
-                    }));
-                    window.dispatchEvent(new CustomEvent('jarvis-navigate', { detail: { path: '/chat' } }));
-                  }
-                }).catch(() => {
-                  window.dispatchEvent(new CustomEvent('jarvis-speak', { 
-                    detail: { text: 'Sir, main sun rahi hoon. Bataiye kya karna hai.', priority: 'high' } 
-                  }));
-                  window.dispatchEvent(new CustomEvent('jarvis-navigate', { detail: { path: '/chat' } }));
-                });
-              } else {
-                window.dispatchEvent(new CustomEvent('jarvis-speak', { 
-                  detail: { text: 'JARVIS ready hai Sir! Kuch bhi poochiye.', priority: 'high' } 
-                }));
-                window.dispatchEvent(new CustomEvent('jarvis-navigate', { detail: { path: '/chat' } }));
-              }
-            }).catch(() => {
-              window.dispatchEvent(new CustomEvent('jarvis-speak', { 
-                detail: { text: 'JARVIS online hai Sir. Main sun rahi hoon.', priority: 'high' } 
-              }));
-              window.dispatchEvent(new CustomEvent('jarvis-navigate', { detail: { path: '/chat' } }));
-            });
-          });
-          // Start wake word listening (non-blocking)
-          wakeEngine.start().catch(() => {});
+          // Store reference but DON'T auto-start — user must enable explicitly
           window.__jarvisWakeEngine = wakeEngine;
-          console.log('[JARVIS] 🎙️ Wake word engine started — say "Hey JARVIS"');
+          console.log('[JARVIS] 🎙️ Wake word engine loaded (manual start — enable in Settings)');
         }
       } catch (e) { console.warn('[JARVIS] Wake word engine:', e.message) }
 

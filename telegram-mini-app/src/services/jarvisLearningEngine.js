@@ -259,9 +259,8 @@ function _checkMilestones() {
   checks.forEach(({ id, condition, label }) => {
     if (condition && !ms.find(m => m.id === id)) {
       ms.push({ id, label, unlockedAt: Date.now() })
-      window.dispatchEvent(new CustomEvent('jarvis-speak', {
-        detail: { text: `Congratulations Sir! New milestone unlocked: ${label}!`, priority: 'normal' }
-      }))
+      // v33: Silent milestone — no speech on boot (was causing unwanted alerts)
+      console.log(`[JARVIS Learning] Milestone unlocked: ${label}`)
     }
   })
 }
