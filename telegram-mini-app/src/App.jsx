@@ -7,6 +7,7 @@ import InstallPrompt from './components/InstallPrompt'
 import LoginScreen from './components/LoginScreen'
 import OnboardingScreen from './components/OnboardingScreen'
 import SplashScreen from './components/SplashScreen'
+import IronManBoot from './components/IronManBoot'
 import ErrorBoundary from './components/ErrorBoundary'
 import ConnectionStatus from './components/ConnectionStatus'
 import useSwipeNavigation from './hooks/useSwipeNavigation'
@@ -308,7 +309,37 @@ function AppInner() {
         }
       } catch (e) { console.warn('[JARVIS] Proactive Brain:', e.message) }
 
-      console.log('[JARVIS v27.0] ⚡ ALL systems ONLINE — Iron Man mode ACTIVE')
+      // Phase 7: Sound Effects Engine — Iron Man audio cues
+      try {
+        const sfxMod = await import('./services/jarvisSoundFX.js');
+        const sfx = sfxMod.default || sfxMod;
+        if (sfx?.startup) {
+          setTimeout(() => sfx.startup(), 2000); // Play after boot animation
+          console.log('[JARVIS] 🔊 Sound FX Engine ONLINE');
+        }
+      } catch (e) { console.warn('[JARVIS] Sound FX:', e.message) }
+
+      // Phase 8: Memory System — remembers everything
+      try {
+        const memMod = await import('./services/jarvisMemory.js');
+        const mem = memMod.default || memMod;
+        if (mem?.startSession) {
+          mem.startSession();
+          console.log('[JARVIS] 🧠 Memory System ONLINE — session tracked');
+        }
+      } catch (e) { console.warn('[JARVIS] Memory:', e.message) }
+
+      // Phase 9: Gesture Controls — shake, double-tap, long-press
+      try {
+        const gestMod = await import('./services/jarvisGestures.js');
+        const gestures = gestMod.default || gestMod;
+        if (gestures?.init) {
+          gestures.init();
+          console.log('[JARVIS] 🤌 Gesture Controls ONLINE — shake to scan');
+        }
+      } catch (e) { console.warn('[JARVIS] Gestures:', e.message) }
+
+      console.log('[JARVIS v28.0] ⚡ ALL systems ONLINE — Full Iron Man mode ACTIVE')
     }
 
     bootJarvis().catch(e => {
@@ -316,9 +347,9 @@ function AppInner() {
     })
   }, [])
 
-  // Cinematic splash screen on first session load
+  // Cinematic Iron Man boot sequence on first session load
   if (showSplash) {
-    return <SplashScreen onFinish={() => { sessionStorage.setItem('jarvis_splash_shown', '1'); setShowSplash(false) }} />
+    return <IronManBoot onFinish={() => { sessionStorage.setItem('jarvis_splash_shown', '1'); setShowSplash(false) }} />
   }
 
   // Show loading spinner while checking saved auth

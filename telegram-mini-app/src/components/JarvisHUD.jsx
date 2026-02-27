@@ -1,19 +1,20 @@
 /**
- * 🎯 JARVIS HUD OVERLAY — Iron Man Heads-Up Display
- * ═══════════════════════════════════════════════════
+ * 🎯 JARVIS HUD OVERLAY — Iron Man Heads-Up Display v2
+ * ═══════════════════════════════════════════════════════
  * 
- * Floating Iron Man-style status bar always visible on screen:
- * - Arc reactor pulse animation (blue glow)
- * - Voice wave animation when JARVIS speaks
- * - System status indicators (brain, scanner, market)
- * - Emergency mode (turns red on crashes)
- * - Tap to talk to JARVIS
- * - Expandable mini-panel with quick stats
+ * - Arc reactor pulse animation
+ * - Voice wave animation when speaking
+ * - System status indicators
+ * - Suit mode display + quick switch
+ * - Ambient data stream ticker
+ * - Threat level indicator
+ * - Memory-based stats (win rate, streak)
+ * - Emergency mode (red)
  */
 
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bot, Activity, Zap, Shield, AlertTriangle, Mic, Volume2, ChevronUp, ChevronDown, Wifi, WifiOff, Brain, Eye } from 'lucide-react'
+import { Bot, Activity, Zap, Shield, AlertTriangle, Mic, Volume2, ChevronUp, ChevronDown, Wifi, WifiOff, Brain, Eye, Swords, Search, ShieldCheck, Cpu } from 'lucide-react'
 
 const JarvisHUD = () => {
   const navigate = useNavigate()
@@ -24,6 +25,11 @@ const JarvisHUD = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [brainActive, setBrainActive] = useState(false)
   const [lastAlert, setLastAlert] = useState('')
+  const [currentMode, setCurrentMode] = useState('standard')
+  const [modeColor, setModeColor] = useState('#3b82f6')
+  const [dataStream, setDataStream] = useState([])
+  const [tradingStats, setTradingStats] = useState({ wins: 0, winRate: '0', streak: 0 })
+  const [threatLevel, setThreatLevel] = useState('LOW')
   const [systemStatus, setSystemStatus] = useState({
     voice: true,
     brain: false,
@@ -39,8 +45,9 @@ const JarvisHUD = () => {
     const onEmergency = (e) => {
       setIsEmergency(true)
       setPulseColor('red')
+      setThreatLevel('CRITICAL')
       setLastAlert(e.detail?.symbol ? `${e.detail.symbol} CRASH!` : 'EMERGENCY!')
-      setTimeout(() => { setIsEmergency(false); setPulseColor('cyan') }, 30000)
+      setTimeout(() => { setIsEmergency(false); setPulseColor('cyan'); setThreatLevel('LOW') }, 30000)
     }
     const onBrainScan = () => {
       setBrainActive(true)
@@ -48,14 +55,54 @@ const JarvisHUD = () => {
     }
     const onOnline = () => setIsOnline(true)
     const onOffline = () => setIsOnline(false)
+    const onModeChange = (e) => {
+      const mode = e.detail
+      if (mode?.id) setCurrentMode(mode.id)
+      if (mode?.color) setModeColor(mode.color)
+    }
+    const onHudToggle = () => setIsExpanded(prev => !prev)
 
     window.addEventListener('jarvis-speak', onSpeak)
     window.addEventListener('jarvis-emergency', onEmergency)
     window.addEventListener('jarvis-brain-scan', onBrainScan)
     window.addEventListener('online', onOnline)
     window.addEventListener('offline', onOffline)
+    window.addEventListener('jarvis-mode-change', onModeChange)
+    window.addEventListener('jarvis-hud-toggle', onHudToggle)
 
-    // Start brain status check
+    // Load memory stats
+    import('../services/jarvisMemory.js').then(m => {
+      const mem = m.default || m
+      if (mem?.getTradingStats) {
+        const stats = mem.getTradingStats()
+        setTradingStats({ wins: stats.wins || 0, winRate: stats.winRate || '0', streak: stats.profitStreak || 0 })
+      }
+    }).catch(() => {})
+
+    // Load current suit mode
+    import('../services/jarvisSuitModes.js').then(m => {
+      const modes = m.default || m
+      if (modes?.getMode) {
+        const mode = modes.getMode()
+        setCurrentMode(mode.id)
+        setModeColor(mode.color)
+      }
+    }).catch(() => {})
+
+    // Ambient data stream — scrolling mini-ticker
+    const streamInterval = setInterval(() => {
+      const items = [
+        'BTC scanning...', 'ETH monitoring...', 'SOL tracking...', 'Gems: hunting...',
+        'Whales: watching...', 'DexScreener: live', 'Brain: active', 'Shield: on',
+        'Nifty: tracking', 'Portfolio: guarded', 'Threats: scanning', 'Voice: ready'
+      ]
+      setDataStream(prev => {
+        const next = [...prev, items[Math.floor(Math.random() * items.length)]]
+        return next.slice(-3) // Keep last 3
+      })
+    }, 4000)
+
+    // Brain status check
     const brainCheck = setInterval(() => {
       const brainRunning = !!window.__jarvisProactiveBrain
       setSystemStatus(prev => ({ ...prev, brain: brainRunning }))
@@ -67,7 +114,10 @@ const JarvisHUD = () => {
       window.removeEventListener('jarvis-brain-scan', onBrainScan)
       window.removeEventListener('online', onOnline)
       window.removeEventListener('offline', onOffline)
+      window.removeEventListener('jarvis-mode-change', onModeChange)
+      window.removeEventListener('jarvis-hud-toggle', onHudToggle)
       clearInterval(brainCheck)
+      clearInterval(streamInterval)
     }
   }, [])
 
@@ -198,13 +248,37 @@ const JarvisHUD = () => {
           </div>
         </div>
 
-        {/* Expanded Panel */}
+        {/* Expanded Panel — Iron Man Full HUD */}
         {isExpanded && (
           <div className={`mt-1 p-2 rounded-xl backdrop-blur-xl border transition-all duration-300 ${
             isEmergency 
               ? 'bg-red-950/80 border-red-500/40' 
               : 'bg-slate-950/80 border-cyan-500/15'
           }`}>
+            {/* Suit Mode Banner */}
+            <div className="flex items-center justify-between mb-2 px-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold tracking-wider" style={{ color: modeColor }}>
+                  {currentMode.toUpperCase()} MODE
+                </span>
+                <span className="text-[7px] text-slate-500">
+                  {currentMode === 'standard' ? 'Mark III' : currentMode === 'combat' ? 'Hulkbuster' : currentMode === 'stealth' ? 'Sneaky' : currentMode === 'recon' ? 'Heartbreaker' : currentMode === 'guardian' ? 'Striker' : 'Full Auto'}
+                </span>
+              </div>
+              {/* Threat Level */}
+              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[7px] font-bold ${
+                threatLevel === 'CRITICAL' ? 'bg-red-500/20 text-red-400 animate-pulse' :
+                threatLevel === 'HIGH' ? 'bg-orange-500/20 text-orange-400' :
+                threatLevel === 'MODERATE' ? 'bg-yellow-500/20 text-yellow-400' :
+                'bg-emerald-500/20 text-emerald-400'
+              }`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${
+                  threatLevel === 'CRITICAL' ? 'bg-red-500' : threatLevel === 'HIGH' ? 'bg-orange-500' : threatLevel === 'MODERATE' ? 'bg-yellow-500' : 'bg-emerald-500'
+                }`} />
+                THREAT: {threatLevel}
+              </div>
+            </div>
+
             {/* System Status Grid */}
             <div className="grid grid-cols-4 gap-1.5 mb-2">
               {[
@@ -213,17 +287,73 @@ const JarvisHUD = () => {
                 { label: 'SCAN', active: systemStatus.scanner, icon: Eye, color: 'emerald' },
                 { label: 'GUARD', active: true, icon: Shield, color: 'blue' },
               ].map((sys, i) => (
-                <div key={i} className={`flex flex-col items-center p-1 rounded-lg ${
-                  sys.active ? `bg-${sys.color}-500/10 border border-${sys.color}-500/20` : 'bg-slate-800/50 border border-slate-700/30'
+                <div key={i} className={`flex flex-col items-center p-1 rounded-lg border ${
+                  sys.active ? 'bg-slate-800/50 border-slate-600/30' : 'bg-slate-900/50 border-slate-800/30'
                 }`}>
-                  <sys.icon size={12} className={sys.active ? `text-${sys.color}-400` : 'text-slate-500'} />
-                  <span className={`text-[7px] font-bold mt-0.5 ${sys.active ? `text-${sys.color}-400` : 'text-slate-500'}`}>
+                  <sys.icon size={12} className={sys.active ? `text-${sys.color}-400` : 'text-slate-600'} />
+                  <span className={`text-[7px] font-bold mt-0.5 ${sys.active ? 'text-slate-300' : 'text-slate-600'}`}>
                     {sys.label}
                   </span>
                   <span className={`text-[6px] ${sys.active ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {sys.active ? 'ONLINE' : 'OFFLINE'}
+                    {sys.active ? '●' : '○'}
                   </span>
                 </div>
+              ))}
+            </div>
+
+            {/* Trading Stats from Memory */}
+            {tradingStats.wins > 0 && (
+              <div className="flex items-center justify-between px-2 py-1 mb-2 rounded-lg bg-slate-800/40 border border-slate-700/20">
+                <span className="text-[8px] text-slate-400">Win Rate</span>
+                <span className={`text-[9px] font-bold ${parseFloat(tradingStats.winRate) >= 50 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {tradingStats.winRate}%
+                </span>
+                <span className="text-[8px] text-slate-400">Wins</span>
+                <span className="text-[9px] font-bold text-cyan-400">{tradingStats.wins}</span>
+                {tradingStats.streak > 0 && (
+                  <>
+                    <span className="text-[8px] text-slate-400">Streak</span>
+                    <span className="text-[9px] font-bold text-yellow-400">🔥{tradingStats.streak}</span>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Suit Mode Quick Switch */}
+            <div className="flex gap-1 mb-2 overflow-x-auto pb-1">
+              {[
+                { id: 'standard', icon: '🦾', label: 'STD', color: '#3b82f6' },
+                { id: 'combat', icon: '⚔️', label: 'CMB', color: '#ef4444' },
+                { id: 'stealth', icon: '🥷', label: 'STL', color: '#64748b' },
+                { id: 'recon', icon: '🔍', label: 'RCN', color: '#8b5cf6' },
+                { id: 'guardian', icon: '🛡️', label: 'GRD', color: '#22c55e' },
+                { id: 'autopilot', icon: '🤖', label: 'AUTO', color: '#06b6d4' },
+              ].map(mode => (
+                <button
+                  key={mode.id}
+                  onClick={() => {
+                    import('../services/jarvisSuitModes.js').then(m => {
+                      const modes = m.default || m
+                      if (modes?.setMode) modes.setMode(mode.id)
+                    }).catch(() => {})
+                    setCurrentMode(mode.id)
+                    setModeColor(mode.color)
+                  }}
+                  className={`flex flex-col items-center px-2 py-1 rounded-lg border text-[7px] transition-all ${
+                    currentMode === mode.id 
+                      ? 'border-opacity-60 bg-opacity-20 scale-105' 
+                      : 'border-slate-700/20 bg-slate-800/30'
+                  }`}
+                  style={{
+                    borderColor: currentMode === mode.id ? mode.color : undefined,
+                    backgroundColor: currentMode === mode.id ? mode.color + '20' : undefined,
+                  }}
+                >
+                  <span className="text-sm">{mode.icon}</span>
+                  <span className="font-bold" style={{ color: currentMode === mode.id ? mode.color : '#64748b' }}>
+                    {mode.label}
+                  </span>
+                </button>
               ))}
             </div>
 
@@ -243,10 +373,23 @@ const JarvisHUD = () => {
               </button>
             </div>
 
+            {/* Ambient Data Stream */}
+            {dataStream.length > 0 && (
+              <div className="mt-1.5 overflow-hidden h-3">
+                <div className="flex gap-3 animate-scroll-left">
+                  {dataStream.map((item, i) => (
+                    <span key={i} className="text-[7px] text-cyan-600/50 whitespace-nowrap font-mono">
+                      ▸ {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Last Alert */}
             {lastAlert && (
               <div className="mt-1.5 px-2 py-1 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                <span className="text-[8px] text-yellow-400">Last Alert: {lastAlert}</span>
+                <span className="text-[8px] text-yellow-400">⚡ {lastAlert}</span>
               </div>
             )}
           </div>

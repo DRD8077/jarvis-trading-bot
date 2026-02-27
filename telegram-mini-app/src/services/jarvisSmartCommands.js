@@ -58,6 +58,19 @@ const VOICE_COMMANDS = [
   { patterns: [/help|madad|kya kar sakti|features/i], action: 'help', response: 'Sir, main bahut kuch kar sakti hoon! Gems scan, auto trade, market analysis, whale tracking, portfolio management, aur bahut kuch. Bas bolo kya chahiye!' },
   { patterns: [/kaun ho|who are you|apna parichay|introduce/i], action: 'intro', response: 'Sir, main JARVIS hoon. Just A Rather Very Intelligent System. Tony Stark ne banaya tha, lekin ab main aapki hoon. Aapke trading mein, aapka AI guardian.' },
   { patterns: [/thank|shukriya|dhanyavaad/i], action: 'thanks', response: 'Sir, ye toh mera kaam hai. Iron Man ka JARVIS kabhi thank you nahi leta. Aur kuch karna hai?' },
+
+  // ═══ SUIT MODES ═══
+  { patterns: [/stealth mode|chupke|silent mode/i], action: 'suit-mode', mode: 'stealth', response: 'Stealth Mode activated Sir. Mark XV Sneaky. Silent operation.' },
+  { patterns: [/combat mode|hulkbuster|attack mode|ladai/i], action: 'suit-mode', mode: 'combat', response: 'Combat Mode activated Sir! Hulkbuster deployed. Maximum aggression!' },
+  { patterns: [/recon mode|scan mode|jasoosi/i], action: 'suit-mode', mode: 'recon', response: 'Recon Mode active Sir. Mark XVI Heartbreaker. Deep scanning enabled.' },
+  { patterns: [/guardian mode|safe mode|suraksha/i], action: 'suit-mode', mode: 'guardian', response: 'Guardian Mode Sir. Mark XXV Striker. Aapki portfolio ki suraksha.' },
+  { patterns: [/autopilot|auto mode|khud karo/i], action: 'suit-mode', mode: 'autopilot', response: 'Autopilot engaged Sir. Mark XLII autonomous mode. Main khud handle karungi.' },
+  { patterns: [/normal mode|standard|wapas aao/i], action: 'suit-mode', mode: 'standard', response: 'Standard Mode Sir. Mark III. Normal operations resumed.' },
+  { patterns: [/kaun sa mode|current mode|mode kya hai/i], action: 'check-mode', response: null },
+
+  // ═══ MEMORY ═══
+  { patterns: [/yaad karo|remember|mujhe yaad|mera record/i], action: 'recall-memory', response: null },
+  { patterns: [/threat (level|check|assess)|khatarnaak|danger check/i], action: 'threat-check', response: 'Threat assessment shuru kar rahi hoon Sir...' },
 ]
 
 /**
@@ -125,6 +138,49 @@ async function processVoiceCommand(transcript) {
               window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: 'Sir, market data abhi available nahi hai. Thodi der mein try karte hain.', priority: 'high' } }))
               return { matched: true, action: 'market-status' }
             }
+
+          case 'suit-mode':
+            try {
+              const suitMod = await import('./jarvisSuitModes.js')
+              const sm = suitMod.default || suitMod
+              sm.setMode(cmd.mode)
+            } catch {
+              window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: cmd.response, priority: 'high' } }))
+            }
+            return { matched: true, action: 'suit-mode', response: cmd.response }
+
+          case 'check-mode':
+            try {
+              const suitMod2 = await import('./jarvisSuitModes.js')
+              const sm2 = suitMod2.default || suitMod2
+              const mode = sm2.getCurrentMode()
+              const resp = `Sir, abhi ${mode.name} mode active hai. ${mode.designation}. Scan interval ${mode.scanInterval / 60000} minute.`
+              window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: resp, priority: 'high' } }))
+              return { matched: true, action: 'check-mode', response: resp }
+            } catch {
+              return { matched: true, action: 'check-mode' }
+            }
+
+          case 'recall-memory':
+            try {
+              const mem = await import('./jarvisMemory.js')
+              const m = mem.default || mem
+              const insight = m.generateInsight()
+              window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: insight, priority: 'high' } }))
+              return { matched: true, action: 'recall-memory', response: insight }
+            } catch {
+              window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: 'Sir, memory access mein issue hai.', priority: 'high' } }))
+              return { matched: true, action: 'recall-memory' }
+            }
+
+          case 'threat-check':
+            window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: cmd.response, priority: 'high' } }))
+            try {
+              const brain = await import('./jarvisProactiveBrain.js')
+              const b = brain.default || brain
+              if (b?.scanNow) b.scanNow()
+            } catch { /* silent */ }
+            return { matched: true, action: 'threat-check', response: cmd.response }
 
           case 'sleep':
           case 'wakeup':

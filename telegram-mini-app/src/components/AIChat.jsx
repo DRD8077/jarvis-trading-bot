@@ -271,6 +271,14 @@ const AIChat = () => {
     setStreamText('')
     abortRef.current = false
 
+    // Track message in JARVIS memory
+    try {
+      import('../services/jarvisMemory.js').then(m => {
+        const mem = m.default || m
+        if (mem?.recordMessage) mem.recordMessage(msg)
+      })
+    } catch {}
+
     // Resize textarea back
     if (inputRef.current) inputRef.current.style.height = 'auto'
 

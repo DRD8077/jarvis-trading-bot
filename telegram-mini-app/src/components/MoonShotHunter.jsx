@@ -198,6 +198,14 @@ const MoonShotHunter = () => {
         }))
       }
     } catch {}
+
+    // ═══ JARVIS THREAT ASSESSMENT — warn about dangerous tokens ═══
+    try {
+      import('../services/jarvisThreatAssessment.js').then(m => {
+        const threat = m.default || m
+        if (threat?.autoWarnDangerous) threat.autoWarnDangerous(allTokens)
+      })
+    } catch {}
   }, [base])
 
   useEffect(() => {
