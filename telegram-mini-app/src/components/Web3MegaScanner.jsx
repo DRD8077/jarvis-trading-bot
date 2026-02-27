@@ -309,6 +309,12 @@ const Web3MegaScanner = () => {
       setStats({ total: data.length, dips: dipCount, rockets: rocketCount })
       setTokens(data)
       setLastUpdate(new Date().toLocaleTimeString('en-IN'))
+      // JARVIS voice — announce scan results
+      try {
+        if (rocketCount > 0 || dipCount > 0) {
+          window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: `Sir, Web3 scan complete! ${data.length} tokens scanned. ${rocketCount} rockets mil rahe hain 20 percent plus, aur ${dipCount} dip pe hain. ${rocketCount > 3 ? 'Bahut opportunities hain Sir!' : 'Check kariye!'}`, priority: 'normal' } }))
+        }
+      } catch {}
     } catch (e) {
       console.error(`[Web3Scanner] ${t} error:`, e)
       addNotification?.(`Failed to load ${t} data`, 'error')

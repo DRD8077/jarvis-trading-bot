@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react'
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { AppProvider, useApp } from './context/AppContext'
 import Navigation from './components/Navigation'
 import LiveTicker from './components/LiveTicker'
@@ -202,17 +202,18 @@ function AppInner() {
 
       // ═══ JARVIS IRON MAN BOOT GREETING — speaks on every app launch ═══
       try {
-        if (elevenlabsVoice && typeof elevenlabsVoice.speak === 'function') {
-          const greeting = 'Namaste Sir! JARVIS online hai. Saare systems active hain. DexScreener aur Pump.fun scan ready hai. Bataiye, kya karna hai!'
-          // Try to speak immediately — may work after user interaction
-          setTimeout(() => {
-            elevenlabsVoice.speak(greeting).catch(() => {})
-          }, 1500)
+        // Load JARVIS Voice Companion — the Iron Man speaking engine
+        const companionMod = await import('./services/jarvisVoiceCompanion.js').catch(() => null)
+        const companion = companionMod?.default || companionMod
+        
+        if (companion?.announceWelcome) {
+          // Try to speak immediately
+          setTimeout(() => companion.announceWelcome(), 1500)
           // Also try on first user touch (Android WebView needs user gesture for audio)
           const speakOnTouch = () => {
             if (!window.__jarvisGreeted) {
               window.__jarvisGreeted = true
-              elevenlabsVoice.speak(greeting).catch(() => {})
+              companion.announceWelcome()
             }
             document.removeEventListener('touchstart', speakOnTouch)
             document.removeEventListener('click', speakOnTouch)
@@ -240,11 +241,11 @@ function AppInner() {
             if (transcript === '__JARVIS_SLEEP__') {
               console.log('[JARVIS] 😴 Going to sleep...');
               window.dispatchEvent(new CustomEvent('jarvis-sleep', { detail: { sleeping: true } }));
-              // Speak goodnight
+              // Speak goodnight via companion
               try {
-                import('./services/elevenlabsVoice.js').then(m => {
-                  const tts = m.default || m;
-                  if (tts?.speak) tts.speak('Good night Sir! Jab bhi zaroorat ho, bas bol dijiye JARVIS wake up. Main hamesha yahan hoon. 😴');
+                import('./services/jarvisVoiceCompanion.js').then(m => {
+                  const c = m.default || m;
+                  if (c?.announceGoodnight) c.announceGoodnight();
                 });
               } catch {}
               return;
@@ -252,9 +253,9 @@ function AppInner() {
             // If waking from sleep, announce
             if (wakeEngine.isSleeping === false && transcript) {
               try {
-                import('./services/elevenlabsVoice.js').then(m => {
-                  const tts = m.default || m;
-                  if (tts?.speak) tts.speak('Good morning Sir! Main jaag gayi! Bataiye, kya karna hai? ⚡');
+                import('./services/jarvisVoiceCompanion.js').then(m => {
+                  const c = m.default || m;
+                  if (c?.announceWakeUp) c.announceWakeUp();
                 });
               } catch {}
             }
@@ -326,6 +327,19 @@ function AppInner() {
 function SwipeableApp() {
   const { onTouchStart, onTouchEnd } = useSwipeNavigation()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // ═══ JARVIS VOICE COMPANION — speaks on every page navigation ═══
+  useEffect(() => {
+    try {
+      import('./services/jarvisVoiceCompanion.js').then(mod => {
+        const companion = mod.default || mod
+        if (companion?.onPageChange) {
+          companion.onPageChange(location.pathname)
+        }
+      }).catch(() => {})
+    } catch {}
+  }, [location.pathname])
 
   // Activate deep link router (loaded dynamically, stored on window)
   useEffect(() => {

@@ -28,6 +28,14 @@ const GemScanner = () => {
       setGems(Array.isArray(gemList) ? gemList : [])
       if (d.stats) setStats(d.stats)
       setLastUpdate(new Date().toLocaleTimeString('en-IN'))
+      // JARVIS voice — announce top gems
+      try {
+        const topGems = (Array.isArray(gemList) ? gemList : []).filter(g => (g.gem_score || g.score || 0) >= 80).slice(0, 3)
+        if (topGems.length > 0) {
+          const names = topGems.map(g => g.symbol || g.name).join(', ')
+          window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: `Sir, ${topGems.length} high-score gems mili! ${names}. Inhe check kariye, potential hai!`, priority: 'normal' } }))
+        }
+      } catch {}
     } catch (e) {
       console.error('Gems load error:', e)
       addNotification?.('Failed to load gems', 'error')

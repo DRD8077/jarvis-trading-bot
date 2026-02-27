@@ -187,6 +187,17 @@ const MoonShotHunter = () => {
       dipsFound: results.dips.filter(t => (t.change_24h || 0) <= -5).length,
       moonshotPotential: allTokens.filter(t => (t.moonScore || 0) >= 70).length,
     })
+
+    // ═══ JARVIS VOICE — announce top gems found ═══
+    try {
+      const topGems = allTokens.filter(t => (t.moonScore || 0) >= 85).slice(0, 2)
+      if (topGems.length > 0) {
+        const names = topGems.map(t => t.symbol || t.base_token || '???').join(' aur ')
+        window.dispatchEvent(new CustomEvent('jarvis-speak', {
+          detail: { text: `Sir, ${topGems.length} high-score gems mili hain: ${names}. Moon score 85 se zyada hai. Check karein.` }
+        }))
+      }
+    } catch {}
   }, [base])
 
   useEffect(() => {

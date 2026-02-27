@@ -90,6 +90,7 @@ const Trading = () => {
       if (action === 'SELL') {
         const res = await sellPosition(signal.symbol, signal.quantity || 1)
         addNotification(`SELL order executed for ${signal.symbol} ✅`, 'success')
+        window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: `Sir, ${signal.symbol} sell ho gaya! Order executed successfully.`, priority: 'high' } }))
       } else {
         // BUY — route through auto-trader
         const { startAutoTrader } = await import('../services/api')
@@ -98,11 +99,13 @@ const Trading = () => {
           signal.amount || signal.price || 100
         )
         addNotification(`BUY order placed for ${signal.symbol} at ${signal.entry || signal.price || 'market'} ✅`, 'success')
+        window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: `Sir, ${signal.symbol} buy order placed! Entry price ${signal.entry || signal.price || 'market'}.`, priority: 'high' } }))
       }
       hapticFeedback('success')
     } catch (e) {
       addNotification('Trade failed: ' + (e?.response?.data?.detail || e.message), 'error')
       hapticFeedback('error')
+      window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: `Sir, trade fail ho gaya. ${e?.response?.data?.detail || e.message}. Dobara try karte hain.`, priority: 'high' } }))
     }
   }
 
