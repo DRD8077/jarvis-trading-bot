@@ -102,6 +102,17 @@ const VOICE_COMMANDS = [
   // ═══ ARC REACTOR ═══
   { patterns: [/power (level|status|kitna)|arc reactor|energy/i], action: 'check-power', response: null },
   { patterns: [/recharge|charge karo|power up/i], action: 'recharge', response: 'Arc Reactor recharge ho raha hai Sir...' },
+
+  // ═══ v31 — BATTLE HUD ═══
+  { patterns: [/war room|tactical|multi market|sab market/i], action: 'navigate', path: '/war-room', response: 'War Room khol rahi hoon Sir. Tactical display ready.' },
+  { patterns: [/diagnostic(s)?|system check|health check|status report/i], action: 'run-diagnostic', response: null },
+  { patterns: [/diagnostic(s)? (page|dikhao|kholo)/i], action: 'navigate', path: '/diagnostics', response: 'System Diagnostics page Sir.' },
+  { patterns: [/lock (target|coin)|target lock|track karo (\w+)/i], action: 'lock-target', response: null },
+  { patterns: [/battle (hud|mode|status)|target(s)? (dikhao|status)/i], action: 'battle-status', response: null },
+  { patterns: [/suggestion|kya karu|recommend|salah/i], action: 'suggestion', response: null },
+  { patterns: [/memory stats|yaad kitna|conversation count/i], action: 'memory-stats', response: null },
+  { patterns: [/milestone|achievement|badge/i], action: 'milestones', response: null },
+  { patterns: [/user dna|my profile|mera profile/i], action: 'user-dna', response: null },
 ]
 
 /**
@@ -292,6 +303,93 @@ async function processVoiceCommand(transcript) {
           case 'thanks':
             window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: cmd.response, priority: 'high' } }))
             return { matched: true, action: cmd.action, response: cmd.response }
+
+          case 'run-diagnostic':
+            try {
+              const diag = await import('./jarvisDiagnostics.js')
+              const dg = diag.default || diag
+              const report = await dg.runDiagnostic()
+              return { matched: true, action: 'run-diagnostic', response: `Diagnostic complete. ${report.online}/${report.total} systems online. Health: ${report.healthPercent}%` }
+            } catch {
+              window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: 'Sir, diagnostic system mein issue hai.', priority: 'high' } }))
+              return { matched: true, action: 'run-diagnostic' }
+            }
+
+          case 'lock-target':
+            try {
+              const bh = await import('./jarvisBattleHUD.js')
+              const bhd = bh.default || bh
+              // Extract symbol from transcript
+              const symbolMatch = text.match(/(?:lock|track)\s+(?:target\s+)?(\w+)/i)
+              const sym = symbolMatch?.[1]?.toUpperCase() || 'BTC'
+              bhd.lockTarget(sym, 0, 0, 0)
+              const resp3 = `Target locked Sir! ${sym} ko track kar rahi hoon. Battle HUD active.`
+              window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: resp3, priority: 'high' } }))
+              return { matched: true, action: 'lock-target', response: resp3 }
+            } catch {
+              return { matched: true, action: 'lock-target' }
+            }
+
+          case 'battle-status':
+            try {
+              const bh2 = await import('./jarvisBattleHUD.js')
+              const bhd2 = bh2.default || bh2
+              const summary = bhd2.getBattleSummary()
+              window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: summary, priority: 'high' } }))
+              return { matched: true, action: 'battle-status', response: summary }
+            } catch {
+              return { matched: true, action: 'battle-status' }
+            }
+
+          case 'suggestion':
+            try {
+              const le = await import('./jarvisLearningEngine.js')
+              const led = le.default || le
+              const s = led.getSuggestion() || 'Sir, abhi koi specific suggestion nahi hai. Thoda aur use kariye, main seekh rahi hoon.'
+              window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: s, priority: 'high' } }))
+              return { matched: true, action: 'suggestion', response: s }
+            } catch {
+              return { matched: true, action: 'suggestion' }
+            }
+
+          case 'memory-stats':
+            try {
+              const cm = await import('./jarvisConversationMemory.js')
+              const cmd2 = cm.default || cm
+              const stats = cmd2.getStats()
+              const resp4 = `Sir, mere paas ${stats.totalMemories} memories hain. ${stats.userMessages} aapki, ${stats.jarvisMessages} meri. ${stats.topics.length} topics covered hain.`
+              window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: resp4, priority: 'high' } }))
+              return { matched: true, action: 'memory-stats', response: resp4 }
+            } catch {
+              return { matched: true, action: 'memory-stats' }
+            }
+
+          case 'milestones':
+            try {
+              const le2 = await import('./jarvisLearningEngine.js')
+              const led2 = le2.default || le2
+              const dna = led2.getUserDNA()
+              const ms = dna.milestones || []
+              const resp5 = ms.length > 0
+                ? `Sir, aapke ${ms.length} milestones hain: ${ms.map(m => m.label).join(', ')}`
+                : 'Sir, abhi koi milestone unlock nahi hua. Keep using JARVIS!'
+              window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: resp5, priority: 'high' } }))
+              return { matched: true, action: 'milestones', response: resp5 }
+            } catch {
+              return { matched: true, action: 'milestones' }
+            }
+
+          case 'user-dna':
+            try {
+              const le3 = await import('./jarvisLearningEngine.js')
+              const led3 = le3.default || le3
+              const dna2 = led3.getUserDNA()
+              const resp6 = `Sir, aapka profile: ${dna2.totalSessions} sessions, ${dna2.currentStreak} day streak, risk level ${dna2.riskLevel}, peak time ${dna2.peakHour}:00 ${dna2.peakDay}. ${dna2.favoriteAssets.length > 0 ? 'Favorite: ' + dna2.favoriteAssets.join(', ') : ''}`
+              window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: resp6, priority: 'high' } }))
+              return { matched: true, action: 'user-dna', response: resp6 }
+            } catch {
+              return { matched: true, action: 'user-dna' }
+            }
 
           default:
             return { matched: true, action: cmd.action }

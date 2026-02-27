@@ -99,6 +99,10 @@ const AIAutoSniper = lazy(() => import('./components/AIAutoSniper'))
 const JarvisWorkshop = lazy(() => import('./components/JarvisWorkshop'))
 const JarvisHologram = lazy(() => import('./components/JarvisHologram'))
 const JarvisHUD = lazy(() => import('./components/JarvisHUD'))
+const JarvisWarRoom = lazy(() => import('./components/JarvisWarRoom'))
+const JarvisDiagnosticsPage = lazy(() => import('./components/JarvisDiagnosticsPage'))
+const JarvisBattleOverlay = lazy(() => import('./components/JarvisBattleOverlay'))
+const JarvisNotificationOverlay = lazy(() => import('./components/JarvisNotificationOverlay'))
 
 const PageLoader = () => (
   <div className="p-4 bg-slate-900 min-h-screen space-y-3 animate-pulse">
@@ -141,7 +145,7 @@ function AppInner() {
     }
 
     async function bootJarvis() {
-      console.log('[JARVIS v29.1 STANDALONE] Crash-proof boot sequence starting...')
+      console.log('[JARVIS v31.0 STANDALONE] Crash-proof boot sequence starting...')
 
       // ═══ SOUND EFFECTS MUTE — only kills beeps/chimes, NOT JARVIS voice ═══
       try {
@@ -411,7 +415,47 @@ function AppInner() {
         }
       } catch (e) { console.warn('[JARVIS] Personalities:', e.message) }
 
-      console.log('[JARVIS v29.0] ⚡ ALL systems ONLINE — Full Iron Man mode ACTIVE')
+      // Phase 15: Battle HUD — target tracking system
+      try {
+        const bhMod = await import('./services/jarvisBattleHUD.js');
+        const bh = bhMod.default || bhMod;
+        if (bh?.init) {
+          bh.init();
+          console.log('[JARVIS] ⚔️ Battle HUD ONLINE — target tracking ready');
+        }
+      } catch (e) { console.warn('[JARVIS] Battle HUD:', e.message) }
+
+      // Phase 16: Learning Engine — adaptive pattern recognition
+      try {
+        const leMod = await import('./services/jarvisLearningEngine.js');
+        const le = leMod.default || leMod;
+        if (le?.init) {
+          le.init();
+          console.log('[JARVIS] 🧠 Learning Engine ONLINE — adapting to user patterns');
+        }
+      } catch (e) { console.warn('[JARVIS] Learning Engine:', e.message) }
+
+      // Phase 17: Conversation Memory — persistent context
+      try {
+        const cmMod = await import('./services/jarvisConversationMemory.js');
+        const cm = cmMod.default || cmMod;
+        if (cm?.init) {
+          cm.init();
+          console.log('[JARVIS] 💬 Conversation Memory ONLINE — remembering everything');
+        }
+      } catch (e) { console.warn('[JARVIS] Conversation Memory:', e.message) }
+
+      // Phase 18: Smart Notifications — Iron Man style alerts
+      try {
+        const notifMod = await import('./services/jarvisNotifications.js');
+        const notif = notifMod.default || notifMod;
+        if (notif?.init) {
+          notif.init();
+          console.log('[JARVIS] 🔔 Smart Notifications ONLINE — alert system ready');
+        }
+      } catch (e) { console.warn('[JARVIS] Notifications:', e.message) }
+
+      console.log('[JARVIS v31.0] ⚡ ALL systems ONLINE — Full Iron Man mode ACTIVE')
     }
 
     bootJarvis().catch(e => {
@@ -473,6 +517,11 @@ function SwipeableApp() {
         const eq = mod.default || mod
         if (eq?.recordPageChange) eq.recordPageChange(location.pathname)
       }).catch(() => {})
+      // Track page visit for Learning Engine
+      import('./services/jarvisLearningEngine.js').then(mod => {
+        const le = mod.default || mod
+        if (le?.trackPageVisit) le.trackPageVisit(location.pathname)
+      }).catch(() => {})
     } catch {}
   }, [location.pathname])
 
@@ -512,6 +561,10 @@ function SwipeableApp() {
       <Suspense fallback={null}><JarvisHUD /></Suspense>
       {/* JARVIS Holographic Display Overlay */}
       {showHologram && <Suspense fallback={null}><JarvisHologram onClose={() => setShowHologram(false)} /></Suspense>}
+      {/* JARVIS Battle HUD Overlay — target tracking */}
+      <Suspense fallback={null}><JarvisBattleOverlay /></Suspense>
+      {/* JARVIS Notification Overlay — Iron Man style alerts */}
+      <Suspense fallback={null}><JarvisNotificationOverlay /></Suspense>
       <ConnectionStatus />
       <LiveTicker />
       <ErrorBoundary>
@@ -558,6 +611,8 @@ function SwipeableApp() {
               <Route path="/moonshot" element={<ErrorBoundary><MoonShotHunter /></ErrorBoundary>} />
               <Route path="/auto-sniper" element={<ErrorBoundary><AIAutoSniper /></ErrorBoundary>} />
               <Route path="/workshop" element={<ErrorBoundary><JarvisWorkshop /></ErrorBoundary>} />
+              <Route path="/war-room" element={<ErrorBoundary><JarvisWarRoom /></ErrorBoundary>} />
+              <Route path="/diagnostics" element={<ErrorBoundary><JarvisDiagnosticsPage /></ErrorBoundary>} />
             </Routes>
           </main>
         </Suspense>
