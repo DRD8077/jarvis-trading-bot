@@ -168,7 +168,7 @@ class ElevenLabsVoiceEngine {
     if (!this.useFallback && this.apiKey) {
       return this._speakElevenLabs(text, voiceId, options)
     } else {
-      return this._speakWebSpeech(text, voiceProfile?.lang || 'en')
+      return this._speakWebSpeech(text, voiceProfile?.lang || 'hi')
     }
   }
 

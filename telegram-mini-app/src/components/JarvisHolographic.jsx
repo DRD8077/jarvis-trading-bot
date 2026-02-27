@@ -604,58 +604,35 @@ export default function JarvisHolographic() {
         </div>
       )}
 
-      {/* ── Settings Panel ── */}
+      {/* ── Settings Panel — JARVIS is self-powered, no API key needed ── */}
       {showSettings && (
         <div className="code-panel slide-up" style={{ zIndex: 100 }}>
           <div className="hud-panel">
             <div className="hud-panel-header">
               <div className="dot" />
-              <span>AI CONFIGURATION</span>
+              <span>JARVIS STATUS</span>
               <button onClick={() => setShowSettings(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer' }}>✕</button>
             </div>
             
-            <div style={{ fontSize: '11px', color: 'rgba(0,212,255,0.6)', marginBottom: '12px' }}>
-              Configure your free AI API key. No server needed — calls go directly from your device.
+            <div style={{ fontSize: '12px', color: 'rgba(0,255,136,0.8)', marginBottom: '12px' }}>
+              ✅ JARVIS AI is fully operational. No API key needed — powered by server-side AI.
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                {Object.entries({
-                  groq: '⚡ Groq (FREE)',
-                  gemini: '🔮 Gemini (FREE)',
-                  together: '🤝 Together (FREE)',
-                  openai: '🧠 OpenAI',
-                  anthropic: '🎭 Anthropic'
-                }).map(([key, label]) => (
-                  <button
-                    key={key}
-                    className={`quick-action-chip ${aiProvider === key ? 'active' : ''}`}
-                    onClick={() => setAiProvider(key)}
-                    style={aiProvider === key ? { background: 'rgba(0,212,255,0.2)', borderColor: '#00d4ff' } : {}}
-                  >
-                    {label} {freeAIRef.current?.apiKeys?.[key] ? '✓' : ''}
-                  </button>
-                ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11px' }}>
+              <div style={{ color: 'rgba(0,212,255,0.7)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>🧠</span> AI Engine: Active (Backend Proxy)
               </div>
-
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <input
-                  type="password"
-                  className="chat-input"
-                  placeholder={`Enter ${aiProvider} API key...`}
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                  style={{ borderRadius: '8px' }}
-                />
-                <button className="run-btn" onClick={saveApiKey}>Save</button>
+              <div style={{ color: 'rgba(0,212,255,0.7)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>🎙️</span> Voice: Hindi TTS Active
               </div>
-
-              <div style={{ fontSize: '10px', color: 'rgba(0,212,255,0.4)' }}>
-                {aiProvider === 'groq' && '→ Get free key at console.groq.com'}
-                {aiProvider === 'gemini' && '→ Get free key at aistudio.google.com/apikey'}
-                {aiProvider === 'together' && '→ Get free key at api.together.xyz'}
-                {aiProvider === 'openai' && '→ Get key at platform.openai.com (paid)'}
-                {aiProvider === 'anthropic' && '→ Get key at console.anthropic.com (paid)'}
+              <div style={{ color: 'rgba(0,212,255,0.7)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>📡</span> DexScreener + Pump.fun: Connected
+              </div>
+              <div style={{ color: 'rgba(0,212,255,0.7)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>🎯</span> Auto Sniper: Ready
+              </div>
+              <div style={{ color: 'rgba(0,212,255,0.5)', marginTop: '6px', fontSize: '10px' }}>
+                Sir, main fully operational hoon. Bas bolo kya karna hai. 🚀
               </div>
             </div>
           </div>

@@ -247,8 +247,15 @@ const AIChat = () => {
     fetchChatHistory(userId).then(r => {
       const hist = r.data?.data?.messages || r.data?.messages || []
       if (hist.length > 0) setMessages(hist)
-    }).catch(() => {})
-  }, [])
+      else {
+        // No chat history — JARVIS speaks greeting like Iron Man
+        speakResponse('Haan Sir, bataiye! Main JARVIS, aapki AI assistant. Market analysis, gem hunting, auto trading — jo bhi karna hai, main ready hoon!')
+      }
+    }).catch(() => {
+      // Even on error, greet
+      speakResponse('Haan Sir, bataiye! Main JARVIS, aapki AI assistant. Jo bhi karna hai, main ready hoon!')
+    })
+  }, []) // eslint-disable-line
 
   const modelLabel = models.find(m => m.id === selectedModel)?.name || 'JARVIS Auto'
 

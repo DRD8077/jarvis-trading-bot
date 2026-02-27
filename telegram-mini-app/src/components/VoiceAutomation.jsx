@@ -480,11 +480,11 @@ const VoiceAutomation = () => {
           <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 border border-blue-500/20 rounded-xl p-3">
             <div className="text-sm font-bold text-blue-400 mb-1">💡 Power Tips</div>
             <div className="text-[10px] text-slate-400 space-y-1">
-              <div>• Set ELEVENLABS_API_KEY for premium voice</div>
-              <div>• Say "JARVIS" in continuous mode</div>
+              <div>• Say "JARVIS" to activate voice mode</div>
+              <div>• JARVIS speaks in Hindi automatically</div>
               <div>• Emergency commands work offline</div>
-              <div>• Desktop app = full OS control</div>
-              <div>• Voice cloning via ElevenLabs API</div>
+              <div>• Voice works on all Android devices</div>
+              <div>• Continuous mode for hands-free use</div>
             </div>
           </div>
         </div>

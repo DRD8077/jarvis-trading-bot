@@ -200,6 +200,28 @@ function AppInner() {
       try { sc(themeEngine, 'init') } catch {}
       try { sc(elevenlabsVoice, 'init') } catch {}
 
+      // ═══ JARVIS IRON MAN BOOT GREETING — speaks on every app launch ═══
+      try {
+        if (elevenlabsVoice && typeof elevenlabsVoice.speak === 'function') {
+          const greeting = 'Namaste Sir! JARVIS online hai. Saare systems active hain. DexScreener aur Pump.fun scan ready hai. Bataiye, kya karna hai!'
+          // Try to speak immediately — may work after user interaction
+          setTimeout(() => {
+            elevenlabsVoice.speak(greeting).catch(() => {})
+          }, 1500)
+          // Also try on first user touch (Android WebView needs user gesture for audio)
+          const speakOnTouch = () => {
+            if (!window.__jarvisGreeted) {
+              window.__jarvisGreeted = true
+              elevenlabsVoice.speak(greeting).catch(() => {})
+            }
+            document.removeEventListener('touchstart', speakOnTouch)
+            document.removeEventListener('click', speakOnTouch)
+          }
+          document.addEventListener('touchstart', speakOnTouch, { once: true })
+          document.addEventListener('click', speakOnTouch, { once: true })
+        }
+      } catch {}
+
       // Pre-cache for offline mode
       try {
         const api = await import('./services/api').catch(() => null)
