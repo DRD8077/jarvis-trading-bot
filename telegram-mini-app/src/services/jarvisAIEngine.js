@@ -334,6 +334,11 @@ Jai Mahadev! 🔱`
    * Speak text out loud
    */
   async speak(text, options = {}) {
+    // v32: Respect mute/voice settings — NEVER bypass
+    if (window.__JARVIS_MUTE || window.__JARVIS_VOICE_ENABLED === false) {
+      return { success: false, error: 'Voice muted by user' }
+    }
+    
     this.isSpeaking = true
     this._emit('speakingStart', { text })
     

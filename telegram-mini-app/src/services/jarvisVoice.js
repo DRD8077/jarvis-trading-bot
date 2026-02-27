@@ -246,6 +246,9 @@ class JarvisVoiceEngine {
   // ═══════════════════════════════════
 
   async speak(text, lang = null) {
+    // v32: Respect mute/voice settings — NEVER bypass
+    if (window.__JARVIS_MUTE || window.__JARVIS_VOICE_ENABLED === false) return;
+    
     const detectedLang = lang || this._detectLanguage(text)
     
     // 1. Try ElevenLabs first (sweet Priya voice)

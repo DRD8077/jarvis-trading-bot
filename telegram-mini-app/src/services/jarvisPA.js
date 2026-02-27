@@ -380,13 +380,12 @@ class JarvisPA {
    * Web speech synthesis fallback
    */
   _webSpeak(text) {
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.rate = 1.0
-    utterance.pitch = 0.9
-    const voices = speechSynthesis.getVoices()
-    const voice = voices.find(v => v.lang.includes('en-GB')) || voices[0]
-    if (voice) utterance.voice = voice
-    speechSynthesis.speak(utterance)
+    // v32: Respect mute/voice settings — NEVER bypass
+    if (window.__JARVIS_MUTE || window.__JARVIS_VOICE_ENABLED === false) return;
+    // Route through central voice companion instead of direct speechSynthesis
+    window.dispatchEvent(new CustomEvent('jarvis-speak', {
+      detail: { text, priority: 'normal' }
+    }));
   }
 
   // ═══════════════════════════════════

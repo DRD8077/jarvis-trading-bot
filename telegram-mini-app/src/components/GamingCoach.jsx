@@ -625,11 +625,13 @@ const GamingCoach = ({ onBack, apiBase }) => {
   // Speak callout using TTS
   const speakCallout = (text) => {
     try {
+      // v32: Respect mute/voice settings
+      if (window.__JARVIS_MUTE || window.__JARVIS_VOICE_ENABLED === false) return;
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text.replace(/[🚨⚠️🔫💥🎯🗺️]/g, ''));
         utterance.lang = 'en-IN';
-        utterance.rate = 1.3; // Fast for gaming callouts
+        utterance.rate = 1.3;
         utterance.pitch = 1.1;
         window.speechSynthesis.speak(utterance);
       }

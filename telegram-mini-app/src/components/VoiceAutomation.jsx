@@ -289,6 +289,8 @@ const VoiceAutomation = () => {
   }
 
   const speakResponse = async (text) => {
+    // v32: Respect mute/voice settings
+    if (window.__JARVIS_MUTE || window.__JARVIS_VOICE_ENABLED === false) return;
     const clean = text.replace(/[\u{1F300}-\u{1FAD6}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}]/gu, '')
     if (elevenlabsVoice && elevenLabsReady && voiceEngine === 'elevenlabs') {
       elevenlabsVoice.setVoice(selectedVoice)

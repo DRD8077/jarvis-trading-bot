@@ -184,12 +184,7 @@ const AIAutoSniper = () => {
         setStats(prev => ({ ...prev, totalBought: prev.totalBought + 1 }))
         addLog(`🟢 AUTO-BUY: ${pos.symbol} @ ${formatPrice(pos.entryPrice)} | Score: ${pos.moonScore} | ₹${config.maxBudget}`, 'buy')
         hapticFeedback?.('success')
-        // ═══ JARVIS VOICE — announce buy ═══
-        try {
-          window.dispatchEvent(new CustomEvent('jarvis-speak', {
-            detail: { text: `Sir, ${pos.symbol} kharida! Score ${pos.moonScore}, amount ${config.maxBudget} rupaye. Moon potential hai!`, priority: 'high' }
-          }))
-        } catch {}
+        // v32: Silenced auto-speech on buy (fires too frequently with simulated trading)
       }
     }
 
@@ -212,12 +207,7 @@ const AIAutoSniper = () => {
         if (pnlPercent <= config.stopLoss) {
           addLog(`🔴 STOP-LOSS: ${p.symbol} @ ${pnlPercent.toFixed(1)}% | Lost ₹${Math.abs(pnl).toFixed(0)}`, 'sell')
           hapticFeedback?.('error')
-          // ═══ JARVIS VOICE — announce stop loss ═══
-          try {
-            window.dispatchEvent(new CustomEvent('jarvis-speak', {
-              detail: { text: `Warning Sir! ${p.symbol} pe stop loss trigger hua. ${Math.abs(pnl).toFixed(0)} rupaye ka loss. Position close ho gayi.`, priority: 'high' }
-            }))
-          } catch {}
+          // v32: Silenced auto-speech on stop loss (fires too frequently)
           setStats(prev => ({ ...prev, totalSold: prev.totalSold + 1, totalPnl: prev.totalPnl + pnl }))
           setTradeHistory(prev => [{ ...p, exitPrice: newPrice, pnl, pnlPercent, exitTime: Date.now(), reason: 'Stop Loss' }, ...prev])
           return { ...p, currentPrice: newPrice, pnl, pnlPercent, status: 'closed-sl' }
@@ -225,12 +215,7 @@ const AIAutoSniper = () => {
         if (pnlPercent >= config.takeProfit) {
           addLog(`🟢 TAKE-PROFIT: ${p.symbol} @ +${pnlPercent.toFixed(1)}% | Profit ₹${pnl.toFixed(0)}`, 'sell')
           hapticFeedback?.('success')
-          // ═══ JARVIS VOICE — announce take profit ═══
-          try {
-            window.dispatchEvent(new CustomEvent('jarvis-speak', {
-              detail: { text: `Congratulations Sir! ${p.symbol} pe target hit! ${pnl.toFixed(0)} rupaye ka profit! Bohot badhiya trade!`, priority: 'high' }
-            }))
-          } catch {}
+          // v32: Silenced auto-speech on take profit (fires too frequently)
           setStats(prev => ({ ...prev, totalSold: prev.totalSold + 1, totalPnl: prev.totalPnl + pnl }))
           setTradeHistory(prev => [{ ...p, exitPrice: newPrice, pnl, pnlPercent, exitTime: Date.now(), reason: 'Take Profit' }, ...prev])
           return { ...p, currentPrice: newPrice, pnl, pnlPercent, status: 'closed-tp' }

@@ -110,24 +110,10 @@ function initDoubleTap() {
 function onShake() {
   console.log('[JARVIS] 📳 SHAKE detected — Emergency scan!')
   
-  // Haptic feedback
+  // Haptic feedback only — no auto-speech or brain scan (v32: prevents accidental triggers)
   try { navigator.vibrate?.([100, 50, 100]) } catch {}
   
-  // JARVIS announcement
-  window.dispatchEvent(new CustomEvent('jarvis-speak', {
-    detail: { text: 'Shake detected Sir! Emergency scan shuru kar rahi hoon. Suit deploying!', priority: 'high' }
-  }))
-  
-  // Trigger brain scan
-  try {
-    const brain = window.__jarvisProactiveBrain
-    if (brain?.scanNow) brain.scanNow()
-  } catch {}
-  
-  // Sound effect
-  window.dispatchEvent(new CustomEvent('jarvis-brain-scan'))
-  
-  // Visual feedback
+  // Visual feedback only
   window.dispatchEvent(new CustomEvent('jarvis-gesture', { detail: { type: 'shake' } }))
 }
 
@@ -145,10 +131,7 @@ function onLongPress() {
   
   try { navigator.vibrate?.([50, 30, 50]) } catch {}
   
-  window.dispatchEvent(new CustomEvent('jarvis-speak', {
-    detail: { text: 'Haan Sir, bataiye! Main sun rahi hoon.', priority: 'high' }
-  }))
-  
+  // v32: Navigate to chat only, no auto-speech
   window.dispatchEvent(new CustomEvent('jarvis-navigate', { detail: { path: '/chat' } }))
 }
 

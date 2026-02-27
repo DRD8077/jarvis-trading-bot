@@ -180,11 +180,12 @@ async function backgroundScan() {
       // Track BTC price for change detection
       if (lastBTCPrice > 0) {
         const quickChange = ((btcPrice - lastBTCPrice) / lastBTCPrice) * 100
-        if (quickChange <= -3 && canAlert('btc-quick-drop')) {
-          jarvisSpeak(`Sir, Bitcoin tezi se gir raha hai! ${Math.abs(quickChange).toFixed(1)} percent drop last scan mein. Alert mode on.`, 'high')
+        // v32: Only log, no auto-speech for BTC price changes (prevents unwanted alerts)
+        if (quickChange <= -3) {
+          console.log(`[JARVIS Brain] BTC quick drop: ${quickChange.toFixed(1)}%`)
         }
-        if (quickChange >= 5 && canAlert('btc-quick-pump')) {
-          jarvisSpeak(`Sir, Bitcoin pump ho raha hai! ${quickChange.toFixed(1)} percent upar gaya last scan mein!`, 'high')
+        if (quickChange >= 5) {
+          console.log(`[JARVIS Brain] BTC quick pump: ${quickChange.toFixed(1)}%`)
         }
       }
       lastBTCPrice = btcPrice

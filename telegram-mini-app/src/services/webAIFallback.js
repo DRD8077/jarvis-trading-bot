@@ -86,6 +86,8 @@ class WebAIFallback {
   // ═══ TTS (Web Speech Synthesis fallback) ═══
 
   async speakWeb(text, options = {}) {
+    // v32: Respect mute/voice settings — NEVER bypass
+    if (window.__JARVIS_MUTE || window.__JARVIS_VOICE_ENABLED === false) return;
     if (!this.synth) return
 
     // Cancel current speech

@@ -241,14 +241,8 @@ function executeProtocolActions(actions) {
       case 'enable-all-alerts':
       case 'enable-voice-alerts':
       case 'enable-emergency-sounds':
-        window.__JARVIS_MUTE = false
-        try {
-          const settings = JSON.parse(localStorage.getItem('jarvis_app_settings') || '{}')
-          settings.sound = true
-          settings.voice = true
-          settings.notifications = true
-          localStorage.setItem('jarvis_app_settings', JSON.stringify(settings))
-        } catch {}
+        // v32: NEVER force-unmute — respect user's sound preferences
+        console.log('[JARVIS Protocols] Sound action requested but respecting user mute settings')
         break
 
       case 'enable-vibration':

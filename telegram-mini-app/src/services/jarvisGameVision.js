@@ -295,24 +295,17 @@ class JarvisGameVision {
   // ═══════════════════════════════════
 
   _voiceCallout(text) {
+    // v32: Respect mute/voice settings — NEVER bypass
+    if (window.__JARVIS_MUTE || window.__JARVIS_VOICE_ENABLED === false) return;
+    
     // Strip emoji for speech
     const cleanText = text.replace(/[\u{1F300}-\u{1FAFF}]|[\u{2600}-\u{27BF}]/gu, '').trim();
     
-    if ('speechSynthesis' in window && cleanText) {
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = 'en-IN';
-      utterance.rate = 1.2; // Slightly fast for gaming callouts
-      utterance.pitch = 1.0;
-      utterance.volume = 0.8;
-      
-      // Try to find a good voice
-      const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find(v => 
-        v.name.includes('Google') || v.name.includes('English')
-      );
-      if (preferredVoice) utterance.voice = preferredVoice;
-      
-      window.speechSynthesis.speak(utterance);
+    // Route through central voice companion instead of direct speechSynthesis
+    if (cleanText) {
+      window.dispatchEvent(new CustomEvent('jarvis-speak', {
+        detail: { text: cleanText, priority: 'low' }
+      }));
     }
 
     if (this.callbackOnCallout) {

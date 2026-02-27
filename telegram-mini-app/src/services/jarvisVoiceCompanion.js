@@ -135,6 +135,22 @@ async function initVoice() {
     console.warn('[JARVIS Voice] ElevenLabs init error:', e.message)
   }
 
+  // v32: Pre-load Web Speech API voices (Android WebView returns empty array initially)
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices()
+      if (voices.length > 0) {
+        console.log(`[JARVIS Voice] ✅ ${voices.length} voices loaded`)
+      }
+    }
+    loadVoices()
+    // Android WebView fires voiceschanged event when voices are actually loaded
+    window.speechSynthesis.addEventListener?.('voiceschanged', loadVoices)
+    // Also try after a delay as some WebViews don't fire the event
+    setTimeout(loadVoices, 500)
+    setTimeout(loadVoices, 2000)
+  }
+
   initialized = true
   console.log('[JARVIS Voice Companion] Initialized — Iron Man mode active')
 }
@@ -189,27 +205,34 @@ async function speak(text, priority = 'normal') {
     else if (typeof window !== 'undefined' && window.speechSynthesis) {
       await new Promise((resolve) => {
         window.speechSynthesis.cancel()
-        const u = new SpeechSynthesisUtterance(text.slice(0, 500))
+        const u = new SpeechSynthesisUtterance(text.slice(0, 300))
         u.lang = 'hi-IN'
         u.rate = 1.0
         u.pitch = 1.0
         u.volume = 1.0
-        // Find Hindi voice
+        // Find any available voice (don't require Hindi — it may not exist on device)
         const voices = window.speechSynthesis.getVoices()
         const hiVoice = voices.find(v => v.lang.includes('hi'))
+        const enINVoice = voices.find(v => v.lang.includes('en-IN'))
+        const googleVoice = voices.find(v => v.name.includes('Google'))
         if (hiVoice) u.voice = hiVoice
+        else if (enINVoice) u.voice = enINVoice
+        else if (googleVoice) u.voice = googleVoice
         u.onend = resolve
-        u.onerror = resolve
-        // Timeout safety — don't block forever
-        setTimeout(resolve, 15000)
+        u.onerror = (e) => { console.warn('[JARVIS Voice] TTS error:', e); resolve() }
+        // v32: Longer timeout — 30s instead of 15s, Android WebView can be slow
+        const timeout = setTimeout(resolve, 30000)
+        u.onend = () => { clearTimeout(timeout); resolve() }
+        u.onerror = () => { clearTimeout(timeout); resolve() }
         window.speechSynthesis.speak(u)
       })
     }
   } catch (e) {
     console.warn('[JARVIS Voice] Speak error:', e.message)
+  } finally {
+    // v32: ALWAYS reset speaking flag — prevents queue from getting stuck forever
+    speaking = false
   }
-
-  speaking = false
 
   // Process queue
   if (speechQueue.length > 0) {

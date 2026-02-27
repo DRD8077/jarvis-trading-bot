@@ -61,12 +61,7 @@ const IndianStocks = () => {
       setOi(d.oi || null)
       setMarketStatus(d.market_status || null)
       setSnapshot(d.snapshot || null)
-      // JARVIS voice — announce Indian market summary
-      try {
-        const nifty = d.dashboard?.nifty50 || d.snapshot?.nifty
-        const change = nifty?.change || nifty?.pChange || 0
-        window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: `Sir, Indian market update. ${nifty ? `Nifty ${change >= 0 ? 'upar' : 'neeche'} hai, ${Math.abs(change).toFixed(1)} points ${change >= 0 ? 'gain' : 'loss'}.` : 'Market data loaded.'} ${d.fii_dii ? (d.fii_dii.fii_net > 0 ? 'FII buying kar rahe hain, positive signal!' : 'FII selling kar rahe hain, cautious rahiye.') : ''}`, priority: 'low' } }))
-      } catch {}
+      // v32: Silenced auto-speech on data load (was causing continuous alerts)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }

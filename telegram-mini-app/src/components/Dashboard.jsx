@@ -37,14 +37,15 @@ const Dashboard = () => {
       if (sentRes?.data) setSentiment(sentRes.data)
       else if (!sentiment) setSentiment(FALLBACK_SENTIMENT)
       if (silent) { hapticFeedback('success'); addNotification('Data refreshed ✨', 'success') }
-      // JARVIS voice — announce market summary
-      if (!silent && dashRes?.data) {
+      // JARVIS voice — DISABLED on auto-load (v32: prevents unwanted speech on every mount)
+      // Speech only triggered by manual user interaction (pull-to-refresh)
+      if (silent && dashRes?.data) {
         try {
           const d = dashRes.data;
           const btc = d?.market_ticker?.find(t => t.symbol === 'BTC' || t.symbol === 'BTCUSDT');
           const summary = btc
-            ? `Sir, market update. Bitcoin ${btc.change_24h >= 0 ? 'upar' : 'neeche'} hai, ${Math.abs(btc.change_24h || 0).toFixed(1)} percent ${btc.change_24h >= 0 ? 'gain' : 'loss'}. ${sentRes?.data?.overall === 'bullish' ? 'Market bullish hai Sir, opportunities dhundhte hain!' : sentRes?.data?.overall === 'bearish' ? 'Market bearish hai Sir, careful rahiye.' : 'Market stable hai Sir.'}`
-            : `Sir, dashboard loaded. ${sentRes?.data?.overall === 'bullish' ? 'Market sentiment bullish hai!' : 'Market data ready hai.'}`;
+            ? `Sir, market update. Bitcoin ${btc.change_24h >= 0 ? 'upar' : 'neeche'} hai, ${Math.abs(btc.change_24h || 0).toFixed(1)} percent ${btc.change_24h >= 0 ? 'gain' : 'loss'}.`
+            : `Sir, dashboard refreshed.`;
           window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: summary, priority: 'low' } }));
         } catch {}
       }

@@ -62,12 +62,7 @@ const CryptoTop1000 = () => {
 
       setCoins(allCoins)
       setLastUpdate(new Date().toLocaleTimeString('en-IN'))
-      // JARVIS voice — announce crypto market overview
-      try {
-        const top = allCoins[0]
-        const gainers = allCoins.filter(c => (c.price_change_percentage_24h || 0) > 10).length
-        window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: `Sir, ${allCoins.length} crypto coins loaded! ${top?.name || 'Bitcoin'} top pe hai. ${gainers} coins aaj 10 percent se zyada upar hain. ${gainers > 20 ? 'Bahut bullish day hai Sir!' : 'Market active hai.'}`, priority: 'low' } }))
-      } catch {}
+      // v32: Silenced auto-speech on data load (was causing continuous alerts)
 
       // Also fetch global market data
       try {

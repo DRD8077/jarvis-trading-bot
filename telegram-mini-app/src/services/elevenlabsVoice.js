@@ -360,6 +360,12 @@ class ElevenLabsVoiceEngine {
    */
   _speakWebSpeech(text, lang = 'en') {
     return new Promise((resolve) => {
+      // v32: Respect mute/voice settings
+      if (window.__JARVIS_MUTE || window.__JARVIS_VOICE_ENABLED === false) {
+        this.isPlaying = false
+        resolve(false)
+        return
+      }
       if (!window.speechSynthesis) {
         this.isPlaying = false
         resolve(false)

@@ -28,15 +28,7 @@ const WhaleAlerts = () => {
       setAlerts(alertList)
       setScanResult(scanRes?.data?.data || scanRes?.data || null)
       setOnchain(onchainRes?.data?.data || onchainRes?.data?.transactions || [])
-      // JARVIS voice — announce whale activity
-      if (alertList.length > 0) {
-        try {
-          const bigAlert = alertList[0]
-          const amount = bigAlert?.amount || bigAlert?.value || ''
-          const symbol = bigAlert?.symbol || bigAlert?.currency || 'crypto'
-          window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: `Sir, whale alert! ${alertList.length} bade transactions detect hue. ${symbol} mein ${amount ? amount + ' ka' : 'bada'} movement hai. Dhyan rakhiye!`, priority: 'normal' } }))
-        } catch {}
-      }
+      // v32: Silenced auto-speech on data load (was firing every 15 seconds!)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }

@@ -50,7 +50,7 @@ function init() {
     }
   })
 
-  // Detect DevTools opening (debugging attempt)
+  // Detect DevTools opening (debugging attempt) — v32: reduced frequency, no speech trigger
   let devToolsOpen = false
   const devToolsCheck = setInterval(() => {
     const threshold = 100
@@ -60,13 +60,13 @@ function init() {
     if (widthThreshold || heightThreshold) {
       if (!devToolsOpen) {
         devToolsOpen = true
-        logEvent('DEVTOOLS_OPEN', 'Developer tools detected — potential code inspection')
-        suspiciousActivity += 2
+        logEvent('DEVTOOLS_OPEN', 'Developer tools detected')
+        // v32: NO suspicious activity increment — prevents false lockouts on Android
       }
     } else {
       devToolsOpen = false
     }
-  }, 5000)
+  }, 30000) // v32: Check every 30s instead of 5s
 
   // Detect rapid clicking (brute force attempt)
   let clickBuffer = []
@@ -80,14 +80,14 @@ function init() {
     }
   }, { passive: true })
 
-  // Check for suspicious activity threshold
+  // Check for suspicious activity threshold — v32: higher threshold, no auto-speech
   setInterval(() => {
-    if (suspiciousActivity >= 5 && !isLocked) {
+    if (suspiciousActivity >= 10 && !isLocked) {
       lockApp('Multiple suspicious activities detected')
     }
-    // Decay suspicious activity over time
-    if (suspiciousActivity > 0) suspiciousActivity -= 0.1
-  }, 30000)
+    // Decay suspicious activity over time (faster decay)
+    if (suspiciousActivity > 0) suspiciousActivity -= 0.5
+  }, 60000) // v32: Check every 60s instead of 30s
 
   // Restore security log
   try {
@@ -192,11 +192,9 @@ function lockApp(reason) {
     localStorage.setItem('jarvis_security_lock', JSON.stringify({ until, reason }))
   } catch {}
 
-  window.dispatchEvent(new CustomEvent('jarvis-speak', {
-    detail: { text: `SECURITY ALERT! App locked ho gaya hai Sir. Reason: ${reason}. ${LOCK_DURATION / 60000} minute baad unlock hoga.`, priority: 'critical' }
-  }))
+  // v32: Silent lock — visual only, no speech (prevents sound loop)
+  console.warn('[JARVIS Security] APP LOCKED:', reason)
 
-  window.dispatchEvent(new CustomEvent('jarvis-emergency', { detail: { symbol: 'SECURITY LOCK' } }))
   window.dispatchEvent(new CustomEvent('jarvis-security-lock', { detail: { locked: true, reason, until } }))
 
   // Auto-unlock after duration
@@ -214,9 +212,8 @@ function unlock() {
 
   try { localStorage.removeItem('jarvis_security_lock') } catch {}
 
-  window.dispatchEvent(new CustomEvent('jarvis-speak', {
-    detail: { text: 'App unlock ho gaya Sir. Normal operations resumed. Security protocol standard mode.', priority: 'high' }
-  }))
+  // v32: Silent unlock — no speech
+  console.log('[JARVIS Security] App unlocked')
   window.dispatchEvent(new CustomEvent('jarvis-security-lock', { detail: { locked: false } }))
 }
 

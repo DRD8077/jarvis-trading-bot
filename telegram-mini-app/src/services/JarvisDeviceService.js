@@ -314,15 +314,15 @@ class JarvisDeviceService {
   // ═══════════════════════════════════
 
   async speak(text, lang = 'en-IN') {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = lang;
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      window.speechSynthesis.speak(utterance);
-      return { success: true };
+    // v32: Respect mute/voice settings — NEVER bypass
+    if (window.__JARVIS_MUTE || window.__JARVIS_VOICE_ENABLED === false) {
+      return { success: false, error: 'Voice muted by user' };
     }
-    return { success: false, error: 'TTS not available' };
+    // Route through central voice companion instead of direct speechSynthesis
+    window.dispatchEvent(new CustomEvent('jarvis-speak', {
+      detail: { text, priority: 'normal' }
+    }));
+    return { success: true };
   }
 
   async listen(lang = 'en-IN') {
