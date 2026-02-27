@@ -191,7 +191,7 @@ class JarvisDeviceService {
           body,
           id: id || Math.floor(Math.random() * 100000),
           schedule: { at: new Date(Date.now() + 1000) },
-          sound: 'beep.wav',
+          sound: null,
           smallIcon: 'ic_stat_icon_config_sample',
         }],
       });

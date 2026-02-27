@@ -19,52 +19,68 @@ const DepthChart = ({ symbol = 'BTCUSDT', exchange = 'binance' }) => {
   const [loading, setLoading] = useState(true)
   const wsRef = useRef(null)
 
-  // Generate realistic orderbook data
-  const generateOrderbook = useCallback(() => {
-    const basePrice = symbol.includes('BTC') ? 67500 : symbol.includes('ETH') ? 3450 :
-      symbol.includes('SOL') ? 145 : symbol.includes('NIFTY') ? 24500 : 1000
-    
-    const bids = []
-    const asks = []
-    
-    for (let i = 0; i < 50; i++) {
-      const bidSpread = basePrice * (0.0001 + i * 0.0003 + Math.random() * 0.0002)
-      const askSpread = basePrice * (0.0001 + i * 0.0003 + Math.random() * 0.0002)
-      
-      bids.push({
-        price: basePrice - bidSpread,
-        quantity: Math.random() * 10 + 0.1 + (Math.random() > 0.92 ? Math.random() * 50 : 0), // Whale walls
-        total: 0,
-      })
-      asks.push({
-        price: basePrice + askSpread,
-        quantity: Math.random() * 10 + 0.1 + (Math.random() > 0.92 ? Math.random() * 50 : 0),
-        total: 0,
-      })
+  // Fetch REAL orderbook from Binance API
+  const fetchOrderbook = useCallback(async () => {
+    try {
+      // Try Binance public orderbook API (no auth needed)
+      const sym = symbol.replace('/', '').toUpperCase()
+      const res = await fetch(`https://api.binance.com/api/v3/depth?symbol=${sym}&limit=50`)
+      if (res.ok) {
+        const data = await res.json()
+        const bids = (data.bids || []).map(([price, qty]) => ({
+          price: parseFloat(price),
+          quantity: parseFloat(qty),
+          total: 0,
+        }))
+        const asks = (data.asks || []).map(([price, qty]) => ({
+          price: parseFloat(price),
+          quantity: parseFloat(qty),
+          total: 0,
+        }))
+
+        // Sort
+        bids.sort((a, b) => b.price - a.price)
+        asks.sort((a, b) => a.price - b.price)
+
+        // Cumulative totals
+        let bidTotal = 0
+        bids.forEach(b => { bidTotal += b.quantity; b.total = bidTotal })
+        let askTotal = 0
+        asks.forEach(a => { askTotal += a.quantity; a.total = askTotal })
+
+        const spread = asks[0]?.price - bids[0]?.price || 0
+        const midPrice = (asks[0]?.price + bids[0]?.price) / 2 || 0
+
+        setOrderbook({ bids, asks, spread, midPrice })
+        setLoading(false)
+        return
+      }
+    } catch (e) {
+      console.warn('[DepthChart] Binance API error:', e.message)
     }
 
-    // Sort
-    bids.sort((a, b) => b.price - a.price)
-    asks.sort((a, b) => a.price - b.price)
-
-    // Cumulative totals
-    let bidTotal = 0
-    bids.forEach(b => { bidTotal += b.quantity; b.total = bidTotal })
-    let askTotal = 0
-    asks.forEach(a => { askTotal += a.quantity; a.total = askTotal })
-
-    const spread = asks[0]?.price - bids[0]?.price || 0
-    const midPrice = (asks[0]?.price + bids[0]?.price) / 2 || basePrice
-
-    setOrderbook({ bids, asks, spread, midPrice })
+    // Fallback: try backend
+    try {
+      const { getApiBase } = await import('../services/apiBase')
+      const base = getApiBase()
+      const res = await fetch(`${base}/api/miniapp/web3/orderbook?symbol=${symbol}&token=public`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.bids && data.asks) {
+          setOrderbook(data)
+          setLoading(false)
+          return
+        }
+      }
+    } catch {}
     setLoading(false)
   }, [symbol])
 
   useEffect(() => {
-    generateOrderbook()
-    const iv = setInterval(generateOrderbook, 2000)
+    fetchOrderbook()
+    const iv = setInterval(fetchOrderbook, 3000)
     return () => clearInterval(iv)
-  }, [generateOrderbook])
+  }, [fetchOrderbook])
 
   // Canvas depth chart rendering
   useEffect(() => {

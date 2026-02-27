@@ -43,7 +43,7 @@ const JarvisOSTitlebar = () => {
         const memFree = parseFloat(info.freeMemory);
         if (memTotal > 0) {
           setMetrics({
-            cpu: Math.round(Math.random() * 20 + 10),
+            cpu: Math.round(parseFloat(info.cpuUsage || info.cpu || 0) || 0),
             mem: ((1 - memFree / memTotal) * 100).toFixed(0)
           });
         }

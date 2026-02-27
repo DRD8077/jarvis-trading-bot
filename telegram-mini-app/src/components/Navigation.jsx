@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
-  Home, TrendingUp, Wallet, Bot, Zap, MoreHorizontal, X,
-  Globe, Copy, Users, Activity, PieChart, Waves, FlaskConical,
-  BarChart3, Settings, Search, Brain, Mic, Flame, Layers, LineChart, Gauge,
-  Crosshair, Puzzle, ShieldCheck, ScanLine, Rocket, Crown, LogOut,
-  Star, Bell, BarChart2, Calculator, Lock, Radio, Share2, Monitor
+  Home, TrendingUp, Wallet, Zap, MoreHorizontal, X,
+  Globe, Copy, Activity, PieChart, Waves,
+  BarChart3, Settings, Search, Brain, Mic, Flame, LineChart, Gauge,
+  Rocket, Crown, LogOut,
+  Star, Calculator, Lock, Radio, Bot
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 
@@ -23,43 +23,40 @@ const Navigation = () => {
   ]
 
   const moreItems = [
-    { path: '/jarvis-holographic', icon: Monitor, label: '🦾 JARVIS AI', color: 'from-cyan-400 to-blue-600', desc: 'Iron Man Holographic Interface' },
-    { path: '/jarvis', icon: Bot, label: '🤖 JARVIS AI', color: 'from-cyan-400 to-blue-600', desc: 'Iron Man Command Center' },
-    { path: '/voice-command', icon: Mic, label: '🎤 Voice JARVIS', color: 'from-pink-500 to-rose-600', desc: 'Hindi live conversation' },
-    { path: '/vault', icon: Lock, label: '🔐 Secure Vault', color: 'from-green-500 to-emerald-600', desc: 'AES-256 encrypted storage' },
-    { path: '/exchange-connect', icon: Radio, label: '📡 Exchanges', color: 'from-blue-500 to-indigo-600', desc: 'Connect Binance, CoinDCX' },
-    { path: '/phantom', icon: Globe, label: 'Phantom Wallet', color: 'from-purple-500 to-blue-500', desc: 'Solana wallet & auto-trade' },
-    { path: '/mega-trader', icon: Rocket, label: '🤖 MEGA AI Trader', color: 'from-red-600 to-yellow-500', desc: 'NUCLEAR autonomous AI trader' },
+    // ═══ AI & Voice ═══
+    { path: '/voice', icon: Mic, label: '🎤 Voice JARVIS', color: 'from-pink-500 to-rose-600', desc: 'Hindi voice assistant' },
+    
+    // ═══ Trading ═══
     { path: '/auto-trader', icon: Zap, label: 'Auto Trader', color: 'from-amber-500 to-orange-500', desc: 'AI trading bot' },
+    { path: '/mega-trader', icon: Rocket, label: '🤖 MEGA Trader', color: 'from-red-600 to-yellow-500', desc: 'Autonomous AI trader' },
     { path: '/copy-trading', icon: Copy, label: 'Copy Trading', color: 'from-blue-500 to-cyan-500', desc: 'Copy top traders' },
-    { path: '/options', icon: Activity, label: 'Options Chain', color: 'from-orange-500 to-red-500', desc: 'Nifty/BankNifty options' },
-    { path: '/indian-stocks', icon: Flame, label: 'Indian Stocks', color: 'from-orange-500 to-amber-500', desc: 'NSE/BSE super analysis' },
-    { path: '/nifty-options', icon: Layers, label: 'Live Options', color: 'from-red-500 to-pink-500', desc: 'Real NSE option chain' },
     { path: '/paper-trading', icon: Activity, label: '📝 Paper Trade', color: 'from-amber-500 to-yellow-500', desc: 'Practice with fake money' },
-    { path: '/pnl-journal', icon: BarChart3, label: '📊 P&L Journal', color: 'from-emerald-500 to-cyan-500', desc: 'Track trades + charts' },
-    { path: '/watchlist', icon: Star, label: '⭐ Watchlist', color: 'from-yellow-500 to-amber-500', desc: 'Custom lists + price alerts' },
-    { path: '/smart-alerts', icon: Bell, label: '🔔 Smart Alerts', color: 'from-red-500 to-pink-500', desc: 'Multi-condition alert rules' },
-    { path: '/depth-chart', icon: BarChart2, label: '📊 Depth Chart', color: 'from-blue-500 to-cyan-500', desc: 'Order book + whale walls' },
-    { path: '/tax-calculator', icon: Calculator, label: '💰 Tax Calc', color: 'from-green-500 to-emerald-500', desc: 'Indian STCG/LTCG/Crypto tax' },
-    { path: '/candle-indicators', icon: LineChart, label: 'Candles & TA', color: 'from-cyan-500 to-blue-500', desc: '43 patterns + 50 indicators' },
-    { path: '/power-predictor', icon: Gauge, label: 'AI Predictor', color: 'from-purple-600 to-pink-600', desc: '10-signal ML prediction' },
-    { path: '/intraday-scanner', icon: ScanLine, label: 'Intraday Scan', color: 'from-yellow-500 to-amber-500', desc: 'Breakout + Volume + Momentum' },
-    { path: '/options-pro', icon: Crosshair, label: 'Options Pro', color: 'from-red-500 to-orange-500', desc: 'Strike intel + F&O brain' },
-    { path: '/strategy-builder', icon: Puzzle, label: 'Strategy Build', color: 'from-indigo-500 to-purple-500', desc: 'Straddle, Strangle, Condor' },
-    { path: '/risk-manager', icon: ShieldCheck, label: 'Risk Manager', color: 'from-green-500 to-emerald-500', desc: 'Kelly + Position sizing' },
-    { path: '/portfolio', icon: PieChart, label: 'Portfolio', color: 'from-violet-500 to-purple-500', desc: 'Cross-asset analytics' },
-    { path: '/whales', icon: Waves, label: 'Whale Alerts', color: 'from-cyan-500 to-teal-500', desc: 'Track big money' },
-    { path: '/backtest', icon: FlaskConical, label: 'Backtest', color: 'from-emerald-500 to-teal-500', desc: 'AI strategy tester' },
-    { path: '/social', icon: Users, label: 'Social Feed', color: 'from-pink-500 to-rose-500', desc: 'Community trades' },
+    
+    // ═══ Markets ═══
+    { path: '/web3-scanner', icon: Rocket, label: '🌐 Web3 Scanner', color: 'from-purple-500 to-pink-600', desc: 'DexScreener + Pump.fun + DexTools' },
+    { path: '/crypto-top1000', icon: Globe, label: '📊 Top 1000 Crypto', color: 'from-blue-500 to-cyan-500', desc: 'Live prices + dip alerts' },
+    { path: '/candle-brain', icon: Brain, label: '🧠 AI Candle Brain', color: 'from-purple-600 to-indigo-600', desc: 'Global candle analysis' },
+    { path: '/indian-stocks', icon: Flame, label: 'Indian Stocks', color: 'from-orange-500 to-amber-500', desc: 'NSE/BSE super analysis' },
     { path: '/gems', icon: Search, label: 'Gem Scanner', color: 'from-emerald-500 to-green-500', desc: 'Find hidden gems' },
     { path: '/screener', icon: BarChart3, label: 'Screener', color: 'from-blue-500 to-indigo-500', desc: 'Market screener' },
+    { path: '/whales', icon: Waves, label: 'Whale Alerts', color: 'from-cyan-500 to-teal-500', desc: 'Track big money' },
+    
+    // ═══ Analysis ═══
     { path: '/intelligence', icon: Brain, label: 'Intelligence', color: 'from-purple-500 to-pink-500', desc: 'AI market intel' },
-    { path: '/ai-agent', icon: Brain, label: '🧠 AI Agent', color: 'from-violet-600 to-purple-600', desc: 'Offline AI — Voice + LLM + Commands' },
-    { path: '/voice', icon: Mic, label: 'Hindi Voice', color: 'from-pink-500 to-rose-600', desc: 'Hindi voice assistant' },
-    { path: '/system-specs', icon: Gauge, label: '⚙️ System Specs', color: 'from-slate-500 to-blue-500', desc: 'OS • Hardware • LLM • Sensors' },
-    { path: '/jarvis-vs-myra', icon: Bot, label: '🤖 JARVIS vs MYRA', color: 'from-blue-500 to-pink-500', desc: 'Compare AI assistants' },
-    { path: '/voice-automation', icon: Mic, label: '🎙️ Voice Control', color: 'from-green-500 to-teal-500', desc: 'Volume • Brightness • WhatsApp • Music' },
-    { path: '/gaming', icon: Rocket, label: '🎮 Gaming Coach', color: 'from-red-500 to-yellow-500', desc: 'BGMI Pro AI • Jonathan • Mortal' },
+    { path: '/power-predictor', icon: Gauge, label: 'AI Predictor', color: 'from-purple-600 to-pink-600', desc: '10-signal ML prediction' },
+    { path: '/candle-indicators', icon: LineChart, label: 'Candles & TA', color: 'from-cyan-500 to-blue-500', desc: '43 patterns + 50 indicators' },
+    
+    // ═══ Portfolio ═══
+    { path: '/wallet', icon: Wallet, label: '💰 Wallet', color: 'from-green-500 to-emerald-600', desc: 'Deposit, Withdraw, Balance' },
+    { path: '/portfolio', icon: PieChart, label: 'Portfolio', color: 'from-violet-500 to-purple-500', desc: 'Cross-asset analytics' },
+    { path: '/pnl-journal', icon: BarChart3, label: '📊 P&L Journal', color: 'from-emerald-500 to-cyan-500', desc: 'Track trades + charts' },
+    { path: '/watchlist', icon: Star, label: '⭐ Watchlist', color: 'from-yellow-500 to-amber-500', desc: 'Custom lists + price alerts' },
+    { path: '/tax-calculator', icon: Calculator, label: '💰 Tax Calc', color: 'from-green-500 to-emerald-500', desc: 'Indian STCG/LTCG/Crypto tax' },
+    
+    // ═══ Tools ═══
+    { path: '/vault', icon: Lock, label: '🔐 Secure Vault', color: 'from-green-500 to-emerald-600', desc: 'AES-256 encrypted storage' },
+    { path: '/exchange-connect', icon: Radio, label: '📡 Exchanges', color: 'from-blue-500 to-indigo-600', desc: 'Connect Binance, CoinDCX' },
+    
     ...(isAdmin ? [{ path: '/admin', icon: Crown, label: '👑 Admin Panel', color: 'from-amber-500 to-orange-500', desc: 'System admin' }] : []),
     { path: '/settings', icon: Settings, label: 'Settings', color: 'from-slate-500 to-slate-600', desc: 'Preferences' },
   ]

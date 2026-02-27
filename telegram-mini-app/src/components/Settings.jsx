@@ -21,12 +21,18 @@ const Settings = () => {
   const hapticsRef = useRef(null)
   const crashAnalyticsRef = useRef(null)
 
-  const [settings, setSettings] = useState({
-    notifications: true,
-    sound: true,
-    darkMode: true,
-    language: 'en',
-    riskLevel: 'medium'
+  const [settings, setSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('jarvis_app_settings')
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return {
+      notifications: false,
+      sound: false,
+      darkMode: true,
+      language: 'en',
+      riskLevel: 'medium'
+    }
   })
   const [biometricEnabled, setBiometricEnabled] = useState(false)
   const [pushEnabled, setPushEnabled] = useState(false)
@@ -38,6 +44,9 @@ const Settings = () => {
   const [languages, setLanguages] = useState([])
 
   useEffect(() => {
+    // Apply global mute based on saved settings
+    window.__JARVIS_MUTE = !settings.sound
+    
     setPushEnabled(typeof Notification !== 'undefined' && Notification.permission === 'granted')
 
     // Load all services dynamically
@@ -70,7 +79,23 @@ const Settings = () => {
   }, [])
 
   const updateSetting = (key, value) => {
-    setSettings(prev => ({ ...prev, [key]: value }))
+    setSettings(prev => {
+      const updated = { ...prev, [key]: value }
+      // Persist settings
+      try { localStorage.setItem('jarvis_app_settings', JSON.stringify(updated)) } catch {}
+      // Propagate sound/notification settings globally
+      if (key === 'sound') {
+        window.__JARVIS_MUTE = !value
+        // Update notification pipeline
+        if (pushNotificationsRef.current?.preferences) {
+          pushNotificationsRef.current.preferences.sound = value
+        }
+      }
+      if (key === 'notifications') {
+        window.__JARVIS_MUTE = !value
+      }
+      return updated
+    })
     hapticFeedback('impact')
   }
 

@@ -158,31 +158,37 @@ class MultiSourceAggregator {
 
   _generateSynthetic() {
     const cached = this.lastGoodData['crypto-prices'] || []
-    const defaults = [
-      { symbol: 'BTC', name: 'Bitcoin', price: 8500000 },
-      { symbol: 'ETH', name: 'Ethereum', price: 320000 },
-      { symbol: 'SOL', name: 'Solana', price: 18000 },
-      { symbol: 'DOGE', name: 'Dogecoin', price: 30 },
-      { symbol: 'XRP', name: 'Ripple', price: 180 },
-      { symbol: 'ADA', name: 'Cardano', price: 60 },
-      { symbol: 'DOT', name: 'Polkadot', price: 600 },
-      { symbol: 'AVAX', name: 'Avalanche', price: 4500 },
-      { symbol: 'LINK', name: 'Chainlink', price: 1800 },
-      { symbol: 'MATIC', name: 'Polygon', price: 75 },
-    ]
+    const cgMap = {
+      BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', DOGE: 'dogecoin', XRP: 'ripple',
+      ADA: 'cardano', DOT: 'polkadot', AVAX: 'avalanche-2', LINK: 'chainlink', MATIC: 'matic-network'
+    }
+    const defaultNames = {
+      BTC: 'Bitcoin', ETH: 'Ethereum', SOL: 'Solana', DOGE: 'Dogecoin', XRP: 'Ripple',
+      ADA: 'Cardano', DOT: 'Polkadot', AVAX: 'Avalanche', LINK: 'Chainlink', MATIC: 'Polygon'
+    }
 
-    return Promise.resolve(defaults.map(d => {
-      const prev = cached.find?.(c => c.symbol === d.symbol)
-      const base = prev?.price || d.price
-      const noise = base * (Math.random() * 0.006 - 0.003) // ±0.3%
-      return {
-        ...d,
-        price: base + noise,
-        change24h: prev?.change24h || (Math.random() * 8 - 4),
-        volume: prev?.volume || Math.random() * 1e9,
-        source: 'synthetic'
+    try {
+      const ids = Object.values(cgMap).join(',')
+      const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=inr&include_24hr_change=true&include_24hr_vol=true`)
+      if (res.ok) {
+        const data = await res.json()
+        return Object.entries(cgMap).map(([sym, cgId]) => {
+          const d = data[cgId] || {}
+          return {
+            symbol: sym,
+            name: defaultNames[sym],
+            price: d.inr || 0,
+            change24h: d.inr_24h_change || 0,
+            volume: d.inr_24h_vol || 0,
+            source: 'coingecko'
+          }
+        })
       }
-    }))
+    } catch {}
+
+    // Return cached data if API fails
+    if (cached.length) return cached
+    return []
   }
 
   // ══════════════════════════════════════════════
@@ -199,38 +205,37 @@ class MultiSourceAggregator {
 
   _simulateIndianStocks() {
     const stocks = [
-      { symbol: 'RELIANCE', name: 'Reliance Industries', base: 2450 },
-      { symbol: 'TCS', name: 'Tata Consultancy', base: 3850 },
-      { symbol: 'HDFCBANK', name: 'HDFC Bank', base: 1620 },
-      { symbol: 'INFY', name: 'Infosys', base: 1520 },
-      { symbol: 'ITC', name: 'ITC Ltd', base: 445 },
-      { symbol: 'SBIN', name: 'State Bank', base: 780 },
-      { symbol: 'BHARTIARTL', name: 'Bharti Airtel', base: 1380 },
-      { symbol: 'TATAMOTORS', name: 'Tata Motors', base: 680 },
-      { symbol: 'WIPRO', name: 'Wipro', base: 465 },
-      { symbol: 'KOTAKBANK', name: 'Kotak Bank', base: 1780 },
-      { symbol: 'NIFTY50', name: 'Nifty 50 Index', base: 23200 },
-      { symbol: 'BANKNIFTY', name: 'Bank Nifty Index', base: 48500 },
+      { symbol: 'RELIANCE', name: 'Reliance Industries' },
+      { symbol: 'TCS', name: 'Tata Consultancy' },
+      { symbol: 'HDFCBANK', name: 'HDFC Bank' },
+      { symbol: 'INFY', name: 'Infosys' },
+      { symbol: 'ITC', name: 'ITC Ltd' },
+      { symbol: 'SBIN', name: 'State Bank' },
+      { symbol: 'BHARTIARTL', name: 'Bharti Airtel' },
+      { symbol: 'TATAMOTORS', name: 'Tata Motors' },
+      { symbol: 'WIPRO', name: 'Wipro' },
+      { symbol: 'KOTAKBANK', name: 'Kotak Bank' },
+      { symbol: 'NIFTY50', name: 'Nifty 50 Index' },
+      { symbol: 'BANKNIFTY', name: 'Bank Nifty Index' },
     ]
 
     const cached = this.lastGoodData['indian-stocks'] || []
 
-    return Promise.resolve(stocks.map(s => {
-      const prev = cached.find?.(c => c.symbol === s.symbol)
-      const base = prev?.price || s.base
-      const noise = base * (Math.random() * 0.004 - 0.002)
-      return {
-        symbol: s.symbol,
-        name: s.name,
-        price: base + noise,
-        change: prev?.change || (Math.random() * 4 - 2),
-        changePct: prev?.changePct || (Math.random() * 3 - 1.5),
-        volume: prev?.volume || Math.floor(Math.random() * 5000000),
-        high: base * 1.015,
-        low: base * 0.985,
-        source: 'simulated'
-      }
-    }))
+    // Return cached data if available (from last successful backend fetch)
+    if (cached.length) return Promise.resolve(cached)
+
+    // Return stock list with zero prices (will be filled by next backend fetch)
+    return Promise.resolve(stocks.map(s => ({
+      symbol: s.symbol,
+      name: s.name,
+      price: 0,
+      change: 0,
+      changePct: 0,
+      volume: 0,
+      high: 0,
+      low: 0,
+      source: 'pending'
+    })))
   }
 
   // ══════════════════════════════════════════════

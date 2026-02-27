@@ -17,8 +17,10 @@
 class JarvisWakeWordEngine {
   constructor() {
     this.isListening = false;
+    this.isSleeping = false;  // Sleep mode — JARVIS is quiet but still listening for wake-up
     this.recognition = null;
     this.listeners = [];
+    this.sleepListeners = [];
     this.restartTimeout = null;
     this.consecutiveErrors = 0;
     this.maxErrors = 5;
@@ -27,7 +29,23 @@ class JarvisWakeWordEngine {
     this.wakeWords = [
       'jarvis', 'hey jarvis', 'ok jarvis', 'hi jarvis',
       'hello jarvis', 'are you there jarvis', 'wake up jarvis',
-      'जार्विस', 'हे जार्विस', // Hindi wake words
+      'jarvis wake up', 'jarvis uth jao', 'jarvis utho',
+      'जार्विस', 'हे जार्विस', 'जार्विस उठो', 'जार्विस जागो',
+    ];
+
+    // Sleep command patterns
+    this.sleepWords = [
+      'jarvis go to sleep', 'go to sleep jarvis', 'jarvis sleep',
+      'jarvis so jao', 'jarvis band karo', 'jarvis chup raho',
+      'jarvis rest karo', 'good night jarvis', 'jarvis good night',
+      'जार्विस सो जाओ', 'जार्विस बंद करो', 'जार्विस चुप रहो',
+    ];
+
+    // Wake-from-sleep patterns (subset — only explicit wake-up commands)
+    this.wakeFromSleepWords = [
+      'jarvis wake up', 'wake up jarvis', 'hey jarvis wake up',
+      'jarvis uth jao', 'jarvis utho', 'jarvis jago',
+      'जार्विस उठो', 'जार्विस जागो',
     ];
     
     console.log('[Wake Word Engine] Initialized');
@@ -41,6 +59,38 @@ class JarvisWakeWordEngine {
     return () => {
       this.listeners = this.listeners.filter(l => l !== callback);
     };
+  }
+
+  /**
+   * Register callback for sleep/wake state changes
+   */
+  onSleepStateChange(callback) {
+    this.sleepListeners.push(callback);
+    return () => {
+      this.sleepListeners = this.sleepListeners.filter(l => l !== callback);
+    };
+  }
+
+  /**
+   * Put JARVIS to sleep — she'll only listen for wake-up command
+   */
+  sleep() {
+    this.isSleeping = true;
+    console.log('[Wake Word Engine] 😴 JARVIS is sleeping — say "JARVIS wake up" to resume');
+    this.sleepListeners.forEach(cb => {
+      try { cb({ sleeping: true }); } catch {}
+    });
+  }
+
+  /**
+   * Wake JARVIS from sleep
+   */
+  wake() {
+    this.isSleeping = false;
+    console.log('[Wake Word Engine] ⚡ JARVIS is awake and ready!');
+    this.sleepListeners.forEach(cb => {
+      try { cb({ sleeping: false }); } catch {}
+    });
   }
 
   /**
@@ -91,10 +141,48 @@ class JarvisWakeWordEngine {
   }
 
   /**
+   * Check if sleep command is in transcript
+   */
+  _checkSleepCommand(transcript) {
+    const lower = transcript.toLowerCase().trim();
+    for (const word of this.sleepWords) {
+      if (lower.includes(word)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Check if wake-from-sleep command is in transcript
+   */
+  _checkWakeFromSleep(transcript) {
+    const lower = transcript.toLowerCase().trim();
+    for (const word of this.wakeFromSleepWords) {
+      if (lower.includes(word)) return true;
+    }
+    return false;
+  }
+
+  /**
    * Check if wake word is in transcript
    */
   _checkWakeWord(transcript) {
     const lower = transcript.toLowerCase().trim();
+
+    // If sleeping, only respond to explicit wake-up commands
+    if (this.isSleeping) {
+      return this._checkWakeFromSleep(transcript);
+    }
+
+    // Check for sleep command first
+    if (this._checkSleepCommand(transcript)) {
+      this.sleep();
+      // Fire a special "sleep" event to the listeners so UI can respond
+      this.listeners.forEach(cb => {
+        try { cb('__JARVIS_SLEEP__'); } catch {}
+      });
+      return false; // Don't trigger normal wake word flow
+    }
+
     for (const word of this.wakeWords) {
       if (lower.includes(word)) {
         return true;
@@ -107,6 +195,12 @@ class JarvisWakeWordEngine {
    * Fire wake word detected event
    */
   _fireWakeWord(transcript) {
+    // If waking from sleep, announce it
+    if (this.isSleeping) {
+      this.wake();
+      console.log('[Wake Word Engine] ⚡ JARVIS woke up from sleep via:', transcript);
+    }
+
     console.log('[Wake Word Engine] 🎯 WAKE WORD DETECTED:', transcript);
     
     // Haptic feedback
@@ -152,7 +246,7 @@ class JarvisWakeWordEngine {
         
         try {
           const result = await SpeechRecognition.start({
-            language: 'en-IN',
+            language: 'hi-IN',
             maxResults: 3,
             popup: false,
             partialResults: true,
@@ -209,7 +303,7 @@ class JarvisWakeWordEngine {
       this.recognition = new SpeechRecognition();
       this.recognition.continuous = true;
       this.recognition.interimResults = true;
-      this.recognition.lang = 'en-IN';
+      this.recognition.lang = 'hi-IN';
       this.recognition.maxAlternatives = 3;
 
       this.recognition.onresult = (event) => {

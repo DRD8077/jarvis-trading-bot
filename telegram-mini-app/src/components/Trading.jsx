@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import { fetchSignals, fetchMarkets, fetchCandlePatternsOld as fetchCandlePatterns, fetchUltraPredict, sellPosition } from '../services/api'
+import { FALLBACK_SIGNALS, FALLBACK_MARKETS, FALLBACK_PREDICTIONS } from '../services/offlineData'
 import { useApp } from '../context/AppContext'
 
 const TradingViewChart = lazy(() => import('../services/TradingViewChart'))
@@ -28,16 +29,20 @@ const Trading = () => {
       ])
       
       const sigData = sigRes?.data?.data || sigRes?.data?.signals || sigRes?.data || []
-      setSignals(Array.isArray(sigData) ? sigData : [])
+      setSignals(Array.isArray(sigData) && sigData.length ? sigData : FALLBACK_SIGNALS)
       
       const mktData = mktRes?.data?.data || mktRes?.data?.markets || mktRes?.data || []
-      setMarkets(Array.isArray(mktData) ? mktData : 
-        mktData?.crypto ? [...(mktData.crypto || []), ...(mktData.indian || [])] : [])
+      const parsedMkt = Array.isArray(mktData) ? mktData : 
+        mktData?.crypto ? [...(mktData.crypto || []), ...(mktData.indian || [])] : []
+      setMarkets(parsedMkt.length ? parsedMkt : FALLBACK_MARKETS)
       
       const predData = predRes?.data?.data || predRes?.data?.predictions || predRes?.data || []
-      setPredictions(Array.isArray(predData) ? predData : [])
+      setPredictions(Array.isArray(predData) && predData.length ? predData : FALLBACK_PREDICTIONS)
     } catch (e) {
       console.error('Trading load error:', e)
+      setSignals(FALLBACK_SIGNALS)
+      setMarkets(FALLBACK_MARKETS)
+      setPredictions(FALLBACK_PREDICTIONS)
     } finally {
       setLoading(false)
     }
@@ -120,6 +125,12 @@ const Trading = () => {
 
   return (
     <div className="p-4 pb-24 bg-slate-900 min-h-screen text-white">
+      {/* Paper Mode Banner */}
+      <div className="mb-3 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-2">
+        <AlertTriangle size={16} className="text-amber-400 shrink-0" />
+        <span className="text-xs text-amber-300">Paper Mode — Connect exchange in Settings to trade real funds</span>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>

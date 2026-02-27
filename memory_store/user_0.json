@@ -188,14 +188,22 @@
       "text": "What is Bitcoin price today?",
       "intent": "price_check",
       "timestamp": "2026-02-25T21:19:12.293605+05:30"
+    },
+    {
+      "role": "user",
+      "text": "Generate a concise market briefing:\n{\n  \"crypto_markets\": [\n    {\n      \"id\": \"bitcoin\",\n      \"symbol\": \"BTC\",\n      \"name\": \"Bitcoin\",\n      \"price_usd\": 67673,\n      \"current_price\": 67673,\n      \"change_1h\": 1.0322835847580831,\n      \"change_24h\": -2.05061,\n      \"price_change_percentage_24h\": -2.05061,\n      \"change_7d\": 1.0300409004225095,\n      \"market_cap\": 1352804498586,\n      \"volume_24h\": 51832137414,\n      \"circulating_supply\": 19995171.0,\n      \"total_supply\": 19995171.0,\n      \"ath\": 126080,\n      \"ath_change_percentage\": -46.32556,\n      \"image\": \"https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png?1696501400\",\n      \"source\": \"coingecko\"\n    },\n    {\n      \"id\": \"ethereum\",\n      \"symbol\": \"ETH\",\n      \"name\": \"Ethereum\",\n      \"price_usd\": 2027.81,\n      \"current_price\": 2027.81,\n      \"change_1h\": 1.8094843541845465,\n      \"change_24h\": -1.9588,\n      \"price_change_percentage_24h\": -1.9588,\n      \"change_7d\": 4.612365180351578,\n      \"market_cap\": 24458",
+      "intent": "crypto",
+      "timestamp": "2026-02-27T00:53:56.889048+05:30"
     }
   ],
   "positions": [],
   "facts": {
     "favorite_symbols": [
-      "SOL",
       "SENSEX",
-      "NIFTY"
+      "BTC",
+      "NIFTY",
+      "ETH",
+      "SOL"
     ],
     "trading_style": "intraday"
   },
@@ -267,5 +275,5 @@
   ],
   "learnings": [],
   "summary": "",
-  "last_active": "2026-02-25T21:19:12.293633+05:30"
+  "last_active": "2026-02-27T00:53:56.889071+05:30"
 }

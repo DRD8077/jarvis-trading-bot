@@ -12,6 +12,9 @@ import ConnectionStatus from './components/ConnectionStatus'
 import useSwipeNavigation from './hooks/useSwipeNavigation'
 // Only import safe constants — NO service classes, NO constructors
 import { API_BASE, WS_URL } from './services/apiBase'
+// Install global timer manager FIRST — pauses all setIntervals when app goes to background
+import timerManager from './services/timerManager'
+timerManager.install()
 
 // ═══════════════════════════════════════════════════════════════
 // CRASH-PROOF ARCHITECTURE v12
@@ -62,9 +65,7 @@ const GemScanner = lazy(() => import('./components/GemScanner'))
 const Screener = lazy(() => import('./components/Screener'))
 const Intelligence = lazy(() => import('./components/Intelligence'))
 const Settings = lazy(() => import('./components/Settings'))
-const PhantomWallet = lazy(() => import('./components/PhantomWallet'))
 const CopyTrading = lazy(() => import('./components/CopyTrading'))
-const SocialFeed = lazy(() => import('./components/SocialFeed'))
 const OptionsChain = lazy(() => import('./components/OptionsChain'))
 const PortfolioAnalytics = lazy(() => import('./components/PortfolioAnalytics'))
 const WhaleAlerts = lazy(() => import('./components/WhaleAlerts'))
@@ -87,19 +88,11 @@ const Watchlist = lazy(() => import('./components/Watchlist'))
 const AlertRulesEngine = lazy(() => import('./components/AlertRulesEngine'))
 const DepthChart = lazy(() => import('./components/DepthChart'))
 const TaxCalculator = lazy(() => import('./components/TaxCalculator'))
-const JarvisCommandCenter = lazy(() => import('./components/JarvisCommandCenter'))
-const VoiceCommand = lazy(() => import('./components/VoiceCommand'))
 const VaultManager = lazy(() => import('./components/VaultManager'))
 const ExchangeConnect = lazy(() => import('./components/ExchangeConnect'))
-const QRScanner = lazy(() => import('./components/QRScanner'))
-const SignalShareCard = lazy(() => import('./components/SignalShareCard'))
-const VoiceAI = lazy(() => import('./components/VoiceAI'))
-const SystemSpecs = lazy(() => import('./components/SystemSpecs'))
-const JarvisVsMyra = lazy(() => import('./components/JarvisVsMyra'))
-const VoiceAutomation = lazy(() => import('./components/VoiceAutomation'))
-const JarvisHolographic = lazy(() => import('./components/JarvisHolographic'))
-const GamingCoach = lazy(() => import('./components/GamingCoach'))
-const SystemControl = lazy(() => import('./components/SystemControl'))
+const Web3MegaScanner = lazy(() => import('./components/Web3MegaScanner'))
+const CryptoTop1000 = lazy(() => import('./components/CryptoTop1000'))
+const AICandleBrain = lazy(() => import('./components/AICandleBrain'))
 
 const PageLoader = () => (
   <div className="p-4 bg-slate-900 min-h-screen space-y-3 animate-pulse">
@@ -129,70 +122,56 @@ function AppInner() {
     // Every single service is dynamically imported inside its
     // own try-catch. NO service can crash the app.
     // ═══════════════════════════════════════════════════════════
-    async function bootJarvis() {
-      console.log('[JARVIS v12.0 STANDALONE] Crash-proof boot sequence starting...')
+    // Set global mute from saved settings BEFORE any services load
+    try {
+      const savedSettings = JSON.parse(localStorage.getItem('jarvis_app_settings') || '{}')
+      window.__JARVIS_MUTE = savedSettings.sound !== true // muted by default unless sound=true
+    } catch { window.__JARVIS_MUTE = true }
 
-      // Phase 1: Load all services in parallel (each isolated)
+    async function bootJarvis() {
+      console.log('[JARVIS v19.0 STANDALONE] Crash-proof boot sequence starting...')
+
+      // ═══ GLOBAL MUTE — disable ALL sounds/alerts/notifications by default ═══
+      // User can re-enable in Settings. This prevents all annoying popups/beeps/vibrations.
+      try {
+        const savedSettings = localStorage.getItem('jarvis_app_settings')
+        const parsed = savedSettings ? JSON.parse(savedSettings) : null
+        // Default: muted. Only unmute if user explicitly enabled sound.
+        window.__JARVIS_MUTE = parsed?.sound ? false : true
+      } catch { window.__JARVIS_MUTE = true }
+      console.log('[JARVIS] 🔇 Global mute:', window.__JARVIS_MUTE ? 'ON (silent)' : 'OFF (sounds enabled)')
+
+
+      // Phase 1: Load essential services in parallel (each isolated)
       const [
         crashAnalytics,
         jarvis,
-        serviceMesh,
-        multiSource,
-        wsHub,
         offlineEngine,
         jarvisDB,
-        notificationPipeline,
-        presenceEngine,
-        jarvisVoice,
-        autoRefreshEngine,
         hapticEngine,
         i18n,
         themeEngine,
-        smartAuth,
-        voiceCommandEngine,
-        webAIFallback,
-        securityBatteryPerf,
         elevenlabsVoice,
-        backgroundAlerts,
         offlineCache,
-        firebasePush,
-        deepLink,
       ] = await Promise.all([
         loadService(import('./services/crashAnalytics'), 'crashAnalytics'),
         loadService(import('./services/jarvisCore'), 'jarvisCore'),
-        loadService(import('./services/serviceMesh'), 'serviceMesh'),
-        loadService(import('./services/multiSourceData'), 'multiSourceData'),
-        loadService(import('./services/wsHub'), 'wsHub'),
         loadService(import('./services/offlineEngine'), 'offlineEngine'),
         loadService(import('./services/jarvisDB'), 'jarvisDB'),
-        loadService(import('./services/notificationPipeline'), 'notificationPipeline'),
-        loadService(import('./services/presenceEngine'), 'presenceEngine'),
-        loadService(import('./services/jarvisVoice'), 'jarvisVoice'),
-        loadService(import('./services/autoRefreshEngine'), 'autoRefreshEngine'),
         loadService(import('./services/hapticEngine'), 'hapticEngine'),
         loadService(import('./services/i18n'), 'i18n'),
         loadService(import('./services/themeEngine'), 'themeEngine'),
-        loadService(import('./services/smartAuth'), 'smartAuth'),
-        loadService(import('./services/voiceCommandEngine'), 'voiceCommandEngine'),
-        loadService(import('./services/webAIFallback'), 'webAIFallback'),
-        loadService(import('./services/securityBatteryPerf'), 'securityBatteryPerf'),
         loadService(import('./services/elevenlabsVoice'), 'elevenlabsVoice'),
-        loadService(import('./services/backgroundAlerts'), 'backgroundAlerts'),
         loadService(import('./services/offlineCache'), 'offlineCache'),
-        loadService(import('./services/firebasePush'), 'firebasePush'),
-        loadService(import('./services/deepLink'), 'deepLink'),
       ])
 
-      // Store deepLink globally so SwipeableApp can use it
-      window.__jarvisDeepLink = deepLink
-
-      console.log('[JARVIS] Phase 1 complete — all services loaded')
+      console.log('[JARVIS] Phase 1 complete — essential services loaded')
 
       // Phase 2: Initialize services (each call isolated)
       try {
         sc(crashAnalytics, 'init')
         if (crashAnalytics && typeof crashAnalytics.addBreadcrumb === 'function') {
-          crashAnalytics.addBreadcrumb('app', 'App loaded — v12.0 STANDALONE CRASH-PROOF')
+          crashAnalytics.addBreadcrumb('app', 'App loaded — v19.0 LEAN BOOT')
         }
       } catch (e) { console.warn('[JARVIS] crashAnalytics init:', e.message) }
 
@@ -200,64 +179,7 @@ function AppInner() {
         sc(jarvis, 'init', API_BASE)
       } catch (e) { console.warn('[JARVIS] jarvisCore init:', e.message) }
 
-      try {
-        if (serviceMesh && typeof serviceMesh.registerService === 'function') {
-          serviceMesh.registerService({ name: 'backend-api', endpoint: `${API_BASE}/health`, criticalLevel: 'critical', interval: 30000 })
-          serviceMesh.registerService({ name: 'coingecko', endpoint: 'https://api.coingecko.com/api/v3/ping', criticalLevel: 'high' })
-          serviceMesh.registerService({ name: 'binance', endpoint: 'https://api.binance.com/api/v3/ping', criticalLevel: 'normal' })
-        }
-        sc(serviceMesh, 'start', 30000)
-      } catch (e) { console.warn('[JARVIS] serviceMesh init:', e.message) }
-
-      try {
-        sc(multiSource, 'startAutoRefresh')
-      } catch (e) { console.warn('[JARVIS] multiSource init:', e.message) }
-
-      try {
-        const wsUrl = WS_URL || `${API_BASE.replace(/^http/, 'ws')}/ws`
-        sc(wsHub, 'connect', 'jarvis', {
-          url: [wsUrl],
-          channels: ['prices', 'signals', 'alerts'],
-          heartbeatInterval: 30000,
-          onMessage: (msg) => {
-            try {
-              if (msg.type === 'price_update') {
-                window.dispatchEvent(new CustomEvent('jarvis-price-update', { detail: msg.data }))
-              } else if (msg.type === 'new_signal') {
-                window.dispatchEvent(new CustomEvent('jarvis-signal', { detail: msg.data }))
-              }
-            } catch {}
-          }
-        })
-        sc(wsHub, 'connect', 'binance', {
-          url: ['wss://stream.binance.com:9443/ws'],
-          channels: [],
-          heartbeatInterval: 60000
-        })
-      } catch (e) { console.warn('[JARVIS] wsHub init:', e.message) }
-
       try { sc(jarvisDB, 'init') } catch (e) { console.warn('[JARVIS] jarvisDB init:', e.message) }
-
-      try {
-        sc(presenceEngine, 'init', {
-          onGreeting: (msg) => {
-            try {
-              sc(notificationPipeline, 'send', { title: '\u{1F441}\uFE0F JARVIS', message: msg, type: 'info', priority: 'normal' })
-              // Use ElevenLabs with Priya voice for greeting (sweet female Hindi)
-              if (elevenlabsVoice && elevenlabsVoice.initialized && typeof elevenlabsVoice.speak === 'function') {
-                elevenlabsVoice.speak(msg, { voice: 'priya' })
-              } else if (jarvisVoice && jarvisVoice._initialized && typeof jarvisVoice.speak === 'function') {
-                jarvisVoice.speak(msg, 'hi-IN')
-              }
-            } catch {}
-          },
-          onDeparture: (msg) => {
-            try {
-              sc(notificationPipeline, 'send', { title: '\u{1F441}\uFE0F JARVIS', message: msg, type: 'info', priority: 'low' })
-            } catch {}
-          }
-        })
-      } catch (e) { console.warn('[JARVIS] presenceEngine init:', e.message) }
 
       // Register service worker
       try {
@@ -270,52 +192,11 @@ function AppInner() {
         }
       } catch {}
 
-      // Desktop-specific initialization
-      try {
-        if (window.jarvisDesktop) {
-          console.log('[JARVIS] Desktop mode — full OS control enabled!')
-          window.jarvisDesktop.on('navigate', (path) => {
-            window.dispatchEvent(new CustomEvent('jarvis-navigate', { detail: path }))
-          })
-          window.jarvisDesktop.on('voice', () => {
-            if (jarvisVoice && typeof jarvisVoice.startListening === 'function') jarvisVoice.startListening()
-          })
-        }
-      } catch {}
-
-      // Phase 2.5: Initialize realtime engine for WebSocket prices
-      try {
-        const rtModule = await loadService(import('./services/realtime'), 'realtime')
-        if (rtModule) {
-          sc(rtModule, 'init', API_BASE)
-          window.__jarvisRealtime = rtModule
-          console.log('[JARVIS] RealTime WebSocket engine initialized')
-        }
-      } catch (e) { console.warn('[JARVIS] realtime init:', e.message) }
-
-      // Phase 3: Initialize all remaining services
-      try { sc(autoRefreshEngine, 'start') } catch {}
+      // Phase 3: Initialize remaining services
       try { sc(hapticEngine, 'init') } catch {}
       try { sc(i18n, 'init') } catch {}
       try { sc(themeEngine, 'init') } catch {}
-      try { sc(smartAuth, 'init') } catch {}
-      try { sc(voiceCommandEngine, 'init') } catch {}
-      try { sc(webAIFallback, 'init') } catch {}
       try { sc(elevenlabsVoice, 'init') } catch {}
-
-      // SecurityBatteryPerf — may export a named init function
-      try {
-        if (securityBatteryPerf) {
-          if (typeof securityBatteryPerf.initSecurityBatteryPerf === 'function') {
-            await securityBatteryPerf.initSecurityBatteryPerf()
-          } else if (typeof securityBatteryPerf.init === 'function') {
-            securityBatteryPerf.init()
-          }
-        }
-      } catch (e) { console.warn('[JARVIS] securityBatteryPerf:', e.message) }
-
-      // Background alerts
-      try { sc(backgroundAlerts, 'start', 15000) } catch {}
 
       // Pre-cache for offline mode
       try {
@@ -325,21 +206,40 @@ function AppInner() {
         }
       } catch {}
 
-      // Firebase push
-      try { sc(firebasePush, 'init') } catch {}
-
       // Phase 4: JARVIS Wake Word Engine — "Hey JARVIS" always-on listener
       try {
         const { getWakeWordEngine } = await import('./services/wakeWordEngine').catch(() => ({}));
         if (getWakeWordEngine) {
           const wakeEngine = getWakeWordEngine();
           wakeEngine.onWakeWord((transcript) => {
+            // Handle sleep command
+            if (transcript === '__JARVIS_SLEEP__') {
+              console.log('[JARVIS] 😴 Going to sleep...');
+              window.dispatchEvent(new CustomEvent('jarvis-sleep', { detail: { sleeping: true } }));
+              // Speak goodnight
+              try {
+                import('./services/elevenlabsVoice.js').then(m => {
+                  const tts = m.default || m;
+                  if (tts?.speak) tts.speak('Good night Sir! Jab bhi zaroorat ho, bas bol dijiye JARVIS wake up. Main hamesha yahan hoon. 😴');
+                });
+              } catch {}
+              return;
+            }
+            // If waking from sleep, announce
+            if (wakeEngine.isSleeping === false && transcript) {
+              try {
+                import('./services/elevenlabsVoice.js').then(m => {
+                  const tts = m.default || m;
+                  if (tts?.speak) tts.speak('Good morning Sir! Main jaag gayi! Bataiye, kya karna hai? ⚡');
+                });
+              } catch {}
+            }
             console.log('[JARVIS] Wake word detected! Activating voice mode...');
-            // Navigate to voice assistant
+            // Navigate to AI Chat with voice auto-start
             window.dispatchEvent(new CustomEvent('jarvis-wake-word', { detail: { transcript } }));
-            // Try to navigate to voice page
+            // Navigate to chat page — voice will auto-activate there
             try {
-              const navEvent = new CustomEvent('jarvis-navigate', { detail: { path: '/hindi-voice' } });
+              const navEvent = new CustomEvent('jarvis-navigate', { detail: { path: '/chat' } });
               window.dispatchEvent(navEvent);
             } catch {}
           });
@@ -350,7 +250,14 @@ function AppInner() {
         }
       } catch (e) { console.warn('[JARVIS] Wake word engine:', e.message) }
 
-      console.log('[JARVIS v16.0] ⚡ ALL systems ONLINE — JARVIS OS boot complete')
+      // Phase 5: JARVIS Ultra Features — 20 Z+++ Security & Smart Upgrades
+      try {
+        const { initUltraFeatures } = await import('./services/jarvisUltraFeatures');
+        await initUltraFeatures();
+        console.log('[JARVIS] 🛡️ Ultra Features — 20 upgrades ACTIVE');
+      } catch (e) { console.warn('[JARVIS] Ultra features:', e.message) }
+
+      console.log('[JARVIS v19.0] ⚡ ALL systems ONLINE — Lean boot complete')
     }
 
     bootJarvis().catch(e => {
@@ -406,6 +313,17 @@ function SwipeableApp() {
     } catch (e) {
       console.warn('[JARVIS] deepLink activate failed:', e.message)
     }
+
+    // Listen for JARVIS voice navigation events (from wake word, voice commands, etc.)
+    const handleJarvisNavigate = (e) => {
+      const path = e?.detail?.path
+      if (path) {
+        console.log('[JARVIS] Navigating to:', path)
+        navigate(path)
+      }
+    }
+    window.addEventListener('jarvis-navigate', handleJarvisNavigate)
+    return () => window.removeEventListener('jarvis-navigate', handleJarvisNavigate)
   }, [navigate])
 
   return (
@@ -425,9 +343,7 @@ function SwipeableApp() {
               <Route path="/screener" element={<ErrorBoundary><Screener /></ErrorBoundary>} />
               <Route path="/intelligence" element={<ErrorBoundary><Intelligence /></ErrorBoundary>} />
               <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
-              <Route path="/phantom" element={<ErrorBoundary><PhantomWallet /></ErrorBoundary>} />
               <Route path="/copy-trading" element={<ErrorBoundary><CopyTrading /></ErrorBoundary>} />
-              <Route path="/social" element={<ErrorBoundary><SocialFeed /></ErrorBoundary>} />
               <Route path="/options" element={<ErrorBoundary><OptionsChain /></ErrorBoundary>} />
               <Route path="/portfolio" element={<ErrorBoundary><PortfolioAnalytics /></ErrorBoundary>} />
               <Route path="/whales" element={<ErrorBoundary><WhaleAlerts /></ErrorBoundary>} />
@@ -450,23 +366,11 @@ function SwipeableApp() {
               <Route path="/smart-alerts" element={<ErrorBoundary><AlertRulesEngine /></ErrorBoundary>} />
               <Route path="/depth-chart" element={<ErrorBoundary><DepthChart /></ErrorBoundary>} />
               <Route path="/tax-calculator" element={<ErrorBoundary><TaxCalculator /></ErrorBoundary>} />
-              <Route path="/jarvis" element={<ErrorBoundary><JarvisCommandCenter /></ErrorBoundary>} />
-              <Route path="/voice-command" element={<ErrorBoundary><VoiceCommand /></ErrorBoundary>} />
               <Route path="/vault" element={<ErrorBoundary><VaultManager /></ErrorBoundary>} />
               <Route path="/exchange-connect" element={<ErrorBoundary><ExchangeConnect /></ErrorBoundary>} />
-              <Route path="/qr-scanner" element={<ErrorBoundary><QRScanner /></ErrorBoundary>} />
-              <Route path="/signal-card" element={<ErrorBoundary><SignalShareCard /></ErrorBoundary>} />
-              <Route path="/voice-ai" element={<ErrorBoundary><VoiceAI /></ErrorBoundary>} />
-              <Route path="/system-specs" element={<ErrorBoundary><SystemSpecs /></ErrorBoundary>} />
-              <Route path="/jarvis-vs-myra" element={<ErrorBoundary><JarvisVsMyra /></ErrorBoundary>} />
-              <Route path="/voice-automation" element={<ErrorBoundary><VoiceAutomation /></ErrorBoundary>} />
-              <Route path="/jarvis-holographic" element={<ErrorBoundary><JarvisHolographic /></ErrorBoundary>} />
-              <Route path="/iron-man" element={<ErrorBoundary><JarvisHolographic /></ErrorBoundary>} />
-              <Route path="/gaming" element={<ErrorBoundary><GamingCoach apiBase={API_BASE} /></ErrorBoundary>} />
-              <Route path="/gaming-coach" element={<ErrorBoundary><GamingCoach apiBase={API_BASE} /></ErrorBoundary>} />
-              <Route path="/system-control" element={<ErrorBoundary><SystemControl /></ErrorBoundary>} />
-              <Route path="/device-control" element={<ErrorBoundary><SystemControl /></ErrorBoundary>} />
-              <Route path="/phone-control" element={<ErrorBoundary><SystemControl /></ErrorBoundary>} />
+              <Route path="/web3-scanner" element={<ErrorBoundary><Web3MegaScanner /></ErrorBoundary>} />
+              <Route path="/crypto-top1000" element={<ErrorBoundary><CryptoTop1000 /></ErrorBoundary>} />
+              <Route path="/candle-brain" element={<ErrorBoundary><AICandleBrain /></ErrorBoundary>} />
             </Routes>
           </main>
         </Suspense>

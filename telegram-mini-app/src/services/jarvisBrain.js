@@ -427,7 +427,7 @@ class JarvisAutonomousBrain {
     } catch {}
 
     // Add current price
-    history.push({ price: currentPrice, close: currentPrice, high: currentPrice * 1.001, low: currentPrice * 0.999, volume: Math.random() * 1e8, ts: Date.now() })
+    history.push({ price: currentPrice, close: currentPrice, high: currentPrice * 1.001, low: currentPrice * 0.999, volume: 0, ts: Date.now() })
 
     // Keep last 300 candles
     if (history.length > 300) history = history.slice(-300)

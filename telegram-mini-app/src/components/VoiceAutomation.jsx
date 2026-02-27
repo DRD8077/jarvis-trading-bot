@@ -253,7 +253,7 @@ const VoiceAutomation = () => {
         if (cmd.match(/emergency|kill switch|sell all|stop loss/)) {
           try {
             const action = cmd.includes('kill') ? 'kill_switch' : cmd.includes('sell') ? 'sell_all' : cmd.includes('stop') ? 'stop_loss_all' : 'pause_trading'
-            const res = await fetch(`${API_BASE}/api/miniapp/v8/emergency-action`, {
+            const res = await fetch(`${API_BASE}/v8/emergency-action`, {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ action, user_id: 'voice_user' })
             })
@@ -262,7 +262,7 @@ const VoiceAutomation = () => {
           } catch { result = '🚨 Emergency action sent (offline)' }
         } else {
           try {
-            const res = await fetch(`${API_BASE}/api/miniapp/jarvis-ai/respond`, {
+            const res = await fetch(`${API_BASE}/jarvis-ai/respond`, {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ message: command, user_id: 'voice_user' })
             })
@@ -312,7 +312,7 @@ const VoiceAutomation = () => {
 
   useEffect(() => {
     const fetch_ = async () => {
-      try { const r = await fetch(`${API_BASE}/api/miniapp/v8/power-status`); if (r.ok) setPowerStatus(await r.json()) } catch {}
+      try { const r = await fetch(`${API_BASE}/v8/power-status`); if (r.ok) setPowerStatus(await r.json()) } catch {}
       if (window.jarvisDesktop) { setSystemStatus(await window.jarvisDesktop.getSystemInfo()) }
       else {
         setSystemStatus({ platform: navigator.platform, cores: navigator.hardwareConcurrency || 'N/A', memory: navigator.deviceMemory ? `${navigator.deviceMemory}GB` : 'N/A', online: navigator.onLine })

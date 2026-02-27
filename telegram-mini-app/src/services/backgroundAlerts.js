@@ -211,22 +211,13 @@ class BackgroundAlertEngine {
   }
 
   _notify(alert, message) {
-    // Browser notification
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('JARVIS Price Alert', {
-        body: message,
-        icon: '/icon-192.png',
-        badge: '/icon-192.png',
-        tag: alert.id,
-        vibrate: [200, 100, 200],
-        data: { symbol: alert.symbol, alertId: alert.id },
-      })
-    }
-
-    // In-app toast
-    if (typeof window !== 'undefined') {
-      const event = new CustomEvent('jarvis-alert', { detail: { alert, message } })
-      window.dispatchEvent(event)
+    // ALL browser notifications, sounds, vibrations — permanently OFF
+    // Only silent in-app event if user hasn't muted
+    if (typeof window !== 'undefined' && !window.__JARVIS_MUTE) {
+      try {
+        const event = new CustomEvent('jarvis-alert', { detail: { alert, message } })
+        window.dispatchEvent(event)
+      } catch {}
     }
   }
 

@@ -6,6 +6,14 @@ import {
 import { fetchWallet, requestDeposit, verifyDeposit, requestWithdraw } from '../services/api'
 import { useApp } from '../context/AppContext'
 
+// ═══ Client-side UPI QR Generator (no backend needed) ═══
+function generateUPIQR(amount, upiId = 'jarvis@ybl', name = 'JARVIS Trading') {
+  const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(name)}&am=${amount}&cu=INR&tn=${encodeURIComponent('JARVIS Deposit')}`
+  // Use Google Charts QR API as fallback (works without any library)
+  const qrUrl = `https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=${encodeURIComponent(upiUrl)}&choe=UTF-8`
+  return { qr_url: qrUrl, upi_id: upiId, upi_link: upiUrl }
+}
+
 const WalletPage = () => {
   const { user, addNotification, hapticFeedback } = useApp()
   const [walletData, setWalletData] = useState(null)
@@ -55,7 +63,15 @@ const WalletPage = () => {
       hapticFeedback('success')
       addNotification('QR generated! Scan to pay', 'success')
     } catch (e) {
-      addNotification('Failed to generate QR', 'error')
+      // Backend unavailable — generate QR client-side
+      try {
+        const qrData = generateUPIQR(parseFloat(depositAmount))
+        setDepositQR(qrData)
+        hapticFeedback('success')
+        addNotification('UPI QR generated! Scan karke pay karein 💳', 'success')
+      } catch (e2) {
+        addNotification('QR generation failed', 'error')
+      }
     } finally {
       setProcessing(false)
     }

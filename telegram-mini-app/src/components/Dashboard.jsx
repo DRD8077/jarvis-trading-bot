@@ -7,6 +7,7 @@ import {
   Layers, LineChart, ScanLine, ShieldCheck, Copy
 } from 'lucide-react'
 import { fetchDashboard, fetchNews, fetchSentiment } from '../services/api'
+import { FALLBACK_DASHBOARD, FALLBACK_NEWS, FALLBACK_SENTIMENT } from '../services/offlineData'
 import { useApp } from '../context/AppContext'
 
 const Dashboard = () => {
@@ -18,6 +19,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [showBalance, setShowBalance] = useState(true)
+  const [isOfflineData, setIsOfflineData] = useState(false)
 
   const loadData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
@@ -28,12 +30,16 @@ const Dashboard = () => {
         fetchNews().catch(() => null),
         fetchSentiment().catch(() => null)
       ])
-      if (dashRes?.data) setData(dashRes.data)
+      if (dashRes?.data) { setData(dashRes.data); setIsOfflineData(false) }
+      else { setData(FALLBACK_DASHBOARD); setIsOfflineData(true) }
       if (newsRes?.data) setNews(Array.isArray(newsRes.data) ? newsRes.data : newsRes.data?.news || [])
+      else if (!news.length) setNews(FALLBACK_NEWS)
       if (sentRes?.data) setSentiment(sentRes.data)
+      else if (!sentiment) setSentiment(FALLBACK_SENTIMENT)
       if (silent) { hapticFeedback('success'); addNotification('Data refreshed ✨', 'success') }
     } catch (e) {
       console.error('Dashboard load error:', e)
+      if (!data) { setData(FALLBACK_DASHBOARD); setIsOfflineData(true); setNews(FALLBACK_NEWS); setSentiment(FALLBACK_SENTIMENT) }
     } finally {
       setLoading(false)
       setRefreshing(false)

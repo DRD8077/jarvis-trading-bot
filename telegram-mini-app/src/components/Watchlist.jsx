@@ -79,34 +79,68 @@ const Watchlist = () => {
     try {
       const allSymbols = watchlists.flatMap(w => w.symbols)
       const unique = [...new Set(allSymbols)]
-      
-      // Batch fetch from server
-      const { getApiBase } = await import('../services/apiBase')
-      const base = getApiBase()
-      const resp = await fetch(`${base}/prices?symbols=${unique.join(',')}`)
-      const data = await resp.json()
-      
-      if (data?.prices) {
-        setPrices(prev => ({ ...prev, ...data.prices }))
+      if (unique.length === 0) return
+
+      // Map symbols to CoinGecko IDs for crypto
+      const cgMap = { BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', BNB: 'binancecoin', XRP: 'ripple', ADA: 'cardano', DOGE: 'dogecoin', AVAX: 'avalanche-2', MATIC: 'matic-network', LINK: 'chainlink', DOT: 'polkadot', SHIB: 'shiba-inu', UNI: 'uniswap', ATOM: 'cosmos', LTC: 'litecoin' }
+      const cryptoSyms = unique.filter(s => cgMap[s])
+      const indianSyms = unique.filter(s => !cgMap[s])
+
+      const newPrices = { ...prices }
+
+      // Fetch crypto prices from CoinGecko (free, no auth)
+      if (cryptoSyms.length) {
+        try {
+          const ids = cryptoSyms.map(s => cgMap[s]).join(',')
+          const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd,inr&include_24hr_change=true&include_24hr_vol=true`)
+          if (res.ok) {
+            const data = await res.json()
+            cryptoSyms.forEach(sym => {
+              const cgId = cgMap[sym]
+              const d = data[cgId]
+              if (d) {
+                newPrices[sym] = {
+                  price: d.usd || 0,
+                  priceINR: d.inr || 0,
+                  change24h: d.usd_24h_change || 0,
+                  volume: d.usd_24h_vol || 0,
+                  high24h: d.usd * 1.02,
+                  low24h: d.usd * 0.98,
+                }
+              }
+            })
+          }
+        } catch (e) { console.warn('[Watchlist] CoinGecko error:', e.message) }
       }
+
+      // Fetch Indian stock prices from backend
+      if (indianSyms.length) {
+        try {
+          const { getApiBase } = await import('../services/apiBase')
+          const base = getApiBase()
+          const res = await fetch(`${base}/api/miniapp/india/dashboard`)
+          if (res.ok) {
+            const data = await res.json()
+            const stocks = data.data?.stocks || data.stocks || data.data?.top_stocks || []
+            stocks.forEach(s => {
+              const sym = (s.symbol || s.name || '').replace('.NS', '').replace('.BO', '')
+              if (indianSyms.includes(sym)) {
+                newPrices[sym] = {
+                  price: s.ltp || s.price || s.last_price || 0,
+                  change24h: s.change_pct || s.change_percent || 0,
+                  volume: s.volume || 0,
+                  high24h: s.high || 0,
+                  low24h: s.low || 0,
+                }
+              }
+            })
+          }
+        } catch {}
+      }
+
+      setPrices(prev => ({ ...prev, ...newPrices }))
     } catch (e) {
-      // Generate simulated prices for demo
-      const simulated = {}
-      const allSymbols = watchlists.flatMap(w => w.symbols)
-      allSymbols.forEach(s => {
-        const base = s === 'BTC' ? 67500 : s === 'ETH' ? 3450 : s === 'SOL' ? 145 :
-          s === 'NIFTY' ? 24500 : s === 'BANKNIFTY' ? 51200 : s === 'RELIANCE' ? 2900 :
-          s === 'TCS' ? 4100 : s === 'INFY' ? 1850 : s === 'HDFCBANK' ? 1650 : 100 + Math.random() * 500
-        const change = (Math.random() - 0.48) * 5
-        simulated[s] = {
-          price: base * (1 + change / 100),
-          change24h: change,
-          volume: Math.floor(Math.random() * 1e9),
-          high24h: base * 1.03,
-          low24h: base * 0.97,
-        }
-      })
-      setPrices(prev => ({ ...prev, ...simulated }))
+      console.warn('[Watchlist] Price fetch error:', e.message)
     }
   }, [watchlists])
 
@@ -124,13 +158,8 @@ const Watchlist = () => {
       const hit = alert.direction === 'above' ? p >= alert.target : p <= alert.target
       if (hit) {
         setAlerts(prev => ({ ...prev, [symbol]: { ...prev[symbol], triggered: true } }))
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification(`🔔 ${symbol} Alert!`, {
-            body: `${symbol} is now ${alert.direction === 'above' ? 'above' : 'below'} ₹${alert.target.toLocaleString()}! Current: ₹${p.toLocaleString()}`,
-            icon: '/logo.png'
-          })
-        }
-        hapticFeedback?.('success')
+        // Browser notification DISABLED — no popup alerts
+        // Only update state silently
       }
     })
   }, [prices, alerts, hapticFeedback])

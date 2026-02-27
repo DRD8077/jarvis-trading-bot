@@ -73,6 +73,16 @@ const PowerPredictor = () => {
     else if (activeTab === 'global') loadGlobal()
   }, [selectedIndex])
 
+  // Auto-refresh every 10 seconds
+  useEffect(() => {
+    const iv = setInterval(() => {
+      if (activeTab === 'power') loadPower()
+      else if (activeTab === 'ml') loadMl()
+      else if (activeTab === 'global') loadGlobal()
+    }, 10000)
+    return () => clearInterval(iv)
+  }, [activeTab, selectedIndex])
+
   const tabs = [
     { key: 'power', label: '10-Signal AI' },
     { key: 'ml', label: 'ML Ensemble' },

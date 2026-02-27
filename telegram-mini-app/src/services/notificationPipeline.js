@@ -22,8 +22,8 @@ class NotificationPipeline {
     this.batchTimer = null
     this.settings = {
       enabled: true,
-      sound: true,
-      vibrate: true,
+      sound: false,
+      vibrate: false,
       batchDelay: 3000, // 3 second batching
       maxHistory: 200,
       doNotDisturb: false,
@@ -97,23 +97,24 @@ class NotificationPipeline {
   }
 
   async _dispatch(notif) {
-    // Channel 1: In-app toast (always works)
+    // Global mute check — if user toggled sound OFF in Settings, skip everything
+    if (window.__JARVIS_MUTE) return
+
+    // Channel 1: In-app toast only (no sound, no vibration, no popup)
     this._showToast(notif)
 
-    // Channel 2: Browser/Push notification
-    if (notif.priority >= PRIORITIES.NORMAL) {
-      this._showBrowserNotification(notif)
-    }
+    // Channel 2: Browser/Push notification — DISABLED (causes continuous alert popups)
+    // if (notif.priority >= PRIORITIES.NORMAL) {
+    //   this._showBrowserNotification(notif)
+    // }
 
-    // Channel 3: Sound
-    if (this.settings.sound && notif.priority >= PRIORITIES.NORMAL) {
-      this._playSound(notif)
-    }
+    // Channel 3: Sound — DISABLED
+    // this._playSound(notif)
 
-    // Channel 4: Vibration
-    if (this.settings.vibrate && notif.priority >= PRIORITIES.HIGH) {
-      this._vibrate(notif)
-    }
+    // Channel 4: Vibration — DISABLED
+    // if (this.settings.vibrate && notif.priority >= PRIORITIES.HIGH) {
+    //   this._vibrate(notif)
+    // }
   }
 
   // ═══════════════════════════════════
@@ -154,18 +155,9 @@ class NotificationPipeline {
   }
 
   _playSound(notif) {
-    // Only play beep for CRITICAL alerts, not normal notifications
-    if (!notif || notif.priority < PRIORITIES.CRITICAL) return
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)()
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.frequency.value = 880
-      gain.gain.value = 0.15
-      osc.start(); osc.stop(ctx.currentTime + 0.2)
-    } catch {}
+    // ALL beep sounds DISABLED — user reported continuous irritating sounds
+    // JARVIS speaks via voice commands only, not random beeps
+    return;
   }
 
   _vibrate(notif) {

@@ -42,6 +42,7 @@ const PaperTrading = () => {
   const { user, addNotification, hapticFeedback } = useApp()
   const [state, setState] = useState(loadState)
   const [prices, setPrices] = useState({})
+  const [priceChanges, setPriceChanges] = useState({})
   const [loading, setLoading] = useState(true)
   const [showOrder, setShowOrder] = useState(false)
   const [orderType, setOrderType] = useState('BUY')
@@ -70,22 +71,65 @@ const PaperTrading = () => {
       const ticker = dashRes?.data?.market_ticker || []
       const newPrices = { ...prices }
 
+      const newChanges = {}
       ticker.forEach(t => {
-        if (t.symbol) newPrices[t.symbol] = parseFloat(t.price || t.last_price || 0)
+        if (t.symbol) {
+          newPrices[t.symbol] = parseFloat(t.price || t.last_price || 0)
+          if (t.change_24h !== undefined || t.price_change_percent !== undefined) {
+            newChanges[t.symbol] = parseFloat(t.change_24h || t.price_change_percent || 0)
+          }
+        }
       })
 
-      // Fallback demo prices
-      if (!newPrices.BTCUSDT) newPrices.BTCUSDT = 67500 + (Math.random() - 0.5) * 500
-      if (!newPrices.ETHUSDT) newPrices.ETHUSDT = 3750 + (Math.random() - 0.5) * 50
-      if (!newPrices.SOLUSDT) newPrices.SOLUSDT = 185 + (Math.random() - 0.5) * 5
-      if (!newPrices.BNBUSDT) newPrices.BNBUSDT = 610 + (Math.random() - 0.5) * 10
-      if (!newPrices.XRPUSDT) newPrices.XRPUSDT = 0.62 + (Math.random() - 0.5) * 0.02
-      if (!newPrices.NIFTY50) newPrices.NIFTY50 = 23500 + (Math.random() - 0.5) * 100
-      if (!newPrices.BANKNIFTY) newPrices.BANKNIFTY = 49800 + (Math.random() - 0.5) * 200
-      if (!newPrices.RELIANCE) newPrices.RELIANCE = 2950 + (Math.random() - 0.5) * 30
-      if (!newPrices.TCS) newPrices.TCS = 3980 + (Math.random() - 0.5) * 40
-      if (!newPrices.INFY) newPrices.INFY = 1580 + (Math.random() - 0.5) * 20
+      // For any missing crypto prices, fetch from CoinGecko
+      const cgMap = { BTCUSDT: 'bitcoin', ETHUSDT: 'ethereum', SOLUSDT: 'solana', BNBUSDT: 'binancecoin', XRPUSDT: 'ripple' }
+      const missing = Object.keys(cgMap).filter(s => !newPrices[s])
+      if (missing.length) {
+        try {
+          const ids = missing.map(s => cgMap[s]).join(',')
+          const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`)
+          if (res.ok) {
+            const data = await res.json()
+            missing.forEach(sym => {
+              const d = data[cgMap[sym]]
+              if (d?.usd) {
+                newPrices[sym] = d.usd
+                newChanges[sym] = d.usd_24h_change || 0
+              }
+            })
+          }
+        } catch {}
+      }
 
+      // For any missing Indian indices/stocks, fetch from backend
+      const indianSyms = ['NIFTY50', 'BANKNIFTY', 'RELIANCE', 'TCS', 'INFY']
+      const missingIndian = indianSyms.filter(s => !newPrices[s])
+      if (missingIndian.length) {
+        try {
+          const { getApiBase } = await import('../services/apiBase')
+          const base = getApiBase()
+          const res = await fetch(`${base}/api/miniapp/india/dashboard`)
+          if (res.ok) {
+            const data = await res.json()
+            const indices = data.data?.indices || data.indices || []
+            const stocks = data.data?.stocks || data.stocks || data.data?.top_stocks || []
+            indices.forEach(i => {
+              const name = (i.name || i.symbol || '').toUpperCase()
+              if (name.includes('NIFTY 50') || name.includes('NIFTY50')) newPrices.NIFTY50 = i.last || i.ltp || i.value || 0
+              if (name.includes('BANK') && name.includes('NIFTY')) newPrices.BANKNIFTY = i.last || i.ltp || i.value || 0
+            })
+            stocks.forEach(s => {
+              const sym = (s.symbol || s.name || '').replace('.NS', '').replace('.BO', '').toUpperCase()
+              if (indianSyms.includes(sym)) {
+                newPrices[sym] = s.ltp || s.price || s.last_price || 0
+                newChanges[sym] = s.change_pct || s.change_percent || 0
+              }
+            })
+          }
+        } catch {}
+      }
+
+      setPriceChanges(prev => ({ ...prev, ...newChanges }))
       setPrices(newPrices)
       setLoading(false)
     } catch { setLoading(false) }
@@ -297,7 +341,7 @@ const PaperTrading = () => {
 
           {filteredAssets.map(asset => {
             const price = prices[asset.symbol] || 0
-            const change = (Math.random() - 0.48) * 4 // Simulated
+            const change = priceChanges[asset.symbol] || 0
             return (
               <div key={asset.symbol} className="bg-slate-800/50 border border-slate-700/30 rounded-xl p-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">

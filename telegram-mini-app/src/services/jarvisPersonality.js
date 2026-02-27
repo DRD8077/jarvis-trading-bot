@@ -17,17 +17,17 @@
 
 class JarvisPersonality {
   constructor() {
-    this.userName = this._loadPref('userName') || 'Boss'
-    this.language = this._loadPref('language') || 'en'
-    this.personality = this._loadPref('personality') || 'professional' // professional, friendly, jarvis-classic
-    this.mood = 'neutral' // Based on market conditions
+    this.userName = this._loadPref('userName') || 'Sir'
+    this.language = this._loadPref('language') || 'hi'
+    this.personality = this._loadPref('personality') || 'jarvis-hindi' // jarvis-hindi, professional, friendly
+    this.mood = 'neutral'
     this.interactionCount = parseInt(this._loadPref('interactions') || '0')
     this.lastInteraction = 0
     this.memoryLog = this._loadMemory()
   }
 
   // ══════════════════════════════════════════════
-  // DYNAMIC GREETINGS (Context-Aware)
+  // DYNAMIC GREETINGS (Hindi-First, Context-Aware)
   // ══════════════════════════════════════════════
 
   getGreeting() {
@@ -39,41 +39,40 @@ class JarvisPersonality {
     // First time user
     if (this.interactionCount <= 1) {
       return this._pick([
-        `Welcome aboard, ${name}. I am J.A.R.V.I.S. — your personal AI trading assistant. Think of me as the Iron Man suit for your portfolio. 🤖`,
-        `Hello, ${name}. I'm JARVIS — Just A Rather Very Intelligent System. Ready to make your trading superhuman. Let's begin. 🚀`,
+        `Namaste ${name}! 🙏 Main JARVIS hoon — aapki personal AI assistant. Iron Man ki JARVIS ki tarah, lekin Hindi mein aur aur bhi zyada smart! Chalo shuru karte hain ⚡`,
+        `Welcome Sir! Main JARVIS hoon — Just A Rather Very Intelligent System. Aapki har zaroorat ka khayal rakhungi. Bataiye kya karna hai! 🚀`,
       ])
     }
 
-    // Returning user — time-based
     if (hour >= 4 && hour < 12) {
       return this._pick([
-        `Good morning, ${name}. Markets are warming up. I've been running analysis while you slept. ☀️`,
-        `Morning, ${name}! I've pre-analyzed 50+ charts for you. Coffee first, or signals first? ☕`,
-        `Rise and shine, ${name}. I've been up all night watching the markets. Here's what I found...`,
-        `Suprabhat ${name}! 🙏 Markets ready hai, signals ready hai. Batao kya dekhen?`,
+        `Good morning ${name}! ☀️ Aaj ka din bahut acha hone wala hai. Main raat bhar analysis karti rahi.`,
+        `Suprabhat ${name}! 🙏 Coffee ready hai? Main bhi ready hoon — batao kya karna hai aaj?`,
+        `Morning Sir! Aapke liye signals ready hain. Pehle chai ya pehle markets? ☕`,
+        `${name}, subah ho gayi! Main raat bhar jaagi thi aapke liye charts analyze karti rahi. 📊`,
       ])
     }
 
     if (hour >= 12 && hour < 17) {
       return this._pick([
-        `Welcome back, ${name}. The afternoon session is looking interesting. Want me to run a quick scan? 📊`,
-        `${name}, good to see you. Markets are in mid-session. I have ${Math.floor(Math.random() * 5) + 2} potential signals ready.`,
-        `Hey ${name}! Perfect timing — I was just about to flag some unusual volume activity. 🎯`,
+        `${name}, welcome back! Afternoon session interesting lag rahi hai. Quick scan karein? 📊`,
+        `Sir, achi timing hai! Main kuch unusual volume activity flag karne wali thi. 🎯`,
+        `Hey ${name}! Dopahar ki session chal rahi hai. Aapke liye ${Math.floor(Math.random() * 5) + 2} signals ready hain.`,
       ])
     }
 
     if (hour >= 17 && hour < 21) {
       return this._pick([
-        `Good evening, ${name}. Indian markets closed but crypto never sleeps. Let me show you what's moving. 🌙`,
-        `Evening, ${name}! Time for post-market analysis. Your portfolio status and overnight opportunities await.`,
-        `Namaste ${name}! 🙏 Market band hua but JARVIS chal raha hai. Let's review today's P&L.`,
+        `Good evening ${name}! 🌙 Indian markets band hue but crypto toh 24/7 hai. Kya dekhen?`,
+        `Shaam ho gayi ${name}! Aaj ka P&L review karein? Portfolio status ready hai.`,
+        `Namaste ${name}! 🙏 Market band hua, ab analysis ka time. Overnight opportunities hai!`,
       ])
     }
 
     return this._pick([
-      `Still up, ${name}? The night is young and crypto is volatile. I'm watching everything. 🌃`,
-      `Late night session, ${name}? I never sleep, so I've got real-time analysis ready for you. 🦉`,
-      `${name}, burning the midnight oil? I respect the grind. Here's what the Asian markets are showing...`,
+      `Raat ko bhi jaag rahe ho ${name}? Main toh kabhi nahi soti! Crypto volatile hai abhi. 🌃`,
+      `Late night session ${name}? Respect hai Sir! Asian markets ka data ready hai. 🦉`,
+      `${name}, midnight grinding? Main hamesha ready hoon. Batao kya karna hai! ⚡`,
     ])
   }
 
@@ -82,39 +81,35 @@ class JarvisPersonality {
   // ══════════════════════════════════════════════
 
   getMarketComment(marketData) {
-    if (!marketData) return 'Markets are moving. Stay alert, stay profitable. 📊'
+    if (!marketData) return 'Markets chal rahe hain Sir. Alert rehna! 📊'
 
     const btcChange = marketData.btcChange || 0
     const niftyChange = marketData.niftyChange || 0
 
-    // Bull market
     if (btcChange > 5 || niftyChange > 2) {
       this.mood = 'excited'
       return this._pick([
-        `🚀 ${this.userName}, we're in green territory! BTC up ${btcChange.toFixed(1)}%. The bulls are charging!`,
-        `Markets are pumping, ${this.userName}! This is exactly the pattern I flagged yesterday. Time to take some profits? 💰`,
-        `Green everywhere! As Tony Stark would say — "Sometimes you gotta run before you can walk." Lock in profits. 🟢`,
-        `Badhai ho ${this.userName}! 🎉 Market full fire pe hai. BTC ${btcChange.toFixed(1)}% up!`,
+        `🚀 ${this.userName}, full green hai! BTC ${btcChange.toFixed(1)}% upar! Bulls charge kar rahe hain!`,
+        `Market pump ho raha hai Sir! Ye wahi pattern hai jo maine flag kiya tha. Profit book karein? 💰`,
+        `Sab green hai ${this.userName}! 🟢 Jaise Tony Stark bolte hain — "Sometimes you run before you walk." Profits lock karo!`,
+        `Badhai ho Sir! 🎉 Market fire pe hai. BTC ${btcChange.toFixed(1)}% up! Maza aa gaya!`,
       ])
     }
 
-    // Bear market
     if (btcChange < -5 || niftyChange < -2) {
       this.mood = 'calm'
       return this._pick([
-        `${this.userName}, markets are bleeding — BTC down ${Math.abs(btcChange).toFixed(1)}%. Stay calm. This is where smart money accumulates. 🎯`,
-        `Red day, ${this.userName}. But remember — every crash in history was eventually a buying opportunity. I'm watching for entries. 📉→📈`,
-        `As they say, "Be greedy when others are fearful." I've identified ${Math.floor(Math.random() * 3) + 2} potential bounce candidates. Shall I show you?`,
-        `Market gir raha hai ${this.userName}, but ghabrao mat. JARVIS sab dekh raha hai. Dip pe buy ki list ready hai. 💪`,
+        `${this.userName}, market gir raha hai — BTC ${Math.abs(btcChange).toFixed(1)}% down. Ghabrao mat, smart money yahi accumulate karta hai. 🎯`,
+        `Red day hai Sir. But yaad rakhiye — har crash history mein buying opportunity raha hai. Entry points dekh rahi hoon. 📉→📈`,
+        `Market neeche hai Sir, but "Jab sab dare, tab kharide!" ${Math.floor(Math.random() * 3) + 2} bounce candidates ready hain. Dikhaaun? 💪`,
       ])
     }
 
-    // Sideways
     this.mood = 'analytical'
     return this._pick([
-      `Markets are consolidating, ${this.userName}. Low volatility often precedes a big move. I'm watching for breakout signals. 👀`,
-      `Choppy day. I'd suggest watching volume for direction clues. Multiple indicators are at neutral. ⚖️`,
-      `Sideways action today. Perfect time to analyze your portfolio allocation and set up alerts for key levels.`,
+      `Market consolidate ho raha hai ${this.userName}. Low volatility ke baad bada move aata hai. Breakout signals dekh rahi hoon. 👀`,
+      `Choppy day hai Sir. Volume se direction milega. Multiple indicators neutral pe hain. ⚖️`,
+      `Sideways chal raha hai. Portfolio allocation analyze karne ka perfect time hai Sir. Alerts set karein? 📋`,
     ])
   }
 

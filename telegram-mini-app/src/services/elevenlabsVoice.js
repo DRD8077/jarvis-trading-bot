@@ -18,7 +18,8 @@ import { getApiBase } from './apiBase'
 
 class ElevenLabsVoiceEngine {
   constructor() {
-    this.apiKey = 'sk_6629443f54d0dddcb3a40cc7863186b12bec3095bee765b2'
+    // API key loaded from localStorage (user-provided) or empty (uses backend proxy)
+    this.apiKey = localStorage.getItem('jarvis_elevenlabs_key') || ''
     this.defaultVoiceId = 'ThT5KcBeYPX3keUQqHPh' // Priya — sweet Hindi female voice
     this.wsUrl = 'wss://api.elevenlabs.io/v1/text-to-speech'
     this.isPlaying = false

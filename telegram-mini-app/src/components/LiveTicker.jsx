@@ -1,48 +1,62 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { TrendingUp, TrendingDown, Minus, Wifi, WifiOff } from 'lucide-react'
-// api.js no longer triggers realtime.init() at import — safe to import
 import { fetchTicker } from '../services/api'
-// useAutoRefresh also safe now (realtime loaded dynamically)
-import { useAutoRefresh } from '../hooks/useRealTime'
+import binanceFeed from '../services/binanceFeed'
+
+// Top crypto symbols to show in ticker
+const TICKER_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT', 'ADAUSDT', 'AVAXUSDT', 'DOTUSDT', 'MATICUSDT', 'LINKUSDT', 'SHIBUSDT']
+const DISPLAY_NAMES = { BTCUSDT: 'BTC', ETHUSDT: 'ETH', BNBUSDT: 'BNB', SOLUSDT: 'SOL', XRPUSDT: 'XRP', DOGEUSDT: 'DOGE', ADAUSDT: 'ADA', AVAXUSDT: 'AVAX', DOTUSDT: 'DOT', MATICUSDT: 'MATIC', LINKUSDT: 'LINK', SHIBUSDT: 'SHIB' }
 
 const LiveTicker = () => {
-  const { data, refreshing } = useAutoRefresh(fetchTicker, 5000) // 5s refresh (was 20s, fetched full dashboard)
   const [tickers, setTickers] = useState([])
   const scrollRef = useRef(null)
+  const binanceReady = useRef(false)
 
+  // PRIMARY: Binance WebSocket — real-time, no backend needed
   useEffect(() => {
-    const raw = data?.ticker || data?.data?.ticker || []
-    if (raw.length > 0) {
-      setTickers(raw.map(t => ({
-        symbol: t.symbol || '???',
-        price: t.price_inr || t.price_usd || 0,
-        priceUsd: t.price_usd || 0,
-        change: t.change_24h || 0,
-        isInr: !!(t.price_inr && t.price_inr > 1)
-      })))
-    }
-  }, [data])
-
-  // Listen for real-time WebSocket price updates from wsHub
-  useEffect(() => {
-    const handlePriceUpdate = (e) => {
-      try {
-        const update = e.detail
-        if (!update) return
-        setTickers(prev => prev.map(t => {
-          const match = (update.symbol === t.symbol) || (update.s === t.symbol)
-          if (!match) return t
-          return {
-            ...t,
-            price: update.price_inr || update.price || update.p || t.price,
-            priceUsd: update.price_usd || update.p || t.priceUsd,
-            change: update.change_24h ?? update.change ?? t.change
+    const unsubs = TICKER_SYMBOLS.map(sym =>
+      binanceFeed.subscribe(sym, (data) => {
+        binanceReady.current = true
+        setTickers(prev => {
+          const idx = prev.findIndex(t => t.symbol === DISPLAY_NAMES[sym] || t.symbol === sym)
+          const entry = {
+            symbol: DISPLAY_NAMES[sym] || sym.replace('USDT', ''),
+            price: data.price,
+            priceUsd: data.price,
+            change: data.change24h,
+            isInr: false
           }
-        }))
+          if (idx >= 0) {
+            const next = [...prev]
+            next[idx] = entry
+            return next
+          }
+          return [...prev, entry]
+        })
+      })
+    )
+    return () => unsubs.forEach(u => u())
+  }, [])
+
+  // FALLBACK: Backend API only if Binance WS hasn't delivered data in 5s
+  useEffect(() => {
+    const fallbackTimer = setTimeout(async () => {
+      if (binanceReady.current) return // Binance already working
+      try {
+        const data = await fetchTicker()
+        const raw = data?.ticker || data?.data?.ticker || []
+        if (raw.length > 0) {
+          setTickers(raw.map(t => ({
+            symbol: t.symbol || '???',
+            price: t.price_inr || t.price_usd || 0,
+            priceUsd: t.price_usd || 0,
+            change: t.change_24h || 0,
+            isInr: !!(t.price_inr && t.price_inr > 1)
+          })))
+        }
       } catch {}
-    }
-    window.addEventListener('jarvis-price-update', handlePriceUpdate)
-    return () => window.removeEventListener('jarvis-price-update', handlePriceUpdate)
+    }, 5000)
+    return () => clearTimeout(fallbackTimer)
   }, [])
 
   useEffect(() => {

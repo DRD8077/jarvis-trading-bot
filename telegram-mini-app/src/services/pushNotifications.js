@@ -27,8 +27,8 @@ class PushNotificationEngine {
         signals: true,
         tradeUpdates: true,
         news: false,
-        sound: true,
-        vibrate: true
+        sound: false,
+        vibrate: false
       }))
       this._init()
   
@@ -110,6 +110,12 @@ class PushNotificationEngine {
    * Show local notification (works without FCM)
    */
   async showNotification(title, body, options = {}) {
+    // Global mute check — if sounds/notifications are OFF, only show in-app toast
+    if (window.__JARVIS_MUTE) {
+      this._emitInApp(title, body, options)
+      return
+    }
+
     if (this.permission !== 'granted') {
       // Fallback: in-app toast
       this._emitInApp(title, body, options)
@@ -122,7 +128,7 @@ class PushNotificationEngine {
       badge: '/miniapp/icons/icon-72.png',
       tag: options.tag || 'jarvis-' + Date.now(),
       vibrate: this.preferences.vibrate ? [200, 100, 200] : undefined,
-      silent: !this.preferences.sound,
+      silent: true,
       data: options.data || {},
       actions: options.actions || [],
       requireInteraction: options.persistent || false,

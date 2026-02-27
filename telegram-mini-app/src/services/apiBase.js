@@ -31,7 +31,7 @@ export function isDesktopApp() {
   return typeof window !== 'undefined' && !!window.jarvisDesktop
 }
 
-// Production server URL — configure via VITE_SERVER_URL at build time
+// Production server URL — Railway permanent deployment
 const LIVE_SERVER = import.meta.env.VITE_SERVER_URL 
   || window?.__JARVIS_CONFIG__?.serverUrl
   || 'https://jarvis-trading-production.up.railway.app'

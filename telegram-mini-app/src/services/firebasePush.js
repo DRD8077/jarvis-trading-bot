@@ -119,27 +119,11 @@ class FirebasePushService {
   _handleForegroundMessage(payload) {
     const { title, body, data } = payload.notification || payload.data || {}
     
-    // Show in-app notification
+    // Show in-app notification (silent callback only)
     this.listeners.forEach(callback => callback({ title, body, data }))
 
-    // Also show native notification
-    if (Notification.permission === 'granted') {
-      new Notification(title || 'JARVIS Alert', {
-        body: body || '',
-        icon: '/icon-192.png',
-        badge: '/icon-72.png',
-        vibrate: [200, 100, 200],
-        tag: data?.type || 'jarvis-alert',
-        data: data,
-        actions: [
-          { action: 'open', title: 'Open JARVIS' },
-          { action: 'dismiss', title: 'Dismiss' }
-        ]
-      })
-    }
-
-    // Haptic feedback
-    if (navigator.vibrate) navigator.vibrate([100, 50, 100])
+    // Browser Notification + vibration — DISABLED (causes continuous alerts)
+    // All notification sounds, vibrations, and popups are OFF
   }
 
   /**

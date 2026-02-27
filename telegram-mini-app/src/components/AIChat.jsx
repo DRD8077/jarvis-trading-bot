@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect, useCallback, memo } from 'react'
 import {
   Send, Bot, User, Sparkles, Loader2, Trash2, ChevronDown, Copy, Check,
   Search, TrendingUp, Shield, Zap, Brain, Globe, Plus, Settings2,
-  ChevronRight, MessageSquare, Cpu, ArrowUp, StopCircle, RotateCcw
+  ChevronRight, MessageSquare, Cpu, ArrowUp, StopCircle, RotateCcw,
+  Mic, MicOff, Volume2
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { sendChat, clearChat as clearChatApi, fetchChatHistory, fetchChatModels, streamChat } from '../services/api'
@@ -117,10 +118,110 @@ const AIChat = () => {
   const [models, setModels] = useState([])
   const [selectedModel, setSelectedModel] = useState('jarvis-auto')
   const [showModelPicker, setShowModelPicker] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
   const messagesEndRef = useRef(null)
   const chatContainerRef = useRef(null)
   const inputRef = useRef(null)
   const abortRef = useRef(false)
+  const recognitionRef = useRef(null)
+
+  // ═══ VOICE: Speak AI response using ElevenLabs/TTS ═══
+  const speakResponse = useCallback(async (text) => {
+    if (!text || isSpeaking) return
+    setIsSpeaking(true)
+    try {
+      const { default: elevenlabs } = await import('../services/elevenlabsVoice.js')
+      if (elevenlabs?.speak) {
+        await elevenlabs.speak(text)
+      } else if ('speechSynthesis' in window) {
+        const u = new SpeechSynthesisUtterance(text.slice(0,300))
+        u.lang = 'hi-IN'; u.rate = 1.0
+        u.onend = () => setIsSpeaking(false)
+        window.speechSynthesis.speak(u)
+        return
+      }
+    } catch {}
+    setIsSpeaking(false)
+  }, [isSpeaking])
+
+  // ═══ VOICE: Start always-on mic listening ═══
+  const startListening = useCallback(() => {
+    if (isListening || loading || streaming) return
+    
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognitionAPI) return
+    
+    try {
+      const recognition = new SpeechRecognitionAPI()
+      recognition.lang = 'hi-IN'
+      recognition.continuous = true
+      recognition.interimResults = true
+      recognition.maxAlternatives = 1
+      
+      recognition.onresult = (event) => {
+        let finalText = ''
+        let interimText = ''
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const t = event.results[i][0].transcript
+          if (event.results[i].isFinal) { finalText += t }
+          else { interimText += t }
+        }
+        if (interimText) setInput(interimText)
+        if (finalText) {
+          setInput('')
+          setIsListening(false)
+          try { recognition.stop() } catch {}
+          recognitionRef.current = null
+          handleSend(finalText)
+        }
+      }
+      
+      recognition.onerror = (e) => {
+        if (e.error !== 'no-speech' && e.error !== 'aborted') {
+          console.warn('[AIChat] Voice error:', e.error)
+        }
+        // Auto-restart on non-fatal errors for always-on behavior
+        if (e.error === 'no-speech' && isListening) {
+          try { recognition.start() } catch {}
+          return
+        }
+        setIsListening(false)
+        recognitionRef.current = null
+      }
+      
+      recognition.onend = () => {
+        // Auto-restart for continuous listening
+        if (recognitionRef.current && isListening) {
+          try { recognition.start() } catch {}
+        }
+      }
+      
+      recognition.start()
+      recognitionRef.current = recognition
+      setIsListening(true)
+      hapticFeedback?.('impact')
+    } catch (e) {
+      console.warn('[AIChat] STT failed:', e)
+    }
+  }, [isListening, loading, streaming, hapticFeedback])
+
+  const stopListening = useCallback(() => {
+    setIsListening(false)
+    try { recognitionRef.current?.stop() } catch {}
+    recognitionRef.current = null
+    hapticFeedback?.('impact')
+  }, [hapticFeedback])
+
+  // ═══ Listen for wake word event — auto-start voice ═══
+  useEffect(() => {
+    const handleWakeWord = (e) => {
+      console.log('[AIChat] Wake word received, auto-starting voice...')
+      startListening()
+    }
+    window.addEventListener('jarvis-wake-word', handleWakeWord)
+    return () => window.removeEventListener('jarvis-wake-word', handleWakeWord)
+  }, [startListening])
 
   const scrollToBottom = useCallback((smooth = true) => {
     messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' })
@@ -179,6 +280,8 @@ const AIChat = () => {
           // Done
           if (fullReply) {
             setMessages(prev => [...prev, { role: 'assistant', content: fullReply, model: selectedModel }])
+            // Auto-speak the AI response
+            speakResponse(fullReply)
           }
           setStreamText('')
           setStreaming(false)
@@ -206,6 +309,8 @@ const AIChat = () => {
       const reply = res.data?.data?.reply || res.data?.reply || res.data?.response || 'Error processing request.'
       setMessages(prev => [...prev, { role: 'assistant', content: reply, model: selectedModel }])
       hapticFeedback?.('success')
+      // Auto-speak response
+      speakResponse(reply)
     } catch (e) {
       // Backend failed — use freeAI (client-side AI with embedded keys)
       try {
@@ -215,8 +320,10 @@ const AIChat = () => {
         const reply = result?.text || result?.response || result || 'JARVIS is thinking...'
         setMessages(prev => [...prev, { role: 'assistant', content: typeof reply === 'string' ? reply : JSON.stringify(reply), model: 'freeAI' }])
         hapticFeedback?.('success')
+        // Auto-speak the AI response
+        speakResponse(typeof reply === 'string' ? reply : '')
       } catch (e2) {
-        setMessages(prev => [...prev, { role: 'assistant', content: `**Error:** ${e.message}. Offline AI also failed: ${e2.message}` }])
+        setMessages(prev => [...prev, { role: 'assistant', content: `Sir, thodi der mein try karein. Network ya AI service temporarily unavailable hai. 🔄` }])
       }
     } finally {
       setLoading(false)
@@ -390,6 +497,14 @@ const AIChat = () => {
               </button>
               
               <div className="flex items-center gap-1.5">
+                {/* VOICE MIC BUTTON — Always-on like Bixby */}
+                <button onClick={isListening ? stopListening : startListening}
+                  className={`p-1.5 rounded-lg transition-all ${
+                    isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-white/10 text-slate-400 hover:bg-white/15 hover:text-white'
+                  }`}
+                  title={isListening ? 'Stop listening' : 'Voice input — Hindi/English'}>
+                  {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+                </button>
                 {streaming ? (
                   <button onClick={handleStop} className="p-1.5 rounded-lg bg-white/10 hover:bg-white/15 transition-colors" title="Stop">
                     <StopCircle size={16} className="text-white" />

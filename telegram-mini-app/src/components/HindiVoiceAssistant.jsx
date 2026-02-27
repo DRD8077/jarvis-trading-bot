@@ -68,6 +68,22 @@ const HindiVoiceAssistant = ({ onTranscript, onResponse, fullScreen = false }) =
     }).catch(() => {})
   }, [])
 
+  // ═══ Auto-listen on wake word event + fullScreen mount ═══
+  useEffect(() => {
+    const handleWakeWord = () => {
+      console.log('[HindiVoice] Wake word received — auto-starting mic...')
+      setTimeout(() => startListening(), 500)
+    }
+    window.addEventListener('jarvis-wake-word', handleWakeWord)
+    
+    // Auto-start listening in fullScreen mode
+    if (fullScreen) {
+      setTimeout(() => startListening(), 1000)
+    }
+    
+    return () => window.removeEventListener('jarvis-wake-word', handleWakeWord)
+  }, [fullScreen])
+
   // Start voice recording — uses native Capacitor on Android, browser fallback on web
   const startListening = async () => {
     hapticFeedback?.('impact')

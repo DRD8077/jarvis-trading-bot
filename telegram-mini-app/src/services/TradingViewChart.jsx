@@ -138,28 +138,35 @@ export default function TradingViewChart({ symbol = 'BTCUSDT', height = 400 }) {
     }
   }, [symbol, timeframe])
 
-  // Generate demo candlestick data when API unavailable
-  function generateDemoData(sym, tf) {
-    const now = Math.floor(Date.now() / 1000)
-    const tfMs = TIMEFRAMES.find(t => t.value === tf)?.ms || 3600000
-    const interval = tfMs / 1000
-    const candles = []
+  // Generate demo candlestick data when API unavailable — fetch from Binance
+  async function generateDemoData(sym, tf) {
+    // Map timeframe to Binance interval
+    const binanceIntervals = { '1m': '1m', '5m': '5m', '15m': '15m', '1h': '1h', '4h': '4h', '1d': '1d', '1w': '1w' }
+    const interval = binanceIntervals[tf] || '1h'
 
-    let basePrice = sym.includes('BTC') ? 67500 : sym.includes('ETH') ? 3750 : sym.includes('NIFTY') ? 23500 : 100
-    
-    for (let i = 200; i >= 0; i--) {
-      const time = now - (i * interval)
-      const volatility = basePrice * 0.008
-      const open = basePrice + (Math.random() - 0.48) * volatility
-      const close = open + (Math.random() - 0.48) * volatility
-      const high = Math.max(open, close) + Math.random() * volatility * 0.5
-      const low = Math.min(open, close) - Math.random() * volatility * 0.5
-      const volume = Math.random() * 1000 + 200
-
-      candles.push({ time, open, high, low, close, volume })
-      basePrice = close
+    // Map symbol to Binance pair
+    let binanceSym = sym.toUpperCase()
+    if (!binanceSym.includes('USDT') && !binanceSym.includes('INR')) {
+      binanceSym = binanceSym.replace(/[^A-Z0-9]/g, '') + 'USDT'
     }
-    return candles
+
+    try {
+      const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${binanceSym}&interval=${interval}&limit=200`)
+      if (res.ok) {
+        const data = await res.json()
+        return data.map(k => ({
+          time: Math.floor(k[0] / 1000),
+          open: parseFloat(k[1]),
+          high: parseFloat(k[2]),
+          low: parseFloat(k[3]),
+          close: parseFloat(k[4]),
+          volume: parseFloat(k[5]),
+        }))
+      }
+    } catch {}
+
+    // If Binance also fails, return empty — chart shows "No data"
+    return []
   }
 
   // Calculate Moving Average

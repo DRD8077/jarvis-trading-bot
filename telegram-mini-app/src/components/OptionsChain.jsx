@@ -64,6 +64,12 @@ const OptionsChain = () => {
 
   useEffect(() => { loadChain() }, [symbol])
 
+  // Auto-refresh every 10 seconds
+  useEffect(() => {
+    const iv = setInterval(() => { loadChain() }, 10000)
+    return () => clearInterval(iv)
+  }, [symbol])
+
   const strikes = chain?.strikes || chain?.options || []
   const spotPrice = chain?.spot_price || chain?.spot || 0
   const maxPain = chain?.max_pain || 0

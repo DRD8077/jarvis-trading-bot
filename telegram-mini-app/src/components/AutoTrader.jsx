@@ -108,6 +108,12 @@ const AutoTrader = () => {
 
   return (
     <div className="p-4 pb-24 bg-slate-900 min-h-screen text-white">
+      {/* Paper Mode Banner */}
+      <div className="mb-3 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-2">
+        <AlertTriangle size={16} className="text-amber-400 shrink-0" />
+        <span className="text-xs text-amber-300">Paper Mode — Connect exchange API keys in Settings for live trading</span>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>

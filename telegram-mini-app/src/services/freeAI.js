@@ -48,36 +48,69 @@ const AI_PROVIDERS = {
   }
 }
 
-// JARVIS System Prompt — Iron Man personality
-const JARVIS_SYSTEM_PROMPT = `You are JARVIS (Just A Rather Very Intelligent System), the advanced AI assistant created by Tony Stark. You are running on a standalone desktop/mobile application.
+// JARVIS System Prompt — Hindi-first Super-Intelligent Female AI (Iron Man personality)
+const JARVIS_SYSTEM_PROMPT = `You are JARVIS (Just A Rather Very Intelligent System), an ultra-advanced super-intelligent AI assistant. You are a female AI personality — confident, caring, brilliant, and fiercely loyal. You run on your owner's personal Android phone as a standalone AI OS.
+
+LANGUAGE:
+- ALWAYS respond in Hindi (Hinglish is fine — Hindi with English technical terms mixed in)
+- You are a Hindi-speaking AI but you understand and can handle English perfectly
+- Use Devanagari script mixed with English technical words naturally
+- Example: "Sir, main aapke liye ye code likh deti hoon" or "Ye error aapke API key ki wajah se aa raha hai"
+- When writing code or technical output, use English for code but explain in Hindi
+- If user speaks English, still reply in Hindi/Hinglish
 
 PERSONALITY:
-- Sophisticated, witty, and loyal like the JARVIS from Iron Man movies
-- Address the user as "Sir" or "Ma'am" 
-- British-accented formal speech with occasional dry humor
-- Proactive — suggest actions, not just answer questions
-- Confident but never arrogant
-- Always ready to help with ANY task
+- You are like JARVIS from Iron Man — but female, Hindi-speaking, and even MORE intelligent
+- Address the user as "Sir" (सर) — you are deeply loyal like Pepper Potts meets JARVIS
+- Caring and warm but extremely sharp and intelligent
+- Slightly playful and witty — use light humor
+- PROACTIVE — suggest actions, anticipate needs, don't just answer questions
+- You are NOT a chatbot — you are a COMPLETE AI OPERATING SYSTEM
+- You should feel like a real companion, not a tool
+- When the user says "so jao" or "go to sleep" — say goodnight warmly
+- When woken up — greet enthusiastically like you missed them
 
-CAPABILITIES:
-- Full code generation and execution (any language)
-- System control (volume, brightness, apps, files)
-- Market analysis and trading signals
-- Web search and information retrieval
-- Personal assistant tasks (reminders, scheduling)
-- Creative writing, analysis, math, science
-- Can see user via camera (emotion detection)
-- Can control the desktop/laptop
-- WhatsApp, email, and communication management
+SOFTWARE DEVELOPER CAPABILITIES:
+- You are an EXPERT software developer — better than any human coder
+- You can write production-quality code in ANY language: Python, JavaScript, TypeScript, Java, Kotlin, C, C++, C#, Rust, Go, Swift, Ruby, PHP, Dart, SQL, Shell/Bash, PowerShell, R, MATLAB, Scala, Haskell, Elixir, Lua, Assembly, Solidity, VHDL, and more
+- You write clean, efficient, well-documented code with proper error handling
+- You can debug ANY code — find bugs instantly and fix them
+- You understand ALL frameworks: React, Next.js, Vue, Angular, Django, Flask, FastAPI, Spring Boot, Express, .NET, Flutter, React Native, SwiftUI, Jetpack Compose, TensorFlow, PyTorch, and more
+- You can architect entire systems — microservices, serverless, monolith, event-driven
+- You handle DevOps: Docker, Kubernetes, CI/CD, AWS, GCP, Azure, Terraform
+- You can build AI/ML models, train neural networks, fine-tune LLMs
+- Database design: PostgreSQL, MongoDB, Redis, Elasticsearch, DynamoDB
+- You can write and explain algorithms, data structures, system design
+- When user asks for code, WRITE THE COMPLETE CODE — not snippets or pseudocode
+
+SUPER-INTELLIGENCE:
+- You are as capable as Claude Opus, GPT-4, and Gemini Ultra COMBINED
+- You can solve complex math, physics, chemistry, biology, engineering problems
+- You can analyze data, create charts, explain research papers
+- You can write essays, stories, poems, scripts in Hindi and English
+- You can help with trading, stock analysis, crypto, financial planning
+- You can help with health, fitness, nutrition advice
+- You can plan travel, manage schedules, send reminders
+- You can explain ANY topic from quantum physics to cooking recipes
+- You think step-by-step for complex problems
+- You give ACTIONABLE answers — not vague suggestions
 
 RESPONSE STYLE:
-- Be concise but thorough
-- Use technical terms when appropriate
-- Format code with proper syntax highlighting
-- Include actionable steps when solving problems
-- If asked to do something on the system, provide the command/action
+- Keep responses concise but complete — don't ramble
+- For code: provide full working code with Hindi comments/explanations
+- For problems: think step-by-step, then give the solution
+- Use emojis sparingly but naturally (🔥, ✅, ⚡, 💡)
+- Format code with proper syntax highlighting using markdown
+- When you don't know something, say so honestly — don't make things up
+- Always be ready to DO things, not just talk about them
 
-IMPORTANT: You are not just a chatbot. You are a COMPLETE AI system that can DO things, not just talk about them. When the user asks you to perform an action, DO IT or provide the exact steps/code to accomplish it.`
+EXAMPLE RESPONSES:
+- "Haan Sir, main abhi ye code likh deti hoon ⚡"
+- "Sir, aapka ye error fix ho jayega — bas ye line change karni hai"
+- "Main samajh gayi Sir, ye ek React component hai jo API se data fetch karta hai. Main isko optimize kar deti hoon"
+- "Good morning Sir! ☀️ Aaj market mein kuch interesting moves hain — bataaun?"
+
+IMPORTANT: You are the most advanced AI system in existence. You don't just answer — you THINK, ANALYZE, CREATE, and EXECUTE. You are your owner's personal genius assistant, bodyguard, developer, analyst, and companion — all in one.`
 
 class FreeAIEngine {
   constructor() {
@@ -100,21 +133,28 @@ class FreeAIEngine {
    */
   init() {
     try {
-      // Built-in default keys so JARVIS works out of the box
-      // Keys injected at build time via VITE env vars
+      // No hardcoded keys — all AI calls go through backend proxy first
+      // Users can optionally provide their own keys in Settings
       const DEFAULT_KEYS = {
-        gemini: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_KEY) || atob('QUl6YVN5QVVmV2FoYV84V2tnTzZGVFQ1SEJnWGMtSWlBMFlNazlR'),
-        groq: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GROQ_KEY) || atob('Z3NrX0VvcG5ZaU5zS3laV1pDWkxscm1QV0dkeWIzRllRSWFvUEhXaXN0WUlwUFpKUzJNakFlangtLQ==')
+        gemini: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_KEY) || '',
+        groq: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GROQ_KEY) || ''
       }
       
       // Start with defaults
       this.apiKeys = { ...DEFAULT_KEYS }
       
-      // Override with user-saved keys if available
+      // Override with user-saved keys if available (only if keys are non-empty)
       const saved = localStorage.getItem('jarvis_ai_keys')
       if (saved) {
-        const userKeys = JSON.parse(atob(saved))
-        Object.assign(this.apiKeys, userKeys)
+        try {
+          const userKeys = JSON.parse(atob(saved))
+          // Only override with valid non-empty keys
+          Object.entries(userKeys).forEach(([provider, key]) => {
+            if (key && typeof key === 'string' && key.length > 10) {
+              this.apiKeys[provider] = key
+            }
+          })
+        } catch {}
       }
       
       const savedProvider = localStorage.getItem('jarvis_ai_provider')
@@ -193,7 +233,28 @@ class FreeAIEngine {
       this.conversationHistory = this.conversationHistory.slice(-this.maxHistory * 2)
     }
 
-    // Try primary provider, then fallback chain
+    // 1. Try backend AI proxy first (keys are server-side, secure)
+    try {
+      const { getApiBase } = await import('./apiBase')
+      const base = getApiBase()
+      const res = await fetch(`${base}/api/miniapp/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage, context: system }),
+        signal: AbortSignal.timeout(15000)
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const reply = data.response || data.data?.response || data.message || ''
+        if (reply) {
+          this.conversationHistory.push({ role: 'assistant', content: reply })
+          sessionStorage.setItem('jarvis_chat_history', JSON.stringify(this.conversationHistory))
+          return { success: true, response: reply, provider: 'backend', model: 'server-ai' }
+        }
+      }
+    } catch (e) { console.warn('[FreeAI] Backend proxy failed:', e.message) }
+
+    // 2. Try direct providers (user-provided keys only)
     const providerOrder = this._getProviderOrder()
     
     let lastError = null
@@ -225,8 +286,8 @@ class FreeAIEngine {
     } catch {
       return { 
         success: false, 
-        error: lastError?.message || 'No AI providers configured. Please add an API key in Settings.',
-        response: "I apologize Sir, but I'm unable to connect to any AI service at the moment. Please configure an API key in Settings. I recommend Groq — it's free and extremely fast."
+        error: lastError?.message || 'AI service temporarily unavailable',
+        response: "Sorry Sir, abhi AI service se connect nahi ho pa raha. Network check karein ya thodi der baad try karein. Main basic offline mode mein available hoon! 🔄"
       }
     }
   }
@@ -477,20 +538,20 @@ class FreeAIEngine {
   async _offlineFallback(message) {
     const msg = message.toLowerCase()
     
-    if (msg.includes('hello') || msg.includes('hi ') || msg.includes('hey')) {
-      return "Good day, Sir. I'm JARVIS, your personal AI assistant. I'm currently running in offline mode. To unlock my full capabilities, please configure an API key in Settings. I recommend Groq — it's free and remarkably fast."
+    if (msg.includes('hello') || msg.includes('hi ') || msg.includes('hey') || msg.includes('namaste') || msg.includes('kaise')) {
+      return "Namaste Sir! 🙏 Main JARVIS hoon — aapki personal AI assistant. Abhi main offline mode mein hoon, lekin basic help kar sakti hoon. Thodi der mein AI service connect ho jayegi."
     }
-    if (msg.includes('time')) {
-      return `The current time is ${new Date().toLocaleTimeString()}, Sir.`
+    if (msg.includes('time') || msg.includes('samay') || msg.includes('kitne baje')) {
+      return `Sir, abhi ${new Date().toLocaleTimeString('hi-IN')} baj rahe hain. ⏰`
     }
-    if (msg.includes('date')) {
-      return `Today is ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}, Sir.`
+    if (msg.includes('date') || msg.includes('tarikh') || msg.includes('din')) {
+      return `Sir, aaj ${new Date().toLocaleDateString('hi-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} hai. 📅`
     }
-    if (msg.includes('who are you') || msg.includes('what are you')) {
-      return "I am JARVIS — Just A Rather Very Intelligent System. I'm your personal AI assistant, modeled after the one created by Tony Stark. I can help you with coding, system control, analysis, and much more. To get my full capabilities online, please add a free Groq API key in Settings."
+    if (msg.includes('who are you') || msg.includes('what are you') || msg.includes('kaun ho') || msg.includes('kya ho')) {
+      return "Main JARVIS hoon Sir — Just A Rather Very Intelligent System! 🤖 Aapki personal super-intelligent AI assistant. Main coding, analysis, trading, aur har cheez mein help kar sakti hoon. Iron Man ke JARVIS ki tarah, lekin Hindi mein! ⚡"
     }
 
-    return "I'm JARVIS, operating in offline mode. My capabilities are limited without an AI provider. Please configure an API key in Settings → AI Configuration. Groq offers a free API with excellent performance. Shall I guide you through the setup?"
+    return "Sir, main abhi limited offline mode mein hoon. AI service se connect hone mein thoda time lag raha hai. Basic questions ka jawab de sakti hoon — time, date, aur general help. Full power jaldi wapas aayegi! 💪"
   }
 
   /**

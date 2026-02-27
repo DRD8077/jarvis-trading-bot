@@ -72,15 +72,8 @@ const AlertRulesEngine = () => {
             }
             setHistory(prev => [entry, ...prev].slice(0, 100))
             
-            // Notification
-            if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification(`🚨 Alert: ${rule.name}`, {
-                body: entry.message,
-                icon: '/logo.png',
-                tag: `rule_${rule.id}`
-              })
-            }
-            hapticFeedback?.('success')
+            // Notification DISABLED — no popup alerts/sounds
+            // Only log to history silently
 
             // If one-shot, deactivate
             if (rule.oneShot) {

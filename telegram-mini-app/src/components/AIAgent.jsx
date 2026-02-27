@@ -304,10 +304,17 @@ const AIAgent = () => {
   }
 
   const handleDownloadLLM = async () => {
+    // Check if native platform is available
+    try {
+      const { Capacitor } = await import('@capacitor/core').catch(() => ({}))
+      if (!Capacitor?.isNativePlatform?.()) {
+        addNotification?.('AI Models sirf APK mein download hote hain. JARVIS AI chat use karein — woh online kaam karta hai! 🧠', 'info')
+        return
+      }
+    } catch {}
     setDownloading(true)
     setDownloadProgress(0)
     try {
-      // Download a small but powerful model
       await jarvisAIRef.current?.downloadModel?.(
         'https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf',
         'tinyllama-1.1b-chat-Q4_K_M.gguf'
@@ -315,13 +322,20 @@ const AIAgent = () => {
       addNotification?.('✅ TinyLlama model downloaded!', 'success')
       await loadStatus()
     } catch (e) {
-      addNotification?.('Download failed: ' + e.message, 'error')
+      addNotification?.('Sir, yeh model abhi available nahi hai. JARVIS AI Chat use karein — woh cloud AI se kaam karta hai! 🚀', 'info')
     } finally {
       setDownloading(false)
     }
   }
 
   const handleDownloadSTT = async (lang) => {
+    try {
+      const { Capacitor } = await import('@capacitor/core').catch(() => ({}))
+      if (!Capacitor?.isNativePlatform?.()) {
+        addNotification?.('Voice models sirf APK mein download hote hain. Browser mein Web Speech API automatic use hota hai! 🎤', 'info')
+        return
+      }
+    } catch {}
     setDownloading(true)
     try {
       await jarvisAIRef.current?.downloadSTTModel?.(lang)
@@ -329,7 +343,7 @@ const AIAgent = () => {
       setSttReady(true)
       addNotification?.(`✅ STT model (${lang}) downloaded!`, 'success')
     } catch (e) {
-      addNotification?.('STT download failed: ' + e.message, 'error')
+      addNotification?.('Sir, voice model abhi available nahi hai. Browser voice auto-use hota hai! 🎤', 'info')
     } finally {
       setDownloading(false)
     }
@@ -647,9 +661,13 @@ const AIAgent = () => {
               {models.length === 0 ? (
                 <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 text-center">
                   <Brain size={24} className="mx-auto text-slate-500 mb-2" />
-                  <p className="text-xs text-slate-400 mb-3">No LLM models found on device</p>
+                  <p className="text-xs text-slate-400 mb-2">No offline LLM models on device</p>
+                  <p className="text-[10px] text-emerald-400 mb-3">✅ Cloud AI already working — use AI Chat tab for instant responses!</p>
                   
                   <div className="space-y-2">
+                    <p className="text-[9px] text-slate-500">
+                      Offline models require Android APK + storage. Cloud AI works everywhere!
+                    </p>
                     <button onClick={handleDownloadLLM} disabled={downloading}
                       className="w-full px-4 py-2.5 bg-gradient-to-r from-violet-600 to-purple-600 rounded-xl text-xs text-white font-medium active:scale-95 disabled:opacity-50">
                       {downloading ? (
@@ -663,9 +681,6 @@ const AIAgent = () => {
                         </span>
                       )}
                     </button>
-                    <p className="text-[9px] text-slate-500">
-                      Recommended: TinyLlama 1.1B (fast, 670MB) • Also try: Phi-3-mini, Gemma-2B
-                    </p>
                   </div>
                 </div>
               ) : (
@@ -708,13 +723,21 @@ const AIAgent = () => {
                       </div>
                     )}
                     <button onClick={async () => {
+                      // Check if native platform is available for model downloads
+                      try {
+                        const { Capacitor } = await import('@capacitor/core').catch(() => ({}))
+                        if (!Capacitor?.isNativePlatform?.()) {
+                          addNotification?.('Sir, yeh AI model sirf Android APK mein download hota hai. JARVIS AI Chat tab use karein — woh cloud AI se kaam karta hai! 🧠', 'info')
+                          return
+                        }
+                      } catch {}
                       setDownloading(true)
                       setDownloadProgress(0)
                       try {
                         await jarvisAIRef.current?.downloadModel?.(m.url, m.filename)
                         addNotification?.(`✅ ${m.name} downloaded!`, 'success')
                         await loadStatus()
-                      } catch (e) { addNotification?.(e.message, 'error') }
+                      } catch (e) { addNotification?.('Sir, yeh model abhi available nahi hai. AI Chat use karein — cloud se kaam karta hai! 🚀', 'info') }
                       finally { setDownloading(false) }
                     }} disabled={downloading}
                       className="w-full px-3 py-1.5 bg-gradient-to-r from-violet-600 to-purple-600 rounded-lg text-[10px] text-white font-medium active:scale-95 disabled:opacity-50">
