@@ -95,6 +95,7 @@ const CryptoTop1000 = lazy(() => import('./components/CryptoTop1000'))
 const AICandleBrain = lazy(() => import('./components/AICandleBrain'))
 const MoonShotHunter = lazy(() => import('./components/MoonShotHunter'))
 const AIAutoSniper = lazy(() => import('./components/AIAutoSniper'))
+const JarvisHUD = lazy(() => import('./components/JarvisHUD'))
 
 const PageLoader = () => (
   <div className="p-4 bg-slate-900 min-h-screen space-y-3 animate-pulse">
@@ -259,14 +260,28 @@ function AppInner() {
                 });
               } catch {}
             }
-            console.log('[JARVIS] Wake word detected! Activating voice mode...');
-            // Navigate to AI Chat with voice auto-start
+            console.log('[JARVIS] Wake word detected! Processing command...');
             window.dispatchEvent(new CustomEvent('jarvis-wake-word', { detail: { transcript } }));
-            // Navigate to chat page — voice will auto-activate there
-            try {
-              const navEvent = new CustomEvent('jarvis-navigate', { detail: { path: '/chat' } });
-              window.dispatchEvent(navEvent);
-            } catch {}
+            // Smart Voice Commands — try to match a command first, then fallback to chat
+            import('./services/jarvisSmartCommands.js').then(cmds => {
+              const smartCmds = cmds.default || cmds;
+              if (smartCmds?.processVoiceCommand) {
+                smartCmds.processVoiceCommand(transcript).then(result => {
+                  if (result?.matched) {
+                    console.log('[JARVIS] Smart command matched:', result.action);
+                  } else {
+                    // No command matched — navigate to chat for AI conversation
+                    window.dispatchEvent(new CustomEvent('jarvis-navigate', { detail: { path: '/chat' } }));
+                  }
+                }).catch(() => {
+                  window.dispatchEvent(new CustomEvent('jarvis-navigate', { detail: { path: '/chat' } }));
+                });
+              } else {
+                window.dispatchEvent(new CustomEvent('jarvis-navigate', { detail: { path: '/chat' } }));
+              }
+            }).catch(() => {
+              window.dispatchEvent(new CustomEvent('jarvis-navigate', { detail: { path: '/chat' } }));
+            });
           });
           // Start wake word listening (non-blocking)
           wakeEngine.start().catch(() => {});
@@ -282,7 +297,18 @@ function AppInner() {
         console.log('[JARVIS] 🛡️ Ultra Features — 20 upgrades ACTIVE');
       } catch (e) { console.warn('[JARVIS] Ultra features:', e.message) }
 
-      console.log('[JARVIS v19.0] ⚡ ALL systems ONLINE — Lean boot complete')
+      // Phase 6: JARVIS Proactive Brain — background market monitoring (Iron Man style)
+      try {
+        const brainMod = await import('./services/jarvisProactiveBrain.js');
+        const brain = brainMod.default || brainMod;
+        if (brain?.start) {
+          brain.start();
+          window.__jarvisProactiveBrain = brain;
+          console.log('[JARVIS] 🧠 Proactive Brain ACTIVATED — monitoring markets');
+        }
+      } catch (e) { console.warn('[JARVIS] Proactive Brain:', e.message) }
+
+      console.log('[JARVIS v27.0] ⚡ ALL systems ONLINE — Iron Man mode ACTIVE')
     }
 
     bootJarvis().catch(e => {
@@ -366,6 +392,8 @@ function SwipeableApp() {
 
   return (
     <div className="min-h-screen bg-slate-900" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      {/* JARVIS HUD — Iron Man floating status bar */}
+      <Suspense fallback={null}><JarvisHUD /></Suspense>
       <ConnectionStatus />
       <LiveTicker />
       <ErrorBoundary>

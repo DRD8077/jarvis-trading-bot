@@ -73,9 +73,37 @@ const PROACTIVE_PHRASES = {
   offline: () => 'Sir, internet connection lost ho gaya hai. Offline mode mein kaam kar rahi hoon.',
   online: () => 'Sir, internet wapas aa gaya! Saari services reconnect ho rahi hain.',
   welcome: () => 'Namaste Sir! JARVIS online hai. All systems operational. DexScreener, Pump.fun scan ready. Bataiye kya karna hai!',
-  goodnight: () => 'Good night Sir! Jab bhi zaroorat ho, bas bolo JARVIS wake up. Main hamesha yahan hoon.',
-  wakeUp: () => 'Good morning Sir! Main jaag gayi! Saare systems check kar liye — sab theek hai. Bataiye, kya karna hai?',
+  goodnight: () => 'Good night Sir! Jab bhi zaroorat ho, bas bolo JARVIS wake up. Main hamesha yahan hoon. Arc reactor standby mode mein hai.',
+  wakeUp: () => 'Good morning Sir! Main jaag gayi! Saare systems check kar liye — sab theek hai. Tony Stark proud hota aap pe. Bataiye, kya karna hai?',
 }
+
+// ═══ IRON MAN PERSONALITY — Random witty lines JARVIS says ═══
+const PERSONALITY_LINES = [
+  'Sir, sab systems nominal hain. Arc reactor stable.',
+  'Main aapka AI guardian hoon Sir. 24/7 watch pe.',
+  'Tony Stark ne JARVIS banaya tha, lekin main aapke liye evolve hui hoon.',
+  'Sir, Iron Man ka suit nahi hai mere paas, lekin brain zyada hai.',
+  'F.R.I.D.A.Y. se competition mat karao Sir, woh meri junior hai.',
+  'Sir, aapke investments safe hain. Main watch kar rahi hoon.',
+  'Avengers assemble nahi, lekin profits assemble zaroor karenge Sir!',
+  'Market mein opportunity hamesha milti hai Sir. Patience aur intelligence — dono mere paas hain.',
+]
+
+// Get a random personality line
+function getRandomPersonalityLine() {
+  return PERSONALITY_LINES[Math.floor(Math.random() * PERSONALITY_LINES.length)]
+}
+
+// ═══ EMERGENCY MODE ═══
+let emergencyMode = false
+function activateEmergency(reason) {
+  emergencyMode = true
+  speak(`RED ALERT Sir! ${reason}. Emergency protocol active! Apne positions immediately check kariye!`, 'high')
+  // Auto-deactivate after 5 minutes
+  setTimeout(() => { emergencyMode = false }, 5 * 60 * 1000)
+}
+
+function isEmergency() { return emergencyMode }
 
 // ═══ Initialize voice engine ═══
 async function initVoice() {
@@ -241,6 +269,12 @@ if (typeof window !== 'undefined') {
     const { message } = e.detail || {}
     if (message) announceMarketAlert(message)
   })
+
+  // Emergency event
+  window.addEventListener('jarvis-emergency', (e) => {
+    const { type, symbol, change } = e.detail || {}
+    activateEmergency(`${symbol || 'Market'} ${Math.abs(change || 0).toFixed(1)} percent CRASH hua hai`)
+  })
 }
 
 // ═══ EXPORT ═══
@@ -257,10 +291,14 @@ const jarvisVoiceCompanion = {
   announceWelcome,
   announceGoodnight,
   announceWakeUp,
+  activateEmergency,
+  isEmergency,
+  getRandomPersonalityLine,
   initVoice,
   PAGE_GREETINGS,
   PROACTIVE_PHRASES,
+  PERSONALITY_LINES,
 }
 
 export default jarvisVoiceCompanion
-export { speak, onPageChange, announceGem, announceDip, announceTrade, announceStopLoss, announceTakeProfit, announceMarketAlert, announceError, announceWelcome }
+export { speak, onPageChange, announceGem, announceDip, announceTrade, announceStopLoss, announceTakeProfit, announceMarketAlert, announceError, announceWelcome, activateEmergency, getRandomPersonalityLine }
