@@ -96,6 +96,8 @@ const CryptoTop1000 = lazy(() => import('./components/CryptoTop1000'))
 const AICandleBrain = lazy(() => import('./components/AICandleBrain'))
 const MoonShotHunter = lazy(() => import('./components/MoonShotHunter'))
 const AIAutoSniper = lazy(() => import('./components/AIAutoSniper'))
+const JarvisWorkshop = lazy(() => import('./components/JarvisWorkshop'))
+const JarvisHologram = lazy(() => import('./components/JarvisHologram'))
 const JarvisHUD = lazy(() => import('./components/JarvisHUD'))
 
 const PageLoader = () => (
@@ -339,7 +341,58 @@ function AppInner() {
         }
       } catch (e) { console.warn('[JARVIS] Gestures:', e.message) }
 
-      console.log('[JARVIS v28.0] ⚡ ALL systems ONLINE — Full Iron Man mode ACTIVE')
+      // Phase 10: Emotional Intelligence — mood detection & adaptive personality
+      try {
+        const eqMod = await import('./services/jarvisEQ.js');
+        const eq = eqMod.default || eqMod;
+        if (eq?.init) {
+          eq.init();
+          console.log('[JARVIS] 💛 Emotional Intelligence ONLINE — mood tracking active');
+        }
+      } catch (e) { console.warn('[JARVIS] EQ:', e.message) }
+
+      // Phase 11: Arc Reactor Power System
+      try {
+        const arcMod = await import('./services/jarvisArcReactor.js');
+        const arc = arcMod.default || arcMod;
+        if (arc?.init) {
+          arc.init();
+          console.log('[JARVIS] ⚡ Arc Reactor ONLINE — power management active');
+        }
+      } catch (e) { console.warn('[JARVIS] Arc Reactor:', e.message) }
+
+      // Phase 12: Emergency Protocols — restore any active protocol
+      try {
+        const protoMod = await import('./services/jarvisEmergencyProtocols.js');
+        const proto = protoMod.default || protoMod;
+        if (proto?.restore) {
+          const active = proto.restore();
+          if (active) console.log('[JARVIS] 🚨 Protocol restored:', active.codename);
+          console.log('[JARVIS] 🚨 Emergency Protocols ONLINE — 6 protocols ready');
+        }
+      } catch (e) { console.warn('[JARVIS] Protocols:', e.message) }
+
+      // Phase 13: Security Protocol — intruder detection
+      try {
+        const secMod = await import('./services/jarvisSecurity.js');
+        const sec = secMod.default || secMod;
+        if (sec?.init) {
+          sec.init();
+          console.log('[JARVIS] 🔒 Security Protocol ONLINE — perimeter active');
+        }
+      } catch (e) { console.warn('[JARVIS] Security:', e.message) }
+
+      // Phase 14: AI Personality — restore saved personality
+      try {
+        const persMod = await import('./services/jarvisPersonalities.js');
+        const pers = persMod.default || persMod;
+        if (pers?.restore) {
+          const p = pers.restore();
+          console.log('[JARVIS] 🤖 AI Personality:', p?.name || 'JARVIS');
+        }
+      } catch (e) { console.warn('[JARVIS] Personalities:', e.message) }
+
+      console.log('[JARVIS v29.0] ⚡ ALL systems ONLINE — Full Iron Man mode ACTIVE')
     }
 
     bootJarvis().catch(e => {
@@ -385,6 +438,7 @@ function SwipeableApp() {
   const { onTouchStart, onTouchEnd } = useSwipeNavigation()
   const navigate = useNavigate()
   const location = useLocation()
+  const [showHologram, setShowHologram] = useState(false)
 
   // ═══ JARVIS VOICE COMPANION — speaks on every page navigation ═══
   useEffect(() => {
@@ -395,8 +449,20 @@ function SwipeableApp() {
           companion.onPageChange(location.pathname)
         }
       }).catch(() => {})
+      // Track page change for EQ (mood detection)
+      import('./services/jarvisEQ.js').then(mod => {
+        const eq = mod.default || mod
+        if (eq?.recordPageChange) eq.recordPageChange(location.pathname)
+      }).catch(() => {})
     } catch {}
   }, [location.pathname])
+
+  // Hologram overlay listener
+  useEffect(() => {
+    const onOpen = () => setShowHologram(true)
+    window.addEventListener('jarvis-hologram-open', onOpen)
+    return () => window.removeEventListener('jarvis-hologram-open', onOpen)
+  }, [])
 
   // Activate deep link router (loaded dynamically, stored on window)
   useEffect(() => {
@@ -425,6 +491,8 @@ function SwipeableApp() {
     <div className="min-h-screen bg-slate-900" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {/* JARVIS HUD — Iron Man floating status bar */}
       <Suspense fallback={null}><JarvisHUD /></Suspense>
+      {/* JARVIS Holographic Display Overlay */}
+      {showHologram && <Suspense fallback={null}><JarvisHologram onClose={() => setShowHologram(false)} /></Suspense>}
       <ConnectionStatus />
       <LiveTicker />
       <ErrorBoundary>
@@ -470,6 +538,7 @@ function SwipeableApp() {
               <Route path="/candle-brain" element={<ErrorBoundary><AICandleBrain /></ErrorBoundary>} />
               <Route path="/moonshot" element={<ErrorBoundary><MoonShotHunter /></ErrorBoundary>} />
               <Route path="/auto-sniper" element={<ErrorBoundary><AIAutoSniper /></ErrorBoundary>} />
+              <Route path="/workshop" element={<ErrorBoundary><JarvisWorkshop /></ErrorBoundary>} />
             </Routes>
           </main>
         </Suspense>

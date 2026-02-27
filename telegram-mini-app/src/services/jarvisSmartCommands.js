@@ -71,6 +71,37 @@ const VOICE_COMMANDS = [
   // ═══ MEMORY ═══
   { patterns: [/yaad karo|remember|mujhe yaad|mera record/i], action: 'recall-memory', response: null },
   { patterns: [/threat (level|check|assess)|khatarnaak|danger check/i], action: 'threat-check', response: 'Threat assessment shuru kar rahi hoon Sir...' },
+
+  // ═══ EMERGENCY PROTOCOLS ═══
+  { patterns: [/house party( protocol)?|sab deploy/i], action: 'protocol', protocol: 'house-party', response: null },
+  { patterns: [/veronica( protocol)?|hulkbuster deploy/i], action: 'protocol', protocol: 'veronica', response: null },
+  { patterns: [/clean slate( protocol)?|sab band|emergency exit/i], action: 'protocol', protocol: 'clean-slate', response: null },
+  { patterns: [/lullaby( protocol)?|de-risk|risk kam/i], action: 'protocol', protocol: 'lullaby', response: null },
+  { patterns: [/avengers( assemble| protocol)?|sab alert/i], action: 'protocol', protocol: 'avengers', response: null },
+  { patterns: [/mark 42( protocol)?|autonomous|full auto/i], action: 'protocol', protocol: 'mark-42', response: null },
+  { patterns: [/protocol (band|off|stop|deactivate)/i], action: 'deactivate-protocol', response: 'Protocol deactivated Sir. Normal mode.' },
+
+  // ═══ PREDICTIONS ═══
+  { patterns: [/predict(ion)?|kya hoga|future|forecast|bhavishya/i], action: 'predict', response: null },
+
+  // ═══ HOLOGRAM ═══
+  { patterns: [/hologram|holo(graphic)?|project|3d display/i], action: 'hologram', response: 'Holographic display activate kar rahi hoon Sir.' },
+
+  // ═══ WORKSHOP ═══
+  { patterns: [/workshop|lab|tony( ka)? lab|strategy build/i], action: 'navigate', path: '/workshop', response: 'Workshop khol rahi hoon Sir. Tony Stark ka lab.' },
+
+  // ═══ AI PERSONALITY SWITCH ═══
+  { patterns: [/switch to friday|friday (ko |mode )?activate/i], action: 'switch-ai', personality: 'friday', response: null },
+  { patterns: [/switch to edith|edith (ko |mode )?activate/i], action: 'switch-ai', personality: 'edith', response: null },
+  { patterns: [/switch to karen|karen (ko |mode )?activate/i], action: 'switch-ai', personality: 'karen', response: null },
+  { patterns: [/switch to jarvis|jarvis (ko |wapas|mode )?activate/i], action: 'switch-ai', personality: 'jarvis', response: null },
+
+  // ═══ SECURITY ═══
+  { patterns: [/security (check|diagnostic|status|scan)|suraksha/i], action: 'security-check', response: 'Security diagnostic chala rahi hoon Sir...' },
+
+  // ═══ ARC REACTOR ═══
+  { patterns: [/power (level|status|kitna)|arc reactor|energy/i], action: 'check-power', response: null },
+  { patterns: [/recharge|charge karo|power up/i], action: 'recharge', response: 'Arc Reactor recharge ho raha hai Sir...' },
 ]
 
 /**
@@ -181,6 +212,78 @@ async function processVoiceCommand(transcript) {
               if (b?.scanNow) b.scanNow()
             } catch { /* silent */ }
             return { matched: true, action: 'threat-check', response: cmd.response }
+
+          case 'protocol':
+            try {
+              const proto = await import('./jarvisEmergencyProtocols.js')
+              const pe = proto.default || proto
+              pe.activateProtocol(cmd.protocol)
+            } catch { }
+            return { matched: true, action: 'protocol', response: `${cmd.protocol} protocol activating...` }
+
+          case 'deactivate-protocol':
+            try {
+              const proto2 = await import('./jarvisEmergencyProtocols.js')
+              const pe2 = proto2.default || proto2
+              pe2.deactivateProtocol()
+            } catch { }
+            window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: cmd.response, priority: 'high' } }))
+            return { matched: true, action: 'deactivate-protocol', response: cmd.response }
+
+          case 'predict':
+            try {
+              const pred = await import('./jarvisPredictiveEngine.js')
+              const pe3 = pred.default || pred
+              const prediction = await pe3.predictAndSpeak()
+              return { matched: true, action: 'predict', response: prediction?.hindiSummary || 'Prediction generated.' }
+            } catch {
+              window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: 'Sir, prediction engine mein issue hai. Baad mein try karte hain.', priority: 'high' } }))
+              return { matched: true, action: 'predict' }
+            }
+
+          case 'hologram':
+            window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: cmd.response, priority: 'high' } }))
+            window.dispatchEvent(new CustomEvent('jarvis-hologram-open'))
+            return { matched: true, action: 'hologram', response: cmd.response }
+
+          case 'switch-ai':
+            try {
+              const pers = await import('./jarvisPersonalities.js')
+              const pe4 = pers.default || pers
+              pe4.switchPersonality(cmd.personality)
+            } catch { }
+            return { matched: true, action: 'switch-ai', response: `Switching to ${cmd.personality}...` }
+
+          case 'security-check':
+            window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: cmd.response, priority: 'high' } }))
+            try {
+              const sec = await import('./jarvisSecurity.js')
+              const se = sec.default || sec
+              se.runDiagnostic()
+            } catch { }
+            return { matched: true, action: 'security-check', response: cmd.response }
+
+          case 'check-power':
+            try {
+              const arc = await import('./jarvisArcReactor.js')
+              const ae = arc.default || arc
+              const power = ae.getPowerLevel()
+              const status = ae.getStatus()
+              const resp2 = `Sir, Arc Reactor power ${power} percent hai. Status: ${status.label}. ${power < 30 ? 'Recharge recommended Sir.' : 'Sab achha hai.'}`
+              window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: resp2, priority: 'high' } }))
+              return { matched: true, action: 'check-power', response: resp2 }
+            } catch {
+              return { matched: true, action: 'check-power' }
+            }
+
+          case 'recharge':
+            window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: cmd.response, priority: 'high' } }))
+            try {
+              const arc2 = await import('./jarvisArcReactor.js')
+              const ae2 = arc2.default || arc2
+              ae2.recharge(30)
+            } catch { }
+            return { matched: true, action: 'recharge', response: cmd.response }
 
           case 'sleep':
           case 'wakeup':

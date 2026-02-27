@@ -30,6 +30,11 @@ const JarvisHUD = () => {
   const [dataStream, setDataStream] = useState([])
   const [tradingStats, setTradingStats] = useState({ wins: 0, winRate: '0', streak: 0 })
   const [threatLevel, setThreatLevel] = useState('LOW')
+  const [arcPower, setArcPower] = useState(100)
+  const [aiName, setAiName] = useState('J.A.R.V.I.S')
+  const [aiColor, setAiColor] = useState('#22d3ee')
+  const [userMood, setUserMood] = useState(null)
+  const [activeProtocol, setActiveProtocol] = useState(null)
   const [systemStatus, setSystemStatus] = useState({
     voice: true,
     brain: false,
@@ -70,6 +75,22 @@ const JarvisHUD = () => {
     window.addEventListener('jarvis-mode-change', onModeChange)
     window.addEventListener('jarvis-hud-toggle', onHudToggle)
 
+    // Listen for new v29 systems
+    const onPowerUpdate = (e) => setArcPower(e.detail?.level || 100)
+    const onPersonalityChange = (e) => {
+      if (e.detail?.name) setAiName(e.detail.name)
+      if (e.detail?.color) setAiColor(e.detail.color)
+    }
+    const onMoodChange = (e) => setUserMood(e.detail)
+    const onProtocolActive = (e) => setActiveProtocol(e.detail)
+    const onProtocolDeactive = () => setActiveProtocol(null)
+
+    window.addEventListener('jarvis-power-update', onPowerUpdate)
+    window.addEventListener('jarvis-personality-change', onPersonalityChange)
+    window.addEventListener('jarvis-mood-change', onMoodChange)
+    window.addEventListener('jarvis-protocol-activated', onProtocolActive)
+    window.addEventListener('jarvis-protocol-deactivated', onProtocolDeactive)
+
     // Load memory stats
     import('../services/jarvisMemory.js').then(m => {
       const mem = m.default || m
@@ -87,6 +108,22 @@ const JarvisHUD = () => {
         setCurrentMode(mode.id)
         setModeColor(mode.color)
       }
+    }).catch(() => {})
+
+    // Load AI personality
+    import('../services/jarvisPersonalities.js').then(m => {
+      const pers = m.default || m
+      if (pers?.getPersonality) {
+        const p = pers.getPersonality()
+        setAiName(p.name)
+        setAiColor(p.color)
+      }
+    }).catch(() => {})
+
+    // Load arc reactor power
+    import('../services/jarvisArcReactor.js').then(m => {
+      const arc = m.default || m
+      if (arc?.getPowerLevel) setArcPower(arc.getPowerLevel())
     }).catch(() => {})
 
     // Ambient data stream — scrolling mini-ticker
@@ -116,6 +153,11 @@ const JarvisHUD = () => {
       window.removeEventListener('offline', onOffline)
       window.removeEventListener('jarvis-mode-change', onModeChange)
       window.removeEventListener('jarvis-hud-toggle', onHudToggle)
+      window.removeEventListener('jarvis-power-update', onPowerUpdate)
+      window.removeEventListener('jarvis-personality-change', onPersonalityChange)
+      window.removeEventListener('jarvis-mood-change', onMoodChange)
+      window.removeEventListener('jarvis-protocol-activated', onProtocolActive)
+      window.removeEventListener('jarvis-protocol-deactivated', onProtocolDeactive)
       clearInterval(brainCheck)
       clearInterval(streamInterval)
     }
@@ -186,8 +228,8 @@ const JarvisHUD = () => {
               )}
             </div>
             <div className="flex flex-col">
-              <span className={`text-[9px] font-bold tracking-widest ${isEmergency ? 'text-red-400' : 'text-cyan-400'}`}>
-                J.A.R.V.I.S
+              <span className={`text-[9px] font-bold tracking-widest`} style={{ color: aiColor }}>
+                {aiName}
               </span>
               {isSpeaking && (
                 <div className="flex gap-[1px]">
@@ -203,12 +245,29 @@ const JarvisHUD = () => {
 
           {/* Center: Status indicators */}
           <div className="flex items-center gap-2">
+            {/* Arc Reactor Power */}
+            <div className={`flex items-center gap-0.5 ${arcPower > 60 ? 'text-cyan-400' : arcPower > 30 ? 'text-yellow-400' : 'text-red-400'}`}>
+              <Zap size={9} />
+              <span className="text-[7px] font-bold font-mono">{arcPower}%</span>
+            </div>
+
             {/* Brain status */}
             <div className={`flex items-center gap-0.5 ${brainActive ? 'text-purple-400' : 'text-slate-500'}`}>
               <Brain size={10} className={brainActive ? 'animate-pulse' : ''} />
-              <span className="text-[8px]">{brainActive ? 'SCAN' : 'IDLE'}</span>
             </div>
             
+            {/* Mood indicator */}
+            {userMood && (
+              <span className="text-[8px]" title={userMood.label}>{userMood.emoji}</span>
+            )}
+
+            {/* Active protocol badge */}
+            {activeProtocol && (
+              <span className="text-[6px] px-1 py-0.5 rounded font-bold animate-pulse" style={{ backgroundColor: activeProtocol.color + '30', color: activeProtocol.color }}>
+                {activeProtocol.icon}
+              </span>
+            )}
+
             {/* Online status */}
             <div className={`flex items-center gap-0.5 ${isOnline ? 'text-emerald-400' : 'text-red-400'}`}>
               {isOnline ? <Wifi size={10} /> : <WifiOff size={10} />}
@@ -358,18 +417,30 @@ const JarvisHUD = () => {
             </div>
 
             {/* Quick Actions */}
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 mb-1.5">
               <button 
                 onClick={handleForcesScan}
                 className="flex-1 py-1 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[9px] font-medium flex items-center justify-center gap-1"
               >
-                <Zap size={10} /> FORCE SCAN
+                <Zap size={10} /> SCAN
               </button>
               <button 
                 onClick={handleTapToTalk}
                 className="flex-1 py-1 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-[9px] font-medium flex items-center justify-center gap-1"
               >
-                <Mic size={10} /> TALK TO JARVIS
+                <Mic size={10} /> TALK
+              </button>
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('jarvis-hologram-open'))}
+                className="flex-1 py-1 rounded-lg bg-blue-500/20 border border-blue-500/30 text-blue-300 text-[9px] font-medium flex items-center justify-center gap-1"
+              >
+                <Eye size={10} /> HOLO
+              </button>
+              <button 
+                onClick={() => navigate('/workshop')}
+                className="flex-1 py-1 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[9px] font-medium flex items-center justify-center gap-1"
+              >
+                <Cpu size={10} /> LAB
               </button>
             </div>
 
