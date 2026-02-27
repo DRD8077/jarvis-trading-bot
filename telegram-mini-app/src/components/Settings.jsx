@@ -29,6 +29,7 @@ const Settings = () => {
     return {
       notifications: false,
       sound: false,
+      voice: true,
       darkMode: true,
       language: 'en',
       riskLevel: 'medium'
@@ -44,8 +45,9 @@ const Settings = () => {
   const [languages, setLanguages] = useState([])
 
   useEffect(() => {
-    // Apply global mute based on saved settings
-    window.__JARVIS_MUTE = !settings.sound
+    // Apply settings
+    window.__JARVIS_MUTE = !settings.sound // Sound FX only
+    window.__JARVIS_VOICE_ENABLED = settings.voice !== false // Voice ON by default
     
     setPushEnabled(typeof Notification !== 'undefined' && Notification.permission === 'granted')
 
@@ -85,14 +87,26 @@ const Settings = () => {
       try { localStorage.setItem('jarvis_app_settings', JSON.stringify(updated)) } catch {}
       // Propagate sound/notification settings globally
       if (key === 'sound') {
-        window.__JARVIS_MUTE = !value
+        window.__JARVIS_MUTE = !value // Only affects SFX beeps, NOT voice
+        // Update SoundFX engine
+        import('../services/jarvisSoundFX.js').then(m => {
+          const sfx = m.default || m
+          if (sfx?.setEnabled) sfx.setEnabled(value)
+          if (!value && sfx?.killAll) sfx.killAll() // Immediately kill all sounds
+        }).catch(() => {})
         // Update notification pipeline
         if (pushNotificationsRef.current?.preferences) {
           pushNotificationsRef.current.preferences.sound = value
         }
       }
+      if (key === 'voice') {
+        window.__JARVIS_VOICE_ENABLED = value
+        if (value) {
+          window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: 'JARVIS voice activated Sir! Main ab bol sakti hoon.', priority: 'high' } }))
+        }
+      }
       if (key === 'notifications') {
-        window.__JARVIS_MUTE = !value
+        // Notifications toggle doesn't affect voice or sounds
       }
       return updated
     })
@@ -193,19 +207,37 @@ const Settings = () => {
             </label>
           </div>
 
-          {/* Sound */}
+          {/* Sound Effects */}
           <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Volume2 size={18} className="text-slate-400" />
               <div>
                 <p className="text-sm font-medium">Sound Effects</p>
-                <p className="text-xs text-slate-500">Haptic & audio feedback</p>
+                <p className="text-xs text-slate-500">Beeps, chimes & alerts (OFF by default)</p>
               </div>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" checked={settings.sound}
                 onChange={e => updateSetting('sound', e.target.checked)} />
               <div className="w-11 h-6 bg-slate-700 peer-checked:bg-blue-600 rounded-full
+                after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white 
+                after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+            </label>
+          </div>
+
+          {/* JARVIS Voice */}
+          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Mic size={18} className="text-cyan-400" />
+              <div>
+                <p className="text-sm font-medium">JARVIS Voice</p>
+                <p className="text-xs text-slate-500">JARVIS speaks in Hindi (ON by default)</p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" className="sr-only peer" checked={settings.voice !== false}
+                onChange={e => updateSetting('voice', e.target.checked)} />
+              <div className="w-11 h-6 bg-slate-700 peer-checked:bg-cyan-600 rounded-full
                 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white 
                 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
             </label>

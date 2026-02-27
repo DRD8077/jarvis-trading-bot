@@ -133,18 +133,11 @@ function updateMood(textMood = null) {
 
     console.log(`[JARVIS EQ] Mood changed: ${previousMood.emoji} ${previousMood.label} → ${newMood.emoji} ${newMood.label}`)
 
-    // Dispatch mood change event
+    // Dispatch mood change event (for HUD display only — no speech)
     window.dispatchEvent(new CustomEvent('jarvis-mood-change', { detail: newMood }))
 
-    // Speak mood-specific message if significant change
-    if (shouldAnnounceMoodChange(previousMood, newMood)) {
-      const announcement = getMoodAnnouncement(newMood, previousMood)
-      if (announcement) {
-        window.dispatchEvent(new CustomEvent('jarvis-speak', {
-          detail: { text: announcement, priority: 'low' }
-        }))
-      }
-    }
+    // Mood announcements DISABLED — was causing unwanted talking
+    // JARVIS mood tracking is silent, only updates HUD indicator
   }
 
   return currentMood

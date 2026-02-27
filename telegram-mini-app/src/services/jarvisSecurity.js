@@ -35,9 +35,8 @@ function init() {
     if (savedFP && savedFP !== deviceFingerprint) {
       logEvent('DEVICE_CHANGE', 'Device fingerprint has changed — possible unauthorized access')
       suspiciousActivity += 3
-      window.dispatchEvent(new CustomEvent('jarvis-speak', {
-        detail: { text: 'Sir, device fingerprint mismatch detected. Kya ye aapka device hai? Security check ho raha hai.', priority: 'critical' }
-      }))
+      // Silent — no speech on device change (triggers on first install and app updates)
+      console.warn('[JARVIS Security] Device fingerprint changed')
     }
     localStorage.setItem('jarvis_device_fp', deviceFingerprint)
   } catch {}

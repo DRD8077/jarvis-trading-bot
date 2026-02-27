@@ -147,8 +147,9 @@ async function doMorningBriefing() {
       emergencyCount: 0,
     })
 
-    // Delay briefing slightly after boot greeting
-    setTimeout(() => jarvisSpeak(briefingText, 'high'), 8000)
+    // Morning briefing — SILENCED (don't auto-speak on boot)
+    // User can ask "market status" voice command instead
+    console.log('[JARVIS Brain] Morning briefing data ready (silent)')
     morningBriefingDone = true
   } catch (e) {
     console.warn('[JARVIS Brain] Morning briefing error:', e.message)
@@ -197,8 +198,8 @@ async function backgroundScan() {
         // High boost tokens (potential moonshots)
         const moonshots = dexData.filter(t => (t.amount || 0) >= 100)
         if (moonshots.length >= 3 && canAlert('moonshots')) {
-          const names = moonshots.slice(0, 3).map(t => t.tokenAddress?.slice(0, 6) || 'token').join(', ')
-          jarvisSpeak(`Sir, DexScreener pe ${moonshots.length} heavily boosted tokens detect hue! High activity hai. MoonShot Hunter khol ke check kariye.`, 'normal')
+          // Silent notification — no speech, just console log
+          console.log(`[JARVIS Brain] ${moonshots.length} heavily boosted tokens found`)
         }
       }
     }
@@ -210,28 +211,19 @@ async function backgroundScan() {
         const pumpData = await pumpRes.json()
         const newTokens = Array.isArray(pumpData) ? pumpData : []
         if (newTokens.length > 5 && canAlert('pump-activity')) {
-          jarvisSpeak(`Sir, Pump.fun pe activity high hai! ${newTokens.length} naye tokens launch hue hain. Gems dhundhni hain toh MoonShot Hunter use kariye.`, 'low')
+          // Silent — no speech for routine pump.fun activity
+          console.log(`[JARVIS Brain] ${newTokens.length} new tokens on Pump.fun`)
         }
       }
     } catch {}
 
-    // 4. Periodic market status (every 3rd scan)
+    // 4. Periodic market status — DISABLED to avoid constant talking
+    // Only speaks on actual critical events (crashes, big pumps)
     const scanCount = parseInt(localStorage.getItem('jarvis_scan_count') || '0') + 1
     localStorage.setItem('jarvis_scan_count', scanCount.toString())
     
-    if (scanCount % 3 === 0 && canAlert('periodic')) {
-      jarvisSpeak(PROACTIVE_LINES.periodicUpdate({
-        btcPrice: lastBTCPrice,
-        totalScanned: 100,
-        opportunities: Math.floor(Math.random() * 5),
-        alertsToday: Object.keys(lastAlertTime).length,
-      }), 'low')
-    }
-
-    // 5. Occasional witty remark (every 6th scan = ~30 min)
-    if (scanCount % 6 === 0 && canAlert('witty')) {
-      setTimeout(() => jarvisSpeak(PROACTIVE_LINES.randomWitty(), 'low'), 2000)
-    }
+    // Periodic updates and witty remarks REMOVED — user complained about constant talking
+    // JARVIS now only speaks when something CRITICAL happens or when user asks
 
     console.log('[JARVIS Brain] ✅ Scan complete')
 
@@ -240,39 +232,20 @@ async function backgroundScan() {
   }
 }
 
-// ═══ TIME-AWARE ALERTS ═══
+// ═══ TIME-AWARE ALERTS — SILENCED (only logs, no speech) ═══
 function checkTimeAwareAlerts() {
   const now = new Date()
   const hour = now.getHours()
   const minute = now.getMinutes()
-  const day = now.getDay() // 0=Sun, 6=Sat
+  const day = now.getDay()
 
-  // Indian market opening (9:15 AM IST)
+  // All time-aware alerts are now silent — they only log to console
+  // User wants JARVIS to speak only when asked, not automatically
   if (hour === 9 && minute >= 10 && minute <= 20 && day >= 1 && day <= 5) {
-    if (canAlert('market-open')) {
-      jarvisSpeak(PROACTIVE_LINES.marketOpening(), 'high')
-    }
+    if (canAlert('market-open')) console.log('[JARVIS Brain] Indian market opening')
   }
-
-  // Indian market closing warning (3:00 PM IST)
   if (hour === 15 && minute >= 0 && minute <= 10 && day >= 1 && day <= 5) {
-    if (canAlert('market-close')) {
-      jarvisSpeak(PROACTIVE_LINES.marketClosing(), 'high')
-    }
-  }
-
-  // Late night warning (1 AM)
-  if (hour === 1 && minute >= 0 && minute <= 10) {
-    if (canAlert('late-night')) {
-      jarvisSpeak(PROACTIVE_LINES.lateNight(), 'low')
-    }
-  }
-
-  // Weekend (Saturday morning)
-  if (day === 6 && hour === 10 && minute >= 0 && minute <= 10) {
-    if (canAlert('weekend')) {
-      jarvisSpeak(PROACTIVE_LINES.weekend(), 'low')
-    }
+    if (canAlert('market-close')) console.log('[JARVIS Brain] Indian market closing')
   }
 }
 

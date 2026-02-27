@@ -92,29 +92,26 @@ function init() {
 /**
  * Consume power for an action
  */
+let _suppressSpeechLoop = false
 function consumePower(action) {
   const cost = POWER_COSTS[action] || 1
   powerLevel = Math.max(0, powerLevel - cost)
 
-  // Check overload (below 10%)
-  if (powerLevel < 10 && !isOverloaded) {
-    isOverloaded = true
-    window.dispatchEvent(new CustomEvent('jarvis-speak', {
-      detail: { text: 'Sir, Arc Reactor power critical! Sirf 10 percent power bachi hai. Non-essential systems shutdown ho rahe hain.', priority: 'critical' }
-    }))
-    window.dispatchEvent(new CustomEvent('jarvis-power-critical'))
-  } else if (powerLevel >= 20 && isOverloaded) {
-    isOverloaded = false
-    window.dispatchEvent(new CustomEvent('jarvis-speak', {
-      detail: { text: 'Arc Reactor power restored Sir. Systems normalizing.', priority: 'high' }
-    }))
-  }
+  // Prevent feedback loop: consumePower('speak') → jarvis-speak → consumePower('speak') → ...
+  // Only dispatch power warnings if not already in a speech-triggered consume
+  if (!_suppressSpeechLoop) {
+    _suppressSpeechLoop = true
 
-  // Low power warning at 25%
-  if (powerLevel < 25 && powerLevel >= 24) {
-    window.dispatchEvent(new CustomEvent('jarvis-speak', {
-      detail: { text: 'Sir, power level 25 percent. Energy conservation mode recommended.', priority: 'medium' }
-    }))
+    // Check overload (below 10%)
+    if (powerLevel < 10 && !isOverloaded) {
+      isOverloaded = true
+      // Silent overload — no voice announcement to avoid feedback loops
+      console.warn('[Arc Reactor] POWER CRITICAL:', powerLevel + '%')
+    } else if (powerLevel >= 20 && isOverloaded) {
+      isOverloaded = false
+    }
+
+    _suppressSpeechLoop = false
   }
 
   window.dispatchEvent(new CustomEvent('jarvis-power-update', {

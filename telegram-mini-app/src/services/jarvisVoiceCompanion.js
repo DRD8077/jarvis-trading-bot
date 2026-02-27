@@ -24,6 +24,7 @@ let voiceEngine = null
 let speaking = false
 let speechQueue = []
 let initialized = false
+let capacitorTTS = null // Capacitor TTS plugin — works on Android natively
 
 // ═══ JARVIS PAGE ANNOUNCEMENTS — what JARVIS says on each page ═══
 const PAGE_GREETINGS = {
@@ -108,32 +109,54 @@ function isEmergency() { return emergencyMode }
 // ═══ Initialize voice engine ═══
 async function initVoice() {
   if (initialized) return
+  
+  // Priority 1: Try Capacitor TextToSpeech (native Android — works best)
+  try {
+    const ttsModule = await import('@capacitor-community/text-to-speech')
+    capacitorTTS = ttsModule.TextToSpeech
+    if (capacitorTTS) {
+      console.log('[JARVIS Voice] ✅ Capacitor TTS available (native Android)')
+      initialized = true
+      return
+    }
+  } catch (e) {
+    console.warn('[JARVIS Voice] Capacitor TTS not available:', e.message)
+  }
+
+  // Priority 2: Try ElevenLabs (cloud TTS — premium)
   try {
     const mod = await import('./elevenlabsVoice.js')
     voiceEngine = mod.default || mod
     if (voiceEngine && !voiceEngine.initialized) {
       await voiceEngine.init().catch(() => {})
     }
-    initialized = true
-    console.log('[JARVIS Voice Companion] Initialized — Iron Man mode active')
+    console.log('[JARVIS Voice] Using ElevenLabs/Web Speech fallback')
   } catch (e) {
-    console.warn('[JARVIS Voice Companion] Init error:', e.message)
-    initialized = true // Mark as initialized even on error to prevent retry loops
+    console.warn('[JARVIS Voice] ElevenLabs init error:', e.message)
   }
+
+  initialized = true
+  console.log('[JARVIS Voice Companion] Initialized — Iron Man mode active')
 }
 
-// ═══ SPEAK — queued, no overlap ═══
+// ═══ SPEAK — queued, no overlap, Capacitor TTS priority ═══
 async function speak(text, priority = 'normal') {
   if (!text) return
+  // Only check VOICE flag — NOT __JARVIS_MUTE (that's for sound effects only)
+  if (window.__JARVIS_VOICE_ENABLED === false) return
 
   // Initialize on first call
   if (!initialized) await initVoice()
 
   // High priority interrupts current speech
   if (priority === 'high' && speaking) {
-    try { voiceEngine?.stop?.() } catch {}
+    try {
+      if (capacitorTTS) await capacitorTTS.stop().catch(() => {})
+      else if (voiceEngine?.stop) voiceEngine.stop()
+      else if (window.speechSynthesis) window.speechSynthesis.cancel()
+    } catch {}
     speaking = false
-    speechQueue = [] // Clear queue for high priority
+    speechQueue = []
   }
 
   // If already speaking, queue it (max 3 in queue)
@@ -147,14 +170,28 @@ async function speak(text, priority = 'normal') {
   speaking = true
 
   try {
-    if (voiceEngine?.speak) {
+    // METHOD 1: Capacitor TTS (native Android — best quality, always works)
+    if (capacitorTTS) {
+      await capacitorTTS.speak({
+        text: text.slice(0, 500),
+        lang: 'hi-IN',
+        rate: 1.0,
+        pitch: 1.0,
+        volume: 1.0,
+        category: 'playback',
+      })
+    }
+    // METHOD 2: ElevenLabs engine
+    else if (voiceEngine?.speak) {
       await voiceEngine.speak(text)
-    } else if (typeof window !== 'undefined' && window.speechSynthesis) {
+    }
+    // METHOD 3: Web Speech API fallback
+    else if (typeof window !== 'undefined' && window.speechSynthesis) {
       await new Promise((resolve) => {
         window.speechSynthesis.cancel()
         const u = new SpeechSynthesisUtterance(text.slice(0, 500))
         u.lang = 'hi-IN'
-        u.rate = 1.05
+        u.rate = 1.0
         u.pitch = 1.0
         u.volume = 1.0
         // Find Hindi voice
@@ -163,6 +200,8 @@ async function speak(text, priority = 'normal') {
         if (hiVoice) u.voice = hiVoice
         u.onend = resolve
         u.onerror = resolve
+        // Timeout safety — don't block forever
+        setTimeout(resolve, 15000)
         window.speechSynthesis.speak(u)
       })
     }
@@ -180,16 +219,17 @@ async function speak(text, priority = 'normal') {
 }
 
 // ═══ PAGE NAVIGATION ANNOUNCEMENTS ═══
+// DISABLED — was causing constant talking on every page change
+// JARVIS will only speak on critical events and when user asks
 let lastPage = ''
+let lastPageTime = 0
 function onPageChange(path) {
   if (path === lastPage) return
   lastPage = path
-  
-  const greeting = PAGE_GREETINGS[path]
-  if (greeting) {
-    // Small delay to let page render
-    setTimeout(() => speak(greeting), 500)
-  }
+  // Silenced — page announcements were annoying the user
+  // Just track the page change silently
+  lastPageTime = Date.now()
+  console.log('[JARVIS Voice] Page:', path)
 }
 
 // ═══ PROACTIVE ALERTS ═══
@@ -233,15 +273,7 @@ function announceWakeUp() {
   speak(PROACTIVE_PHRASES.wakeUp(), 'high')
 }
 
-// ═══ NETWORK STATUS ═══
-if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => {
-    setTimeout(() => speak(PROACTIVE_PHRASES.online()), 1000)
-  })
-  window.addEventListener('offline', () => {
-    speak(PROACTIVE_PHRASES.offline(), 'high')
-  })
-}
+// ═══ NETWORK STATUS — silent, no auto-speech ═══\nif (typeof window !== 'undefined') {\n  window.addEventListener('online', () => console.log('[JARVIS] Online'))\n  window.addEventListener('offline', () => console.log('[JARVIS] Offline'))\n}
 
 // ═══ GLOBAL EVENT LISTENERS — any component can trigger JARVIS voice ═══
 if (typeof window !== 'undefined') {

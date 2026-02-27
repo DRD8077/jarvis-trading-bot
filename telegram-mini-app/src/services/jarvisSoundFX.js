@@ -15,10 +15,12 @@
  */
 
 let audioCtx = null
-let enabled = true
-const VOLUME = 0.15 // Keep subtle — not annoyingly loud
+let enabled = false // DISABLED by default — user must enable in Settings
+const VOLUME = 0.15
 
 function getContext() {
+  // Double-check: if globally muted OR disabled, return null (no audio)
+  if (!enabled || window.__JARVIS_MUTE) return null
   if (!audioCtx) {
     try {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)()
@@ -29,7 +31,7 @@ function getContext() {
 }
 
 function playTone(freq, duration, type = 'sine', volumeMultiplier = 1) {
-  if (!enabled) return
+  if (!enabled || window.__JARVIS_MUTE) return
   const ctx = getContext()
   if (!ctx) return
   try {
@@ -180,27 +182,39 @@ function loss() {
 }
 
 // ═══ AUTO-TRIGGER ON JARVIS EVENTS ═══
+// ALL auto-triggers DISABLED by default. Sounds only play if user explicitly enables them.
+// This prevents the continuous beeping/alert sound issue on Android.
 if (typeof window !== 'undefined') {
-  window.addEventListener('jarvis-speak', () => speakStart())
-  window.addEventListener('jarvis-emergency', () => emergency())
-  window.addEventListener('jarvis-brain-scan', () => scan())
-  window.addEventListener('jarvis-gem-found', () => gemFound())
-  window.addEventListener('jarvis-trade', (e) => {
-    const type = e.detail?.type
-    if (type === 'profit' || type === 'take-profit') profit()
-    else if (type === 'loss' || type === 'stop-loss') loss()
-    else tradeExecuted()
-  })
-  window.addEventListener('jarvis-navigate', () => navigate())
+  // Only trigger sounds if explicitly enabled AND not globally muted
+  const safePlay = (fn) => { if (enabled && !window.__JARVIS_MUTE) fn() }
+  window.addEventListener('jarvis-emergency', () => safePlay(emergency))
+  // All other event-triggered sounds REMOVED to prevent continuous noise
+  // Users can still trigger sounds manually from Settings if desired
 }
 
-function setEnabled(val) { enabled = !!val }
+function setEnabled(val) {
+  enabled = !!val
+  // If disabling, also close the audio context to stop any playing sounds
+  if (!enabled && audioCtx) {
+    try { audioCtx.close() } catch {}
+    audioCtx = null
+  }
+}
 function isEnabled() { return enabled }
+
+/** Kill all sounds immediately */
+function killAll() {
+  enabled = false
+  if (audioCtx) {
+    try { audioCtx.close() } catch {}
+    audioCtx = null
+  }
+}
 
 const jarvisSoundFX = {
   startup, confirm, alert, warning, error, emergency,
   scan, navigate, tick, speakStart, gemFound, tradeExecuted,
-  profit, loss, setEnabled, isEnabled, getContext,
+  profit, loss, setEnabled, isEnabled, getContext, killAll,
 }
 
 export default jarvisSoundFX

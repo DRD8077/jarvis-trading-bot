@@ -128,24 +128,33 @@ function AppInner() {
     // Every single service is dynamically imported inside its
     // own try-catch. NO service can crash the app.
     // ═══════════════════════════════════════════════════════════
-    // Set global mute from saved settings BEFORE any services load
+    // Set global mute for SOUND EFFECTS only (not voice speech)
+    // __JARVIS_MUTE = true → all SoundFX beeps/alerts disabled
+    // __JARVIS_VOICE_ENABLED = true → JARVIS can still speak via TTS
     try {
       const savedSettings = JSON.parse(localStorage.getItem('jarvis_app_settings') || '{}')
-      window.__JARVIS_MUTE = savedSettings.sound !== true // muted by default unless sound=true
-    } catch { window.__JARVIS_MUTE = true }
+      window.__JARVIS_MUTE = savedSettings.sound !== true // SFX muted by default
+      window.__JARVIS_VOICE_ENABLED = savedSettings.voice !== false // Voice ON by default
+    } catch {
+      window.__JARVIS_MUTE = true
+      window.__JARVIS_VOICE_ENABLED = true // JARVIS should always speak
+    }
 
     async function bootJarvis() {
-      console.log('[JARVIS v19.0 STANDALONE] Crash-proof boot sequence starting...')
+      console.log('[JARVIS v29.1 STANDALONE] Crash-proof boot sequence starting...')
 
-      // ═══ GLOBAL MUTE — disable ALL sounds/alerts/notifications by default ═══
-      // User can re-enable in Settings. This prevents all annoying popups/beeps/vibrations.
+      // ═══ SOUND EFFECTS MUTE — only kills beeps/chimes, NOT JARVIS voice ═══
       try {
         const savedSettings = localStorage.getItem('jarvis_app_settings')
         const parsed = savedSettings ? JSON.parse(savedSettings) : null
-        // Default: muted. Only unmute if user explicitly enabled sound.
-        window.__JARVIS_MUTE = parsed?.sound ? false : true
-      } catch { window.__JARVIS_MUTE = true }
-      console.log('[JARVIS] 🔇 Global mute:', window.__JARVIS_MUTE ? 'ON (silent)' : 'OFF (sounds enabled)')
+        window.__JARVIS_MUTE = parsed?.sound ? false : true // SFX off by default
+        window.__JARVIS_VOICE_ENABLED = parsed?.voice !== false // Voice always ON unless explicitly disabled
+      } catch {
+        window.__JARVIS_MUTE = true
+        window.__JARVIS_VOICE_ENABLED = true
+      }
+      console.log('[JARVIS] 🔇 Sound FX:', window.__JARVIS_MUTE ? 'OFF' : 'ON')
+      console.log('[JARVIS] 🗣️ Voice:', window.__JARVIS_VOICE_ENABLED ? 'ON' : 'OFF')
 
 
       // Phase 1: Load essential services in parallel (each isolated)
@@ -204,16 +213,14 @@ function AppInner() {
       try { sc(themeEngine, 'init') } catch {}
       try { sc(elevenlabsVoice, 'init') } catch {}
 
-      // ═══ JARVIS IRON MAN BOOT GREETING — speaks on every app launch ═══
+      // ═══ JARVIS BOOT GREETING — ONLY speaks on first touch (Android needs user gesture for audio) ═══
       try {
-        // Load JARVIS Voice Companion — the Iron Man speaking engine
         const companionMod = await import('./services/jarvisVoiceCompanion.js').catch(() => null)
         const companion = companionMod?.default || companionMod
         
         if (companion?.announceWelcome) {
-          // Try to speak immediately
-          setTimeout(() => companion.announceWelcome(), 1500)
-          // Also try on first user touch (Android WebView needs user gesture for audio)
+          // Only speak after first user touch (Android WebView requires user gesture for TTS)
+          // No auto-speak on boot — waits for user interaction
           const speakOnTouch = () => {
             if (!window.__jarvisGreeted) {
               window.__jarvisGreeted = true
@@ -273,16 +280,28 @@ function AppInner() {
                   if (result?.matched) {
                     console.log('[JARVIS] Smart command matched:', result.action);
                   } else {
-                    // No command matched — navigate to chat for AI conversation
+                    // No command matched — JARVIS acknowledges and opens chat
+                    window.dispatchEvent(new CustomEvent('jarvis-speak', { 
+                      detail: { text: 'Haan Sir, bataiye! Main sun rahi hoon. Aap chat mein likh ke ya bol ke baat kar sakte hain.', priority: 'high' } 
+                    }));
                     window.dispatchEvent(new CustomEvent('jarvis-navigate', { detail: { path: '/chat' } }));
                   }
                 }).catch(() => {
+                  window.dispatchEvent(new CustomEvent('jarvis-speak', { 
+                    detail: { text: 'Sir, main sun rahi hoon. Bataiye kya karna hai.', priority: 'high' } 
+                  }));
                   window.dispatchEvent(new CustomEvent('jarvis-navigate', { detail: { path: '/chat' } }));
                 });
               } else {
+                window.dispatchEvent(new CustomEvent('jarvis-speak', { 
+                  detail: { text: 'JARVIS ready hai Sir! Kuch bhi poochiye.', priority: 'high' } 
+                }));
                 window.dispatchEvent(new CustomEvent('jarvis-navigate', { detail: { path: '/chat' } }));
               }
             }).catch(() => {
+              window.dispatchEvent(new CustomEvent('jarvis-speak', { 
+                detail: { text: 'JARVIS online hai Sir. Main sun rahi hoon.', priority: 'high' } 
+              }));
               window.dispatchEvent(new CustomEvent('jarvis-navigate', { detail: { path: '/chat' } }));
             });
           });
@@ -311,14 +330,14 @@ function AppInner() {
         }
       } catch (e) { console.warn('[JARVIS] Proactive Brain:', e.message) }
 
-      // Phase 7: Sound Effects Engine — Iron Man audio cues
+      // Phase 7: Sound Effects Engine — DISABLED by default (user can enable in Settings)
+      // Sounds were causing continuous alert noise on Android. Now fully silent.
       try {
         const sfxMod = await import('./services/jarvisSoundFX.js');
         const sfx = sfxMod.default || sfxMod;
-        if (sfx?.startup) {
-          setTimeout(() => sfx.startup(), 2000); // Play after boot animation
-          console.log('[JARVIS] 🔊 Sound FX Engine ONLINE');
-        }
+        // Do NOT play startup sound — keep it silent
+        sfx.setEnabled(false); // Explicitly disabled
+        console.log('[JARVIS] 🔇 Sound FX loaded (SILENT mode — enable in Settings)');
       } catch (e) { console.warn('[JARVIS] Sound FX:', e.message) }
 
       // Phase 8: Memory System — remembers everything
