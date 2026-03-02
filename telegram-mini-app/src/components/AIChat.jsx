@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { sendChat, clearChat as clearChatApi, fetchChatHistory, fetchChatModels, streamChat } from '../services/api'
+import { JarvisAI } from '../services/jarvisBackend'
 import { useApp } from '../context/AppContext'
 
 // ═══ Markdown Renderer (GPT-like) ═══
@@ -244,16 +245,16 @@ const AIChat = () => {
       if (m.length) setModels(m)
     }).catch(() => {})
 
-    fetchChatHistory(userId).then(r => {
-      const hist = r.data?.data?.messages || r.data?.messages || []
+    // Try REAL backend first for chat history
+    JarvisAI.getChatHistory(50).then(data => {
+      const hist = data?.messages || []
       if (hist.length > 0) setMessages(hist)
-      else {
-        // No chat history — JARVIS speaks greeting like Iron Man
-        speakResponse('Haan Sir, bataiye! Main JARVIS, aapki AI assistant. Market analysis, gem hunting, auto trading — jo bhi karna hai, main ready hoon!')
-      }
     }).catch(() => {
-      // Even on error, greet
-      speakResponse('Haan Sir, bataiye! Main JARVIS, aapki AI assistant. Jo bhi karna hai, main ready hoon!')
+      // Fallback to old API
+      fetchChatHistory(userId).then(r => {
+        const hist = r.data?.data?.messages || r.data?.messages || []
+        if (hist.length > 0) setMessages(hist)
+      }).catch(() => {})
     })
   }, []) // eslint-disable-line
 
@@ -320,29 +321,33 @@ const AIChat = () => {
   const fallbackChat = async (msg) => {
     setLoading(true)
     try {
-      const res = await sendChat(msg, `User: ${user?.first_name}, ID: ${userId}`, userId)
-      const reply = res.data?.data?.reply || res.data?.reply || res.data?.response || 'Error processing request.'
-      setMessages(prev => [...prev, { role: 'assistant', content: reply, model: selectedModel }])
+      // PRIMARY: Use REAL JARVIS backend (Gemini AI)
+      const data = await JarvisAI.chat(msg)
+      const reply = data?.response || 'JARVIS is thinking...'
+      setMessages(prev => [...prev, { role: 'assistant', content: reply, model: 'gemini' }])
       hapticFeedback?.('success')
-      // Auto-speak response
-      speakResponse(reply)
-    } catch (e) {
-      // Backend failed — use freeAI (client-side AI with embedded keys)
+    } catch (backendErr) {
+      // FALLBACK 1: Old API server
       try {
-        const { default: freeAI } = await import('../services/freeAI')
-        if (!freeAI._initialized) freeAI.init()
-        const result = await freeAI.chat(msg, { streaming: false })
-        const reply = result?.text || result?.response || result || 'JARVIS is thinking...'
-        setMessages(prev => [...prev, { role: 'assistant', content: typeof reply === 'string' ? reply : JSON.stringify(reply), model: 'freeAI' }])
+        const res = await sendChat(msg, `User: ${user?.first_name}, ID: ${userId}`, userId)
+        const reply = res.data?.data?.reply || res.data?.reply || res.data?.response || 'Error processing request.'
+        setMessages(prev => [...prev, { role: 'assistant', content: reply, model: selectedModel }])
         hapticFeedback?.('success')
-        // Auto-speak the AI response
-        speakResponse(typeof reply === 'string' ? reply : '')
-      } catch (e2) {
-        setMessages(prev => [...prev, { role: 'assistant', content: `Sir, thodi der mein try karein. Network ya AI service temporarily unavailable hai. 🔄` }])
+      } catch (e) {
+        // FALLBACK 2: Client-side freeAI
+        try {
+          const { default: freeAI } = await import('../services/freeAI')
+          if (!freeAI._initialized) freeAI.init()
+          const result = await freeAI.chat(msg, { streaming: false })
+          const reply = result?.text || result?.response || result || 'JARVIS is thinking...'
+          setMessages(prev => [...prev, { role: 'assistant', content: typeof reply === 'string' ? reply : JSON.stringify(reply), model: 'freeAI' }])
+          hapticFeedback?.('success')
+        } catch (e2) {
+          setMessages(prev => [...prev, { role: 'assistant', content: `Sir, thodi der mein try karein. Network ya AI service temporarily unavailable hai. 🔄` }])
+        }
       }
-    } finally {
-      setLoading(false)
     }
+    setLoading(false)
   }
 
   const handleStop = () => { abortRef.current = true; setStreaming(false); setStreamText('') }

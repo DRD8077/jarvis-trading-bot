@@ -4,6 +4,7 @@ import {
   BarChart3, Flame, Star, Filter, ChevronRight, Target, Zap, Globe
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import { JarvisMarket } from '../services/jarvisBackend'
 
 const PAGES_TO_LOAD = 5 // 5 pages × 250 = top 1250 coins
 const PER_PAGE = 250
@@ -47,31 +48,41 @@ const CryptoTop1000 = () => {
   const loadCoins = useCallback(async () => {
     setLoading(true)
     try {
-      // Fetch top 1000+ coins from CoinGecko (free, no auth)
-      const allCoins = []
-      const pagePromises = []
-      for (let page = 1; page <= PAGES_TO_LOAD; page++) {
-        pagePromises.push(
-          fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${PER_PAGE}&page=${page}&sparkline=false&price_change_percentage=1h%2C24h%2C7d`)
-            .then(r => r.ok ? r.json() : [])
-            .catch(() => [])
-        )
+      // PRIMARY: Use JARVIS backend (proxied + cached)
+      let allCoins = []
+      try {
+        const data = await JarvisMarket.getTopCryptos(250, 'usd')
+        allCoins = data?.coins || []
+      } catch {
+        // FALLBACK: Direct CoinGecko
+        const pagePromises = []
+        for (let page = 1; page <= PAGES_TO_LOAD; page++) {
+          pagePromises.push(
+            fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${PER_PAGE}&page=${page}&sparkline=false&price_change_percentage=1h%2C24h%2C7d`)
+              .then(r => r.ok ? r.json() : [])
+              .catch(() => [])
+          )
+        }
+        const pages = await Promise.all(pagePromises)
+        pages.forEach(p => { if (Array.isArray(p)) allCoins.push(...p) })
       }
-      const pages = await Promise.all(pagePromises)
-      pages.forEach(p => { if (Array.isArray(p)) allCoins.push(...p) })
 
       setCoins(allCoins)
       setLastUpdate(new Date().toLocaleTimeString('en-IN'))
-      // v32: Silenced auto-speech on data load (was causing continuous alerts)
 
       // Also fetch global market data
       try {
-        const gRes = await fetch('https://api.coingecko.com/api/v3/global')
-        if (gRes.ok) {
-          const gData = await gRes.json()
-          setGlobalData(gData.data)
-        }
-      } catch {}
+        const gData = await JarvisMarket.getGlobal()
+        if (gData) setGlobalData(gData)
+      } catch {
+        try {
+          const gRes = await fetch('https://api.coingecko.com/api/v3/global')
+          if (gRes.ok) {
+            const gData = await gRes.json()
+            setGlobalData(gData.data)
+          }
+        } catch {}
+      }
     } catch (e) {
       console.error('[Top1000] Load error:', e)
     } finally {
@@ -81,9 +92,9 @@ const CryptoTop1000 = () => {
 
   useEffect(() => { loadCoins() }, [])
 
-  // Auto-refresh every 8 seconds
+  // Auto-refresh every 30 seconds
   useEffect(() => {
-    refreshRef.current = setInterval(loadCoins, 8000)
+    refreshRef.current = setInterval(loadCoins, 30000)
     return () => clearInterval(refreshRef.current)
   }, [loadCoins])
 

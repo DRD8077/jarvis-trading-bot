@@ -1,40 +1,59 @@
 /**
- * 🔐 JARVIS Login Screen — Gmail / Email / Name Login
+ * 🔐 JARVIS Login Screen — Real JWT Authentication
  * ═══════════════════════════════════════════════════════
- * Beautiful login screen with Google-style auth
- * Shows on first APK launch, remembers user after login
+ * Secure login/register with JARVIS Backend Server
+ * JWT tokens, bcrypt passwords, session management
  */
 import React, { useState, useEffect } from 'react'
-import { Mail, User, Shield, Sparkles, Bot, ArrowRight, Eye, EyeOff, LogOut, Crown } from 'lucide-react'
+import { Mail, User, Shield, Sparkles, Bot, ArrowRight, Eye, EyeOff, LogOut, Crown, Lock, UserPlus } from 'lucide-react'
+import { JarvisAuth } from '../services/jarvisBackend'
 
 const LoginScreen = ({ onLogin }) => {
-  const [step, setStep] = useState('welcome') // welcome, login, profile
-  const [name, setName] = useState('')
+  const [step, setStep] = useState('welcome') // welcome, login, register
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [showEmail, setShowEmail] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [isRegister, setIsRegister] = useState(false)
 
   const handleLogin = async () => {
-    if (!name.trim() || name.trim().length < 2) {
-      setError('Please enter your name (at least 2 characters)')
+    if (!username.trim() || username.trim().length < 3) {
+      setError('Username must be at least 3 characters')
+      return
+    }
+    if (!password || password.length < 8) {
+      setError('Password must be at least 8 characters')
       return
     }
     setLoading(true)
     setError('')
 
     try {
-      const mod = await import('../services/gmailAuth')
-      const gmailAuth = mod?.default || mod
-      if (!gmailAuth) throw new Error('Auth service unavailable')
-      const result = await gmailAuth.loginManual(name.trim(), email.trim())
-      if (result.success) {
-        onLogin(result.user)
+      let data
+      if (isRegister) {
+        data = await JarvisAuth.register(username.trim(), password, email.trim() || null)
       } else {
-        setError(result.error || 'Login failed')
+        data = await JarvisAuth.login(username.trim(), password)
       }
+      // Build user object compatible with existing app
+      const user = {
+        id: data.user.id,
+        name: data.user.username,
+        username: data.user.username,
+        email: data.user.email || '',
+        role: data.user.role,
+        isAdmin: data.user.role === 'admin',
+        avatar: data.user.username[0].toUpperCase(),
+        isRealAuth: true,
+      }
+      // Also store for legacy compatibility
+      localStorage.setItem('jarvis_gmail_user', JSON.stringify(user))
+      localStorage.setItem('jarvis_gmail_token', data.access_token)
+      onLogin(user)
     } catch (e) {
-      setError(e.message)
+      setError(e.message || 'Authentication failed')
     } finally {
       setLoading(false)
     }
@@ -120,51 +139,70 @@ const LoginScreen = ({ onLogin }) => {
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center mx-auto mb-4 shadow-xl shadow-blue-500/20">
             <Shield size={32} className="text-white" />
           </div>
-          <h2 className="text-2xl font-bold mb-1">Sign In</h2>
-          <p className="text-slate-400 text-sm">Enter your details to continue</p>
+          <h2 className="text-2xl font-bold mb-1">{isRegister ? 'Create Account' : 'Sign In'}</h2>
+          <p className="text-slate-400 text-sm">{isRegister ? 'Set up your secure JARVIS account' : 'Enter your credentials'}</p>
         </div>
 
         {/* Login Form */}
         <div className="space-y-4">
-          {/* Name Input */}
+          {/* Username Input */}
           <div>
-            <label className="text-xs text-slate-400 font-medium mb-1.5 block">Your Name *</label>
+            <label className="text-xs text-slate-400 font-medium mb-1.5 block">Username *</label>
             <div className="relative">
               <User size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
-                value={name}
-                onChange={(e) => { setName(e.target.value); setError('') }}
-                onKeyPress={handleKeyPress}
-                placeholder="e.g., Deepak Kumar"
+                value={username}
+                onChange={(e) => { setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, '')); setError('') }}
+                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                placeholder="e.g., deepak_stark"
                 className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 transition-all"
                 autoFocus
+                autoCapitalize="off"
+                autoCorrect="off"
               />
             </div>
           </div>
 
-          {/* Email Input (Optional) */}
+          {/* Password Input */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs text-slate-400 font-medium">Email / Gmail</label>
-              <button onClick={() => setShowEmail(!showEmail)} className="text-[10px] text-blue-400">
-                {showEmail ? 'Hide' : 'Optional'}
+            <label className="text-xs text-slate-400 font-medium mb-1.5 block">Password *</label>
+            <div className="relative">
+              <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError('') }}
+                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                placeholder={isRegister ? 'Min 8 chars, 1 upper, 1 number' : 'Enter password'}
+                className="w-full pl-11 pr-12 py-3.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 transition-all"
+              />
+              <button
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-            {(showEmail || email) && (
+          </div>
+
+          {/* Email Input (Register only) */}
+          {isRegister && (
+            <div>
+              <label className="text-xs text-slate-400 font-medium mb-1.5 block">Email (Optional)</label>
               <div className="relative">
                 <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); setError('') }}
-                  onKeyPress={handleKeyPress}
+                  onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
                   placeholder="your.email@gmail.com"
                   className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-slate-800/80 border border-slate-700/50 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 transition-all"
                 />
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Error */}
           {error && (
@@ -176,26 +214,32 @@ const LoginScreen = ({ onLogin }) => {
           {/* Sign In Button */}
           <button
             onClick={handleLogin}
-            disabled={loading || !name.trim()}
+            disabled={loading || !username.trim() || !password}
             className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white font-bold flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-purple-500/20 active:scale-[0.98] transition-transform"
           >
             {loading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <>
-                <Shield size={18} />
-                <span>Sign In to JARVIS</span>
+                {isRegister ? <UserPlus size={18} /> : <Shield size={18} />}
+                <span>{isRegister ? 'Create Account' : 'Sign In to JARVIS'}</span>
               </>
             )}
           </button>
 
-          {/* Admin Detection Hint */}
-          {name.toLowerCase().includes('deepak') && (
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 flex items-center space-x-2">
-              <Crown size={14} className="text-amber-400" />
-              <span className="text-amber-300 text-xs">Admin privileges will be granted</span>
-            </div>
-          )}
+          {/* Toggle Login/Register */}
+          <button
+            onClick={() => { setIsRegister(!isRegister); setError('') }}
+            className="w-full text-center py-2 text-blue-400 text-sm hover:text-blue-300 transition-colors"
+          >
+            {isRegister ? 'Already have an account? Sign In' : "Don't have an account? Register"}
+          </button>
+
+          {/* Security Badge */}
+          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2 flex items-center space-x-2">
+            <Shield size={14} className="text-emerald-400" />
+            <span className="text-emerald-300 text-xs">Z++++ Security • JWT • Bcrypt • Rate Limited</span>
+          </div>
         </div>
 
         {/* Back */}

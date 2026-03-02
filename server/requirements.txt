@@ -1,0 +1,32 @@
+# JARVIS Server — Python Dependencies
+# Z++++ Secure Trading Platform
+
+# ═══ Core Web Framework ═══
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+python-multipart==0.0.20
+
+# ═══ Security ═══
+bcrypt==4.3.0
+PyJWT==2.10.1
+cryptography==44.0.3
+
+# ═══ Database ═══
+sqlalchemy==2.0.41
+alembic==1.15.2
+
+# ═══ AI Engine ═══
+google-generativeai==0.8.5
+
+# ═══ HTTP Client ═══
+httpx==0.28.1
+
+# ═══ Data Validation ═══
+pydantic==2.11.4
+email-validator==2.2.0
+
+# ═══ Environment ═══
+python-dotenv==1.1.0
+
+# ═══ Utilities ═══
+python-dateutil==2.9.0
