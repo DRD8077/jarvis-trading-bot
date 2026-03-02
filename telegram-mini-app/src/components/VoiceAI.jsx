@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { Mic, MicOff, Volume2, VolumeX, Loader, Send, Sparkles } from 'lucide-react'
-import { voiceGenerate, voiceTranscribe } from '../services/api'
+import { voiceGenerate } from '../services/api'
+import { getServerBase } from '../services/apiBase'
 import { useApp } from '../context/AppContext'
 
 const VoiceAI = ({ onTranscript }) => {
@@ -50,13 +51,17 @@ const VoiceAI = ({ onTranscript }) => {
   const transcribeAudio = async (blob) => {
     setGenerating(true)
     try {
-      const formData = new FormData()
-      formData.append('audio', blob, 'recording.webm')
-      const res = await voiceTranscribe(formData)
-      const text = res?.data?.data?.text || res?.data?.text || ''
+      // Use Groq Whisper via server
+      const base = getServerBase()
+      const fd = new FormData()
+      fd.append('audio', blob, 'recording.webm')
+      const res = await fetch(`${base}/api/voice/transcribe`, { method: 'POST', body: fd })
+      const data = await res.json()
+      const text = data?.text || ''
       setTranscript(text)
-      if (onTranscript) onTranscript(text)
-      addNotification('Transcription complete!', 'success')
+      if (text && onTranscript) onTranscript(text)
+      if (text) addNotification('Transcription complete!', 'success')
+      else addNotification('Could not understand. Please try again.', 'warning')
     } catch (e) {
       addNotification('Transcription failed', 'error')
     } finally { setGenerating(false) }
@@ -67,15 +72,31 @@ const VoiceAI = ({ onTranscript }) => {
     setSpeaking(true)
     hapticFeedback('impact')
     try {
-      const res = await voiceGenerate(text)
-      const audioUrl = res?.data?.data?.audio_url || res?.data?.audio_url
-      if (audioUrl && audioRef.current) {
-        audioRef.current.src = audioUrl
-        audioRef.current.play()
-        audioRef.current.onended = () => setSpeaking(false)
-      } else {
-        setSpeaking(false)
+      // Use server edge-tts for high quality voice
+      const base = getServerBase()
+      const fd = new FormData()
+      fd.append('text', text)
+      fd.append('voice', 'hi-IN-SwaraNeural')
+      const res = await fetch(`${base}/api/voice/speak`, { method: 'POST', body: fd })
+      if (res.ok && res.headers.get('content-type')?.includes('audio')) {
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        if (audioRef.current) {
+          audioRef.current.src = url
+          audioRef.current.play()
+          audioRef.current.onended = () => { setSpeaking(false); URL.revokeObjectURL(url) }
+          return
+        }
       }
+      // Fallback: browser TTS
+      if ('speechSynthesis' in window) {
+        const u = new SpeechSynthesisUtterance(text.slice(0, 300))
+        u.lang = 'hi-IN'; u.rate = 1.0
+        u.onend = () => setSpeaking(false)
+        window.speechSynthesis.speak(u)
+        return
+      }
+      setSpeaking(false)
     } catch (e) {
       addNotification('Voice generation failed', 'error')
       setSpeaking(false)

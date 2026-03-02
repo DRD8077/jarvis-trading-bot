@@ -179,18 +179,66 @@ class JarvisVoiceEngine {
     // Web Speech API fallback
     if (!this.recognition) {
       this.init()
-      if (!this.recognition) return false
     }
     
+    if (this.recognition) {
+      try {
+        this.recognition.lang = this.language
+        this.recognition.start()
+        this.isListening = true
+        this._notifyStateChange('listening')
+        console.log('[JarvisVoice] Listening via Web Speech API...')
+        return true
+      } catch (e) {
+        console.warn('[JarvisVoice] Web Speech API failed:', e.message)
+      }
+    }
+    
+    // MediaRecorder + Server Whisper fallback (Android WebView)
     try {
-      this.recognition.lang = this.language
-      this.recognition.start()
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
+      const chunks = []
+      
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data) }
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        const blob = new Blob(chunks, { type: 'audio/webm' })
+        if (blob.size < 1000) return
+        
+        try {
+          const { getServerBase } = await import('./apiBase')
+          const base = getServerBase()
+          const fd = new FormData()
+          fd.append('audio', blob, 'recording.webm')
+          const res = await fetch(`${base}/api/voice/transcribe`, { method: 'POST', body: fd })
+          const data = await res.json()
+          const text = data?.text?.trim()
+          if (text) {
+            this._notifyResult(text, true)
+            await this.handleCommand(text)
+          }
+        } catch (e) {
+          console.warn('[JarvisVoice] Server transcription failed:', e)
+        }
+        this.isListening = false
+        this._notifyStateChange('idle')
+      }
+      
+      recorder.start()
+      this._mediaRecorder = recorder
       this.isListening = true
       this._notifyStateChange('listening')
-      console.log('[JarvisVoice] Listening...')
+      
+      // Auto-stop after 15 seconds
+      setTimeout(() => {
+        if (this._mediaRecorder?.state === 'recording') this._mediaRecorder.stop()
+      }, 15000)
+      
+      console.log('[JarvisVoice] Listening via MediaRecorder + Whisper...')
       return true
     } catch (e) {
-      console.warn('[JarvisVoice] Start failed:', e.message)
+      console.warn('[JarvisVoice] All STT methods failed:', e)
       return false
     }
   }
@@ -208,6 +256,13 @@ class JarvisVoiceEngine {
     if (this.recognition) {
       try { this.recognition.stop() } catch {}
     }
+    
+    // Stop MediaRecorder (triggers onstop → transcription)
+    if (this._mediaRecorder?.state === 'recording') {
+      try { this._mediaRecorder.stop() } catch {}
+    }
+    this._mediaRecorder = null
+    
     this._notifyStateChange('idle')
   }
 
@@ -261,7 +316,33 @@ class JarvisVoiceEngine {
         return
       }
     } catch (e) {
-      console.warn('[JarvisVoice] ElevenLabs failed, trying native:', e.message)
+      console.warn('[JarvisVoice] ElevenLabs failed, trying server TTS:', e.message)
+    }
+    
+    // 1.5. Try server-side edge-tts (high quality, always available)
+    try {
+      const { getServerBase } = await import('./apiBase')
+      const base = getServerBase()
+      const fd = new FormData()
+      const cleanText = text.replace(/```[\s\S]*?```/g, '').replace(/[#*_~>|]/g, '').slice(0, 500)
+      fd.append('text', cleanText)
+      fd.append('voice', detectedLang.includes('hi') ? 'hi-IN-SwaraNeural' : 'en-US-JennyNeural')
+      const res = await fetch(`${base}/api/voice/speak`, { method: 'POST', body: fd })
+      if (res.ok && res.headers.get('content-type')?.includes('audio')) {
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        this._notifyStateChange('speaking')
+        await new Promise((resolve) => {
+          const audio = new Audio(url)
+          audio.onended = () => { URL.revokeObjectURL(url); resolve() }
+          audio.onerror = () => { URL.revokeObjectURL(url); resolve() }
+          audio.play().catch(() => resolve())
+        })
+        this._notifyStateChange(this.isListening ? 'listening' : 'idle')
+        return
+      }
+    } catch (e) {
+      console.warn('[JarvisVoice] Server TTS failed, trying native:', e.message)
     }
     
     // 2. Try native TTS

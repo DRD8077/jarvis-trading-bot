@@ -454,8 +454,19 @@ async def chat_endpoint(req: ChatRequest):
     return {"status": "success", "data": {"reply": reply, "model": "jarvis-ai"}}
 
 @app.get("/api/miniapp/chat/stream")
-async def chat_stream(message: str = "", user_id: str = "0", model: str = "jarvis-auto"):
-    """Server-Sent Events streaming chat"""
+async def chat_stream_get(message: str = "", user_id: str = "0", model: str = "jarvis-auto"):
+    """Server-Sent Events streaming chat (GET fallback)"""
+    return await _stream_chat(message, user_id, model)
+
+@app.post("/api/miniapp/chat/stream")
+async def chat_stream_post(data: dict = Body({})):
+    """Server-Sent Events streaming chat (POST — used by frontend)"""
+    msg = data.get("message", "")
+    user_id = data.get("user_id", "0")
+    model = data.get("model", "jarvis-auto")
+    return await _stream_chat(msg, user_id, model)
+
+async def _stream_chat(message: str, user_id: str = "0", model: str = "jarvis-auto"):
     msg = sanitize_input(message)
     
     async def generate():
@@ -1243,6 +1254,112 @@ async def voice_generate(data: dict = Body({})):
         return {"status": "success", "data": {"text": text, "audio_base64": None, "message": str(e), "source": "error"}}
 
 
+# ═══ Voice Chat / Speak / Transcribe (Frontend expects /api/voice/*) ═══
+
+@app.post("/api/voice/chat")
+async def voice_chat(request: Request):
+    """Voice chat: receive text/audio, return AI text + TTS audio"""
+    try:
+        form = await request.form()
+        message = form.get("message", "")
+        user_id = form.get("user_id", "0")
+        user_name = form.get("user_name", "Sir")
+        
+        if not message:
+            return JSONResponse({"reply": "Sir, main sun nahi paya. Please phir se bolein.", "audio_base64": None})
+        
+        # Get AI response
+        reply = None
+        try:
+            reply = await ai_chat(message)
+        except:
+            pass
+        if not reply:
+            reply = f"Sir, apka message mila: '{message[:100]}'. Main analyze kar raha hoon."
+        
+        # Generate TTS audio for the reply
+        audio_b64 = None
+        try:
+            import edge_tts, base64, tempfile
+            voice = "hi-IN-SwaraNeural"  # Sweet Hindi female
+            communicate = edge_tts.Communicate(reply[:500], voice)
+            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+                async for chunk in communicate.stream():
+                    if chunk["type"] == "audio":
+                        f.write(chunk["data"])
+                f.flush()
+                audio_b64 = base64.b64encode(open(f.name, 'rb').read()).decode()
+        except Exception as e:
+            logger.warning(f"Voice TTS error: {e}")
+        
+        return JSONResponse({"reply": reply, "audio_base64": audio_b64, "model": "jarvis-ai", "source": "voice_chat"})
+    except Exception as e:
+        logger.error(f"Voice chat error: {e}")
+        return JSONResponse({"reply": "Sir, voice processing mein issue aaya. Text chat use karein.", "audio_base64": None})
+
+
+@app.post("/api/voice/speak")
+async def voice_speak(request: Request):
+    """TTS: convert text to audio MP3 blob"""
+    try:
+        form = await request.form()
+        text = form.get("text", "")
+        if not text:
+            return JSONResponse({"error": "No text"}, status_code=400)
+        
+        import edge_tts, tempfile
+        voice = form.get("voice", "hi-IN-SwaraNeural")
+        communicate = edge_tts.Communicate(text[:800], voice)
+        
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    f.write(chunk["data"])
+            f.flush()
+            audio_bytes = open(f.name, 'rb').read()
+        
+        return Response(content=audio_bytes, media_type="audio/mpeg",
+                       headers={"Content-Disposition": "inline; filename=jarvis_voice.mp3"})
+    except Exception as e:
+        logger.error(f"Voice speak error: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.post("/api/voice/transcribe")
+async def voice_transcribe(request: Request):
+    """STT: transcribe audio to text (uses Groq Whisper)"""
+    try:
+        form = await request.form()
+        audio_file = form.get("audio")
+        
+        if not audio_file:
+            return JSONResponse({"text": "", "error": "No audio file"})
+        
+        # Read audio bytes
+        audio_bytes = await audio_file.read()
+        
+        if GROQ_API_KEY:
+            # Use Groq Whisper (free, fast)
+            import httpx
+            async with httpx.AsyncClient(timeout=30) as client:
+                files = {"file": ("audio.webm", audio_bytes, "audio/webm")}
+                data = {"model": "whisper-large-v3", "language": "hi"}
+                resp = await client.post(
+                    "https://api.groq.com/openai/v1/audio/transcriptions",
+                    headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                    files=files, data=data
+                )
+                if resp.status_code == 200:
+                    result = resp.json()
+                    return JSONResponse({"text": result.get("text", ""), "source": "groq_whisper"})
+        
+        # Fallback: Can't transcribe without API
+        return JSONResponse({"text": "", "error": "No transcription service available. Use browser speech recognition.", "source": "unavailable"})
+    except Exception as e:
+        logger.error(f"Transcribe error: {e}")
+        return JSONResponse({"text": "", "error": str(e)})
+
+
 # ════════════════════════════════════════════════════
 # ═══ MEGA TRADER ═══
 # ════════════════════════════════════════════════════
@@ -1658,6 +1775,7 @@ async def api_trending():
 # ════════════════════════════════════════════════════
 
 @app.post("/gemini/chat")
+@app.post("/api/gemini/chat")
 async def gemini_chat(data: dict = Body({})):
     msg = data.get("message", "")
     reply = None
@@ -1668,6 +1786,7 @@ async def gemini_chat(data: dict = Body({})):
     return {"reply": reply or "Processing...", "model": "jarvis-ai"}
 
 @app.post("/gemini/analyze")
+@app.post("/api/gemini/analyze")
 async def gemini_analyze(data: dict = Body({})):
     query = data.get("query", "")
     result = None
@@ -1678,13 +1797,37 @@ async def gemini_analyze(data: dict = Body({})):
     return {"analysis": result or "Analyzing..."}
 
 @app.post("/gemini/intent")
+@app.post("/api/gemini/intent")
 async def gemini_intent(data: dict = Body({})):
     msg = data.get("message", "")
     return {"intent": "chat", "entities": [], "confidence": 0.9}
 
 @app.get("/gemini/config")
+@app.get("/api/gemini/config")
 async def gemini_config():
     return {"model": "gemini-2.0-flash", "available": bool(GEMINI_API_KEY), "groq_available": bool(GROQ_API_KEY)}
+
+@app.post("/api/gemini/stream")
+async def gemini_stream(data: dict = Body({})):
+    """SSE streaming chat via Gemini/Groq"""
+    msg = sanitize_input(data.get("message", ""))
+    
+    async def generate():
+        reply = None
+        try:
+            reply = await ai_chat(msg)
+        except:
+            pass
+        if not reply:
+            reply = "Sir, processing..."
+        words = reply.split()
+        for i, word in enumerate(words):
+            chunk = word + (" " if i < len(words) - 1 else "")
+            yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+            await asyncio.sleep(0.03)
+        yield f"data: {json.dumps({'done': True, 'full_reply': reply})}\n\n"
+    
+    return StreamingResponse(generate(), media_type="text/event-stream")
 
 
 # ═══ Intelligence ═══

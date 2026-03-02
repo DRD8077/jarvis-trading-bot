@@ -165,46 +165,81 @@ const VoiceAutomation = () => {
     initEL()
   }, [])
 
+  const mediaRecorderRef2 = useRef(null)
+  
   const startListening = useCallback(() => {
-    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      setResponse('❌ Speech recognition not supported')
-      return
-    }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-    const recognition = new SR()
-    const profile = voiceProfiles.find(v => v.id === selectedVoice)
-    recognition.lang = profile?.lang === 'hi' ? 'hi-IN' : 'en-US'
-    recognition.continuous = continuousMode
-    recognition.interimResults = true
+    
+    if (SR) {
+      // Browser Speech Recognition (Chrome/Edge)
+      const recognition = new SR()
+      const profile = voiceProfiles.find(v => v.id === selectedVoice)
+      recognition.lang = profile?.lang === 'hi' ? 'hi-IN' : 'en-US'
+      recognition.continuous = continuousMode
+      recognition.interimResults = true
 
-    recognition.onstart = () => { setIsListening(true); setIsProcessing(false) }
-    recognition.onend = () => {
-      setIsListening(false)
-      if (continuousRef.current) {
-        setTimeout(() => { try { recognition.start() } catch {} }, 500)
+      recognition.onstart = () => { setIsListening(true); setIsProcessing(false) }
+      recognition.onend = () => {
+        setIsListening(false)
+        if (continuousRef.current) {
+          setTimeout(() => { try { recognition.start() } catch {} }, 500)
+        }
       }
-    }
-    recognition.onerror = (e) => {
-      setIsListening(false)
-      if (e.error !== 'no-speech' && e.error !== 'aborted') setResponse(`❌ ${e.error}`)
-    }
-    recognition.onresult = (event) => {
-      const result = event.results[event.results.length - 1]
-      setTranscript(result[0].transcript)
-      if (result.isFinal) {
-        const text = result[0].transcript
-        if (continuousMode && !text.toLowerCase().includes('jarvis') && !text.toLowerCase().includes('myra')) return
-        executeVoiceCommand(text.replace(/jarvis|myra/gi, '').trim() || text)
+      recognition.onerror = (e) => {
+        setIsListening(false)
+        if (e.error !== 'no-speech' && e.error !== 'aborted') setResponse(`❌ ${e.error}`)
       }
+      recognition.onresult = (event) => {
+        const result = event.results[event.results.length - 1]
+        setTranscript(result[0].transcript)
+        if (result.isFinal) {
+          const text = result[0].transcript
+          if (continuousMode && !text.toLowerCase().includes('jarvis') && !text.toLowerCase().includes('myra')) return
+          executeVoiceCommand(text.replace(/jarvis|myra/gi, '').trim() || text)
+        }
+      }
+      recognitionRef.current = recognition
+      recognition.start()
+    } else {
+      // MediaRecorder + Server Whisper fallback (Android WebView)
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
+        const chunks = []
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data) }
+        recorder.onstop = async () => {
+          stream.getTracks().forEach(t => t.stop())
+          const blob = new Blob(chunks, { type: 'audio/webm' })
+          if (blob.size < 1000) { setIsListening(false); return }
+          setIsProcessing(true)
+          setTranscript('🎙️ Transcribing...')
+          try {
+            const { getServerBase } = await import('../services/apiBase')
+            const base = getServerBase()
+            const fd = new FormData()
+            fd.append('audio', blob, 'recording.webm')
+            const res = await fetch(`${base}/api/voice/transcribe`, { method: 'POST', body: fd })
+            const data = await res.json()
+            const text = data?.text?.trim()
+            if (text) { setTranscript(text); executeVoiceCommand(text) }
+            else { setTranscript(''); setResponse('Could not understand. Try again.') }
+          } catch (e) { setResponse('❌ Transcription failed') }
+          setIsListening(false); setIsProcessing(false)
+        }
+        recorder.start()
+        mediaRecorderRef2.current = recorder
+        setIsListening(true)
+        // Auto-stop after 15 seconds
+        setTimeout(() => { if (mediaRecorderRef2.current?.state === 'recording') mediaRecorderRef2.current.stop() }, 15000)
+      }).catch(() => { setResponse('❌ Microphone access denied') })
     }
-    recognitionRef.current = recognition
-    recognition.start()
   }, [selectedVoice, continuousMode])
 
   const stopListening = () => {
     continuousRef.current = false
     setContinuousMode(false)
     try { recognitionRef.current?.stop() } catch {}
+    try { if (mediaRecorderRef2.current?.state === 'recording') mediaRecorderRef2.current.stop() } catch {}
+    mediaRecorderRef2.current = null
     setIsListening(false)
   }
 
@@ -291,12 +326,37 @@ const VoiceAutomation = () => {
   const speakResponse = async (text) => {
     // v32: Respect mute/voice settings
     if (window.__JARVIS_MUTE || window.__JARVIS_VOICE_ENABLED === false) return;
-    const clean = text.replace(/[\u{1F300}-\u{1FAD6}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}]/gu, '')
+    const clean = text.replace(/[\u{1F300}-\u{1FAD6}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}]/gu, '').replace(/```[\s\S]*?```/g, '').replace(/[#*_~>|]/g, '').slice(0, 500)
+    
+    // 1. Try ElevenLabs
     if (elevenlabsVoice && elevenLabsReady && voiceEngine === 'elevenlabs') {
       elevenlabsVoice.setVoice(selectedVoice)
       const ok = await elevenlabsVoice.speak(clean)
       if (ok) return
     }
+    
+    // 2. Try server-side edge-tts (high quality, always works)
+    try {
+      const { getServerBase } = await import('../services/apiBase')
+      const base = getServerBase()
+      const fd = new FormData()
+      fd.append('text', clean)
+      const p = voiceProfiles.find(v => v.id === selectedVoice)
+      fd.append('voice', p?.lang === 'hi' ? 'hi-IN-SwaraNeural' : 'en-US-JennyNeural')
+      const res = await fetch(`${base}/api/voice/speak`, { method: 'POST', body: fd })
+      if (res.ok && res.headers.get('content-type')?.includes('audio')) {
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const audio = new Audio(url)
+        audio.onended = () => URL.revokeObjectURL(url)
+        await audio.play()
+        return
+      }
+    } catch (e) {
+      console.warn('[VoiceAutomation] Server TTS failed:', e.message)
+    }
+    
+    // 3. Browser Speech Synthesis fallback
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel()
       const u = new SpeechSynthesisUtterance(clean)

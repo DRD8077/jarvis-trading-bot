@@ -8,6 +8,7 @@ import {
 import ReactMarkdown from 'react-markdown'
 import { sendChat, clearChat as clearChatApi, fetchChatHistory, fetchChatModels, streamChat } from '../services/api'
 import { JarvisAI } from '../services/jarvisBackend'
+import { getServerBase } from '../services/apiBase'
 import { useApp } from '../context/AppContext'
 
 // ═══ Markdown Renderer (GPT-like) ═══
@@ -127,90 +128,212 @@ const AIChat = () => {
   const abortRef = useRef(false)
   const recognitionRef = useRef(null)
 
-  // ═══ VOICE: Speak AI response using ElevenLabs/TTS ═══
+  // ═══ VOICE: Speak AI response — Iron Man JARVIS style ═══
   const speakResponse = useCallback(async (text) => {
     if (!text || isSpeaking) return
     setIsSpeaking(true)
     try {
-      const { default: elevenlabs } = await import('../services/elevenlabsVoice.js')
-      if (elevenlabs?.speak) {
-        await elevenlabs.speak(text)
-      } else if ('speechSynthesis' in window) {
-        const u = new SpeechSynthesisUtterance(text.slice(0,300))
-        u.lang = 'hi-IN'; u.rate = 1.0
+      // Clean text for TTS — remove markdown, code blocks, URLs
+      const cleanText = text
+        .replace(/```[\s\S]*?```/g, ' code block ')
+        .replace(/`[^`]+`/g, '')
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        .replace(/[#*_~>|]/g, '')
+        .replace(/https?:\/\/\S+/g, '')
+        .replace(/\n+/g, '. ')
+        .slice(0, 500)
+      
+      // PRIMARY: Server-side edge-tts (works everywhere, high quality)
+      try {
+        const base = getServerBase()
+        const fd = new FormData()
+        fd.append('text', cleanText)
+        fd.append('voice', 'hi-IN-SwaraNeural')
+        const res = await fetch(`${base}/api/voice/speak`, { method: 'POST', body: fd })
+        if (res.ok && res.headers.get('content-type')?.includes('audio')) {
+          const blob = await res.blob()
+          const url = URL.createObjectURL(blob)
+          const audio = new Audio(url)
+          audio.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(url) }
+          audio.onerror = () => { setIsSpeaking(false); URL.revokeObjectURL(url) }
+          await audio.play()
+          return
+        }
+      } catch (e) {
+        console.warn('[JARVIS] Server TTS failed, trying fallbacks:', e.message)
+      }
+      
+      // FALLBACK 1: ElevenLabs (if user has API key)
+      try {
+        const { default: elevenlabs } = await import('../services/elevenlabsVoice.js')
+        if (elevenlabs?.speak && elevenlabs?.apiKey) {
+          await elevenlabs.speak(cleanText)
+          setIsSpeaking(false)
+          return
+        }
+      } catch {}
+      
+      // FALLBACK 2: Browser Speech Synthesis (always available)
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel()
+        const u = new SpeechSynthesisUtterance(cleanText.slice(0, 300))
+        u.lang = 'hi-IN'
+        u.rate = 1.0
+        u.pitch = 1.1
+        // Try to find a Hindi voice
+        const voices = window.speechSynthesis.getVoices()
+        const hindiVoice = voices.find(v => v.lang.startsWith('hi')) || voices.find(v => v.lang.startsWith('en'))
+        if (hindiVoice) u.voice = hindiVoice
         u.onend = () => setIsSpeaking(false)
+        u.onerror = () => setIsSpeaking(false)
         window.speechSynthesis.speak(u)
         return
       }
-    } catch {}
+    } catch (e) {
+      console.warn('[JARVIS] All TTS failed:', e)
+    }
     setIsSpeaking(false)
   }, [isSpeaking])
 
-  // ═══ VOICE: Start always-on mic listening ═══
+  // ═══ VOICE: Start listening — browser STT or MediaRecorder + server Whisper ═══
+  const mediaRecorderRef = useRef(null)
+  const audioChunksRef = useRef([])
+  
   const startListening = useCallback(() => {
     if (isListening || loading || streaming) return
     
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SpeechRecognitionAPI) return
     
-    try {
-      const recognition = new SpeechRecognitionAPI()
-      recognition.lang = 'hi-IN'
-      recognition.continuous = true
-      recognition.interimResults = true
-      recognition.maxAlternatives = 1
-      
-      recognition.onresult = (event) => {
-        let finalText = ''
-        let interimText = ''
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const t = event.results[i][0].transcript
-          if (event.results[i].isFinal) { finalText += t }
-          else { interimText += t }
+    if (SpeechRecognitionAPI) {
+      // ═══ METHOD 1: Browser SpeechRecognition (Chrome/Edge) ═══
+      try {
+        const recognition = new SpeechRecognitionAPI()
+        recognition.lang = 'hi-IN'
+        recognition.continuous = true
+        recognition.interimResults = true
+        recognition.maxAlternatives = 1
+        
+        recognition.onresult = (event) => {
+          let finalText = ''
+          let interimText = ''
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const t = event.results[i][0].transcript
+            if (event.results[i].isFinal) { finalText += t }
+            else { interimText += t }
+          }
+          if (interimText) setInput(interimText)
+          if (finalText) {
+            setInput('')
+            setIsListening(false)
+            try { recognition.stop() } catch {}
+            recognitionRef.current = null
+            handleSend(finalText)
+          }
         }
-        if (interimText) setInput(interimText)
-        if (finalText) {
-          setInput('')
+        
+        recognition.onerror = (e) => {
+          if (e.error !== 'no-speech' && e.error !== 'aborted') {
+            console.warn('[AIChat] Voice error:', e.error)
+          }
+          if (e.error === 'no-speech' && isListening) {
+            try { recognition.start() } catch {}
+            return
+          }
           setIsListening(false)
-          try { recognition.stop() } catch {}
           recognitionRef.current = null
-          handleSend(finalText)
         }
+        
+        recognition.onend = () => {
+          if (recognitionRef.current && isListening) {
+            try { recognition.start() } catch {}
+          }
+        }
+        
+        recognition.start()
+        recognitionRef.current = recognition
+        setIsListening(true)
+        hapticFeedback?.('impact')
+      } catch (e) {
+        console.warn('[AIChat] Browser STT failed, trying MediaRecorder:', e)
+        startRecordingFallback()
       }
-      
-      recognition.onerror = (e) => {
-        if (e.error !== 'no-speech' && e.error !== 'aborted') {
-          console.warn('[AIChat] Voice error:', e.error)
-        }
-        // Auto-restart on non-fatal errors for always-on behavior
-        if (e.error === 'no-speech' && isListening) {
-          try { recognition.start() } catch {}
-          return
-        }
-        setIsListening(false)
-        recognitionRef.current = null
-      }
-      
-      recognition.onend = () => {
-        // Auto-restart for continuous listening
-        if (recognitionRef.current && isListening) {
-          try { recognition.start() } catch {}
-        }
-      }
-      
-      recognition.start()
-      recognitionRef.current = recognition
-      setIsListening(true)
-      hapticFeedback?.('impact')
-    } catch (e) {
-      console.warn('[AIChat] STT failed:', e)
+    } else {
+      // ═══ METHOD 2: MediaRecorder + Server Whisper (Android WebView) ═══
+      startRecordingFallback()
     }
   }, [isListening, loading, streaming, hapticFeedback])
+  
+  const startRecordingFallback = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
+      audioChunksRef.current = []
+      
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
+      }
+      
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        
+        if (audioBlob.size < 1000) {
+          setIsListening(false)
+          return // Too short, ignore
+        }
+        
+        // Send to server for Whisper transcription
+        setInput('🎙️ Transcribing...')
+        try {
+          const base = getServerBase()
+          const fd = new FormData()
+          fd.append('audio', audioBlob, 'recording.webm')
+          const res = await fetch(`${base}/api/voice/transcribe`, { method: 'POST', body: fd })
+          const data = await res.json()
+          const text = data?.text?.trim()
+          if (text) {
+            setInput('')
+            handleSend(text)
+          } else {
+            setInput('')
+            console.warn('[AIChat] No transcription result')
+          }
+        } catch (e) {
+          console.warn('[AIChat] Transcription failed:', e)
+          setInput('')
+        }
+        setIsListening(false)
+      }
+      
+      recorder.start()
+      mediaRecorderRef.current = recorder
+      setIsListening(true)
+      hapticFeedback?.('impact')
+      
+      // Auto-stop after 15 seconds
+      setTimeout(() => {
+        if (mediaRecorderRef.current?.state === 'recording') {
+          mediaRecorderRef.current.stop()
+        }
+      }, 15000)
+    } catch (e) {
+      console.warn('[AIChat] Microphone access denied:', e)
+      setIsListening(false)
+    }
+  }, [hapticFeedback])
 
   const stopListening = useCallback(() => {
     setIsListening(false)
+    // Stop browser SpeechRecognition
     try { recognitionRef.current?.stop() } catch {}
     recognitionRef.current = null
+    // Stop MediaRecorder (triggers onstop → transcription)
+    try {
+      if (mediaRecorderRef.current?.state === 'recording') {
+        mediaRecorderRef.current.stop()
+      }
+    } catch {}
+    mediaRecorderRef.current = null
     hapticFeedback?.('impact')
   }, [hapticFeedback])
 
@@ -385,10 +508,21 @@ const AIChat = () => {
           <span className="text-xs text-slate-400 font-medium">New</span>
         </button>
         <div className="flex items-center gap-1.5">
-          <div className="w-5 h-5 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-            <Sparkles size={10} />
+          <div className={`w-5 h-5 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center ${isSpeaking ? 'animate-pulse shadow-lg shadow-purple-500/50' : ''}`}>
+            {isSpeaking ? <Volume2 size={10} /> : <Sparkles size={10} />}
           </div>
           <span className="text-sm font-semibold tracking-tight">JARVIS</span>
+          {isListening && (
+            <div className="flex items-center gap-1 ml-1">
+              <div className="w-1.5 h-3 bg-red-500 rounded-full animate-pulse" />
+              <div className="w-1.5 h-4 bg-red-400 rounded-full animate-pulse" style={{animationDelay:'0.15s'}} />
+              <div className="w-1.5 h-2.5 bg-red-500 rounded-full animate-pulse" style={{animationDelay:'0.3s'}} />
+              <span className="text-[10px] text-red-400 ml-0.5 font-medium">Listening...</span>
+            </div>
+          )}
+          {isSpeaking && !isListening && (
+            <span className="text-[10px] text-purple-400 ml-1 animate-pulse font-medium">Speaking...</span>
+          )}
         </div>
         <div className="w-16" /> {/* spacer for balance */}
       </div>
@@ -517,12 +651,19 @@ const AIChat = () => {
               </button>
               
               <div className="flex items-center gap-1.5">
-                {/* VOICE MIC BUTTON — Always-on like Bixby */}
+                {/* JARVIS Speaking Indicator */}
+                {isSpeaking && (
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-purple-500/20 text-purple-300 animate-pulse">
+                    <Volume2 size={14} />
+                    <span className="text-[10px] font-medium">Speaking</span>
+                  </div>
+                )}
+                {/* VOICE MIC BUTTON — Iron Man style */}
                 <button onClick={isListening ? stopListening : startListening}
                   className={`p-1.5 rounded-lg transition-all ${
-                    isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-white/10 text-slate-400 hover:bg-white/15 hover:text-white'
+                    isListening ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30' : 'bg-white/10 text-slate-400 hover:bg-white/15 hover:text-white'
                   }`}
-                  title={isListening ? 'Stop listening' : 'Voice input — Hindi/English'}>
+                  title={isListening ? 'Tap to stop & send' : 'Voice input — Hindi/English'}>
                   {isListening ? <MicOff size={16} /> : <Mic size={16} />}
                 </button>
                 {streaming ? (
