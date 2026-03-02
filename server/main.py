@@ -1408,7 +1408,7 @@ async def auth_profile(user_id: str):
 # ════════════════════════════════════════════════════
 # ═══ AUTH (JWT) — FULL AUTH SYSTEM ═══
 # ════════════════════════════════════════════════════
-# Owner username — first registered user OR this specific username gets admin
+# Owner username — this user always gets admin rights
 OWNER_USERNAME = "DRD8077"
 
 class RegisterRequest(BaseModel):
@@ -1499,6 +1499,34 @@ async def _do_refresh(token_str):
         raise HTTPException(401, "Invalid refresh token")
 
 # ── /api/auth/* paths (used by jarvisBackend.js frontend) ──
+
+@app.post("/api/auth/auto-login")
+async def api_auth_auto_login(data: dict = Body({})):
+    """Auto-login for app owner. Creates account if not exists, returns token immediately.
+    No registration or password needed — you're the owner."""
+    db = SessionLocal()
+    try:
+        owner = db.query(User).filter(User.username == OWNER_USERNAME).first()
+        
+        if not owner:
+            owner = User(
+                username=OWNER_USERNAME,
+                password_hash=hash_password("jarvis_owner_auto"),
+                email="owner@jarvis.ai",
+                is_active=True
+            )
+            db.add(owner)
+            db.commit()
+            db.refresh(owner)
+            logger.info(f"Owner account auto-created: {OWNER_USERNAME}")
+        
+        user_data = _user_response(db, owner)
+        access = create_access_token({"sub": str(owner.id), "username": owner.username, "role": "admin"})
+        refresh = create_refresh_token({"sub": str(owner.id)})
+        
+        return {"success": True, "access_token": access, "refresh_token": refresh, "user": user_data}
+    finally:
+        db.close()
 
 @app.post("/api/auth/register")
 async def api_auth_register(req: RegisterRequest):

@@ -49,18 +49,80 @@ export const AppProvider = ({ children }) => {
     // Dynamically load gmailAuth and themeEngine — crash-proof
     let unsubscribe = () => {}
     async function loadServices() {
+      // ═══ STEP 1: Check localStorage for saved session ═══
+      try {
+        const savedToken = localStorage.getItem('jarvis_access_token')
+        const savedUserStr = localStorage.getItem('jarvis_user') || localStorage.getItem('jarvis_gmail_user')
+        if (savedToken && savedUserStr) {
+          const savedUser = JSON.parse(savedUserStr)
+          if (savedUser && savedUser.username) {
+            console.log('[JARVIS] Restored session for:', savedUser.username)
+            setUser(savedUser)
+            setIsLoggedIn(true)
+            setIsAdmin(savedUser.isAdmin || savedUser.role === 'admin' || false)
+            setAuthLoading(false)
+            // Still load theme below, but auth is done
+          }
+        }
+      } catch (e) { console.warn('[JARVIS] session restore:', e.message) }
+
+      // ═══ STEP 2: If no saved session, auto-login as owner ═══
+      if (!user) {
+        try {
+          const { SERVER_BASE } = await import('../services/apiBase')
+          const serverUrl = SERVER_BASE || ''
+          const resp = await fetch(`${serverUrl}/api/auth/auto-login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ device_id: 'jarvis-apk' })
+          })
+          if (resp.ok) {
+            const data = await resp.json()
+            if (data.success && data.user) {
+              const ownerUser = {
+                id: data.user.id,
+                name: data.user.username,
+                username: data.user.username,
+                email: data.user.email || '',
+                role: data.user.role || 'admin',
+                isAdmin: data.user.isAdmin || data.user.role === 'admin',
+                avatar: data.user.username[0].toUpperCase(),
+                isRealAuth: true,
+              }
+              // Save to localStorage
+              localStorage.setItem('jarvis_access_token', data.access_token)
+              localStorage.setItem('jarvis_refresh_token', data.refresh_token)
+              localStorage.setItem('jarvis_user', JSON.stringify(ownerUser))
+              localStorage.setItem('jarvis_gmail_user', JSON.stringify(ownerUser))
+              localStorage.setItem('jarvis_gmail_token', data.access_token)
+              
+              setUser(ownerUser)
+              setIsLoggedIn(true)
+              setIsAdmin(true)
+              console.log('[JARVIS] ✅ Owner auto-logged in as ADMIN:', ownerUser.username)
+            }
+          }
+        } catch (e) {
+          console.warn('[JARVIS] Auto-login failed (server offline?):', e.message)
+          // Fallback: still try gmailAuth below
+        }
+      }
+
+      // ═══ STEP 3: Legacy gmailAuth (fallback) ═══
       try {
         const gmod = await import('../services/gmailAuth').catch(() => null)
         const ga = gmod?.default || gmod
         if (ga) {
           gmailAuthRef.current = ga
-          const savedUser = typeof ga.getCurrentUser === 'function'
-            ? ga.getCurrentUser()
-            : ga.getUser?.() || ga.user || null
-          if (savedUser) {
-            setUser(savedUser)
-            setIsLoggedIn(true)
-            setIsAdmin(savedUser.isAdmin || false)
+          if (!user) {
+            const savedUser = typeof ga.getCurrentUser === 'function'
+              ? ga.getCurrentUser()
+              : ga.getUser?.() || ga.user || null
+            if (savedUser) {
+              setUser(savedUser)
+              setIsLoggedIn(true)
+              setIsAdmin(savedUser.isAdmin || false)
+            }
           }
           if (typeof ga.onAuthChange === 'function') {
             unsubscribe = ga.onAuthChange((authUser) => {

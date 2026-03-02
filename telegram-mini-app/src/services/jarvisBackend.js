@@ -10,8 +10,11 @@
 // ═══════════════════════════════════════════════════════════════
 
 function getServerURL() {
-  // Priority:
-  // 1. VITE env override
+  // Use the SAME server detection as apiBase.js
+  // 1. VITE env override (same var as apiBase)
+  if (import.meta.env.VITE_SERVER_URL) {
+    return import.meta.env.VITE_SERVER_URL
+  }
   if (import.meta.env.VITE_JARVIS_SERVER) {
     return import.meta.env.VITE_JARVIS_SERVER
   }
@@ -19,14 +22,13 @@ function getServerURL() {
   if (window?.__JARVIS_CONFIG__?.serverUrl) {
     return window.__JARVIS_CONFIG__.serverUrl
   }
-  // 3. Same-origin (dev mode / collocated deployment)
+  // 3. Same-origin (dev mode)
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     return `http://localhost:8000`
   }
-  // 4. Native APK — use codespace URL or deployed server
+  // 4. Native APK — hardcoded codespace URL (matches apiBase.js)
   if (window?.Capacitor?.isNativePlatform?.() || window.location.protocol === 'capacitor:') {
-    // Will be set during build or via env
-    return import.meta.env.VITE_JARVIS_SERVER || 'http://localhost:8000'
+    return 'https://super-duper-funicular-gp99q655qw6cprr-8000.app.github.dev'
   }
   // 5. Fallback — same origin
   return window.location.origin
