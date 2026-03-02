@@ -413,7 +413,19 @@ function AppInner() {
     return <OnboardingScreen onComplete={completeOnboarding} />
   }
 
-  // Gate: Show login screen if not authenticated
+  // Gate: Show loading while auth initializes
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#0a0e1a] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-blue-400 text-sm">Initializing JARVIS...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Owner is always logged in — this is a fallback safety net
   if (!isLoggedIn) {
     return <LoginScreen onLogin={handleLogin} />
   }
