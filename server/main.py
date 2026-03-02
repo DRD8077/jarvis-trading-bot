@@ -208,9 +208,18 @@ async def sentiment():
 
 @app.get("/api/miniapp/news")
 async def news(category: str = "all"):
-    trending = await get_trending()
-    news_items = [{"title": f"{t.get('name', 'Crypto')} trending on CoinGecko", "source": "CoinGecko", "category": category, "time": datetime.utcnow().isoformat()} for t in (trending[:10] if trending else [])]
-    return {"status": "success", "data": news_items}
+    # Real news from RSS feeds
+    india_news = await fetch_india_news(15)
+    news_items = india_news.get("data", [])
+    
+    # Also get crypto trending for crypto news
+    if category in ("all", "crypto"):
+        trending = await get_trending()
+        for t in (trending[:5] if trending else []):
+            name = t.get("item", {}).get("name", t.get("name", "")) if isinstance(t, dict) else ""
+            if name:
+                news_items.append({"title": f"{name} trending on CoinGecko", "source": "CoinGecko", "time": datetime.utcnow().isoformat(), "real": True})
+    return {"status": "success", "data": news_items, "source": "real_rss"}
 
 
 # ═══ Signals & Analysis ═══
@@ -228,36 +237,124 @@ async def analyze(symbol: str = "BTC"):
 
 @app.get("/api/miniapp/analysis/technical")
 async def technical_analysis(symbol: str = "BTC"):
-    return {"status": "success", "data": {
-        "symbol": symbol, "trend": "bullish", "rsi": 55, "macd": "bullish_crossover",
-        "support": ["24000", "23500"], "resistance": ["25000", "25500"],
-        "moving_averages": {"sma_20": "above", "sma_50": "above", "sma_200": "above"},
-        "recommendation": "BUY", "confidence": 72
-    }}
+    # Get real price history for technical analysis
+    try:
+        history = await get_price_history(symbol.lower(), 30)
+        if history and len(history) > 5:
+            prices = [p[1] for p in history] if isinstance(history[0], list) else history
+            current = prices[-1] if prices else 0
+            
+            # Real SMA calculations
+            sma_7 = sum(prices[-7:]) / min(7, len(prices)) if len(prices) >= 7 else current
+            sma_20 = sum(prices[-20:]) / min(20, len(prices)) if len(prices) >= 20 else current
+            sma_30 = sum(prices) / len(prices)
+            
+            # Real RSI calculation (14-period)
+            gains, losses = [], []
+            for i in range(1, min(15, len(prices))):
+                diff = prices[-i] - prices[-i-1]
+                if diff > 0: gains.append(diff)
+                else: losses.append(abs(diff))
+            avg_gain = sum(gains) / 14 if gains else 0.001
+            avg_loss = sum(losses) / 14 if losses else 0.001
+            rs = avg_gain / avg_loss
+            rsi = round(100 - (100 / (1 + rs)), 1)
+            
+            # Trend from SMAs
+            trend = "bullish" if current > sma_20 > sma_30 else "bearish" if current < sma_20 < sma_30 else "sideways"
+            
+            # Support/resistance from recent highs/lows
+            recent = prices[-14:]
+            support = round(min(recent), 2)
+            resistance = round(max(recent), 2)
+            
+            rec = "BUY" if rsi < 40 and trend != "bearish" else "SELL" if rsi > 70 and trend != "bullish" else "HOLD"
+            conf = 75 if rec != "HOLD" else 55
+            
+            return {"status": "success", "data": {
+                "symbol": symbol, "current_price": round(current, 2),
+                "trend": trend, "rsi": rsi,
+                "macd": "bullish_crossover" if sma_7 > sma_20 and prices[-2] and sma_7 > sum(prices[-8:-1])/7 else "bearish_crossover" if sma_7 < sma_20 else "neutral",
+                "support": [str(round(support, 2)), str(round(support * 0.97, 2))],
+                "resistance": [str(round(resistance, 2)), str(round(resistance * 1.03, 2))],
+                "moving_averages": {"sma_7": round(sma_7, 2), "sma_20": round(sma_20, 2), "sma_30": round(sma_30, 2)},
+                "recommendation": rec, "confidence": conf,
+                "source": "real_price_history"
+            }}
+    except Exception as e:
+        logger.warning(f"Technical analysis error: {e}")
+    
+    # Fallback: use AI
+    analysis = await ai_analyze(symbol)
+    return {"status": "success", "data": {"symbol": symbol, "analysis": analysis, "source": "ai_analysis"}}
 
 @app.get("/api/miniapp/analysis/candles")
 async def candle_analysis(symbol: str = "BTC"):
-    return {"status": "success", "data": {
-        "symbol": symbol, "patterns": [
-            {"name": "Bullish Engulfing", "type": "bullish", "reliability": "high"},
-            {"name": "Morning Star", "type": "bullish", "reliability": "medium"}
-        ]
-    }}
+    # Real candle pattern detection from Binance klines
+    try:
+        klines = await get_binance_klines(f"{symbol.upper()}USDT", "1d", 10)
+        patterns = []
+        if klines and len(klines) >= 3:
+            for i in range(2, len(klines)):
+                o2, h2, l2, c2 = float(klines[i-2][1]), float(klines[i-2][2]), float(klines[i-2][3]), float(klines[i-2][4])
+                o1, h1, l1, c1 = float(klines[i-1][1]), float(klines[i-1][2]), float(klines[i-1][3]), float(klines[i-1][4])
+                o0, h0, l0, c0 = float(klines[i][1]), float(klines[i][2]), float(klines[i][3]), float(klines[i][4])
+                body0 = abs(c0 - o0)
+                body1 = abs(c1 - o1)
+                
+                # Bullish Engulfing
+                if c1 < o1 and c0 > o0 and o0 <= c1 and c0 >= o1 and body0 > body1:
+                    patterns.append({"name": "Bullish Engulfing", "type": "bullish", "reliability": "high", "candle": i})
+                # Bearish Engulfing
+                if c1 > o1 and c0 < o0 and o0 >= c1 and c0 <= o1 and body0 > body1:
+                    patterns.append({"name": "Bearish Engulfing", "type": "bearish", "reliability": "high", "candle": i})
+                # Hammer (bullish)
+                lower_shadow = o0 - l0 if c0 > o0 else c0 - l0
+                if lower_shadow > body0 * 2 and (h0 - max(o0, c0)) < body0 * 0.3:
+                    patterns.append({"name": "Hammer", "type": "bullish", "reliability": "medium", "candle": i})
+                # Doji
+                if body0 < (h0 - l0) * 0.1 and (h0 - l0) > 0:
+                    patterns.append({"name": "Doji", "type": "neutral", "reliability": "medium", "candle": i})
+        
+        return {"status": "success", "data": {"symbol": symbol, "patterns": patterns[-5:], "source": "real_binance_klines"}}
+    except:
+        return {"status": "success", "data": {"symbol": symbol, "patterns": [], "source": "unavailable"}}
 
 @app.get("/api/miniapp/predictions")
 async def predictions():
     coins = await get_top_cryptos(10, "usd")
     preds = []
-    import random
     for c in coins:
-        direction = "UP" if (c.get("price_change_percentage_24h", 0) or 0) > 0 else "DOWN"
+        change_24h = c.get("price_change_percentage_24h", 0) or 0
+        change_7d = c.get("price_change_percentage_7d_in_currency", 0) or 0
+        vol = c.get("total_volume", 0) or 0
+        mcap = c.get("market_cap", 0) or 0
+        price = c.get("current_price", 0) or 0
+        
+        # Real analysis: momentum + volume + trend
+        score = 50
+        if change_24h > 3: score += 15
+        elif change_24h > 0: score += 5
+        elif change_24h < -3: score -= 15
+        else: score -= 5
+        if change_7d and change_7d > 5: score += 10
+        elif change_7d and change_7d < -5: score -= 10
+        if vol > mcap * 0.15: score += 5  # high relative volume = momentum
+        
+        direction = "UP" if score > 55 else "DOWN" if score < 45 else "SIDEWAYS"
+        confidence = min(90, max(40, score))
+        multiplier = 1 + (abs(change_24h) / 100 * 2) * (1 if direction == "UP" else -1)
+        
         preds.append({
             "symbol": c.get("symbol", "").upper(),
             "name": c.get("name", ""),
-            "current_price": c.get("current_price", 0),
+            "current_price": price,
             "prediction": direction,
-            "confidence": random.randint(55, 85),
-            "target": c.get("current_price", 0) * (1.05 if direction == "UP" else 0.95)
+            "confidence": confidence,
+            "target": round(price * multiplier, 2),
+            "change_24h": round(change_24h, 2),
+            "change_7d": round(change_7d, 2) if change_7d else 0,
+            "source": "real_momentum_analysis"
         })
     return {"status": "success", "data": preds}
 
@@ -419,22 +516,88 @@ async def chat_models():
 @app.post("/api/miniapp/code/execute")
 async def code_execute(data: dict = Body({})):
     prompt = data.get("prompt", "")
-    # Use AI to generate code
-    reply = await ai_chat(f"Write Python code for: {prompt}. Only output code, no explanation.")
-    if not reply:
-        reply = f"# Code for: {prompt}\nprint('Hello from JARVIS!')"
-    return {"status": "success", "data": {"code": reply, "output": "Code generated successfully"}}
+    code = data.get("code", "")
+    
+    if not code and prompt:
+        # Use AI to generate code first
+        code = await ai_chat(f"Write ONLY Python code for: {prompt}. No explanation, just code.")
+        if not code:
+            code = f"# Code for: {prompt}\nprint('Hello from JARVIS!')"
+    
+    # Actually run the code in a sandbox
+    output = await _run_python_sandbox(code)
+    return {"status": "success", "data": {"code": code, "output": output, "executed": True, "source": "real_sandbox"}}
 
 @app.post("/api/miniapp/code/github")
 async def code_github(data: dict = Body({})):
     url = data.get("url", "")
-    return {"status": "success", "data": {"message": f"Repository {url} analyzed", "files": [], "summary": "Analysis complete"}}
+    # Real GitHub API fetch
+    try:
+        # Extract owner/repo from URL
+        parts = url.rstrip('/').split('/')
+        if len(parts) >= 2:
+            owner, repo = parts[-2], parts[-1]
+            async with httpx.AsyncClient(timeout=10) as c:
+                r = await c.get(f"https://api.github.com/repos/{owner}/{repo}", headers={"Accept": "application/vnd.github.v3+json"})
+                if r.status_code == 200:
+                    d = r.json()
+                    return {"status": "success", "data": {
+                        "name": d.get("name"), "description": d.get("description"),
+                        "stars": d.get("stargazers_count"), "forks": d.get("forks_count"),
+                        "language": d.get("language"), "size": d.get("size"),
+                        "url": d.get("html_url"), "source": "real_github_api"
+                    }}
+    except:
+        pass
+    return {"status": "success", "data": {"message": f"Could not fetch {url}", "source": "error"}}
 
 @app.post("/api/miniapp/code/run")
 async def code_run(data: dict = Body({})):
     code = data.get("code", "")
     language = data.get("language", "python")
-    return {"status": "success", "data": {"output": f"Code execution simulated (security sandbox)\nLanguage: {language}", "executed": True}}
+    
+    if language == "python":
+        output = await _run_python_sandbox(code)
+    else:
+        output = f"Language '{language}' not supported yet. Only Python is available."
+    
+    return {"status": "success", "data": {"output": output, "executed": True, "language": language, "source": "real_sandbox"}}
+
+async def _run_python_sandbox(code: str, timeout: int = 10) -> str:
+    """Actually execute Python code in a restricted subprocess"""
+    import subprocess, tempfile
+    
+    # Security: block dangerous operations
+    blocked = ["import os", "import sys", "subprocess", "__import__", "eval(", "exec(", "open(", 
+               "shutil", "pathlib", "glob", "socket", "requests", "urllib", "http.client"]
+    for b in blocked:
+        if b in code:
+            return f"SECURITY: '{b}' is not allowed in sandbox mode."
+    
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            # Wrap code with safety limits
+            safe_code = f"import signal\nsignal.alarm({timeout})\n" + code
+            f.write(safe_code)
+            f.flush()
+            
+            result = subprocess.run(
+                ['python3', f.name],
+                capture_output=True, text=True, timeout=timeout,
+                env={"PATH": "/usr/bin:/usr/local/bin", "HOME": "/tmp"}
+            )
+            
+            output = result.stdout
+            if result.stderr:
+                output += f"\n[STDERR] {result.stderr}"
+            if result.returncode != 0:
+                output += f"\n[Exit code: {result.returncode}]"
+            
+            return output.strip() if output.strip() else "(no output)"
+    except subprocess.TimeoutExpired:
+        return f"TIMEOUT: Code took longer than {timeout} seconds."
+    except Exception as e:
+        return f"ERROR: {str(e)}"
 
 
 # ════════════════════════════════════════════════════
@@ -444,8 +607,9 @@ async def code_run(data: dict = Body({})):
 wallets = {}
 
 @app.get("/api/miniapp/wallet")
-async def wallet_get():
-    return {"status": "success", "data": {"balance": 10000, "currency": "INR", "connected": False}}
+async def wallet_get(user_id: str = "0"):
+    portfolio = get_paper_portfolio(user_id)
+    return {"status": "success", "data": {"balance": portfolio.get("balance", 10000), "currency": "USD", "connected": True, "source": "paper_portfolio_db"}}
 
 @app.post("/api/miniapp/wallet/connect-phantom")
 async def wallet_connect(data: dict = Body({})):
@@ -463,21 +627,49 @@ async def wallet_disconnect(data: dict = Body({})):
 @app.get("/api/miniapp/wallet/phantom-balance")
 async def phantom_balance(user_id: str = "0"):
     w = wallets.get(user_id, {})
-    if w.get("address"):
+    addr = w.get("address", "")
+    if addr and len(addr) > 30:  # real Solana address
         try:
-            r = await http_client.get(f"https://api.mainnet-beta.solana.com", timeout=5)
+            async with httpx.AsyncClient(timeout=10) as c:
+                r = await c.post("https://api.mainnet-beta.solana.com", json={
+                    "jsonrpc": "2.0", "id": 1, "method": "getBalance", "params": [addr]
+                })
+                if r.status_code == 200:
+                    lamports = r.json().get("result", {}).get("value", 0)
+                    sol = lamports / 1e9
+                    # Get SOL price
+                    sol_price = await get_crypto_price("solana")
+                    sol_usd = sol_price.get("usd", 0) if isinstance(sol_price, dict) else 0
+                    return {"status": "success", "data": {"sol_balance": round(sol, 4), "usd_value": round(sol * sol_usd, 2), "tokens": [], "source": "real_solana_rpc"}}
         except:
             pass
-    return {"status": "success", "data": {"sol_balance": 0, "usd_value": 0, "tokens": []}}
+    return {"status": "success", "data": {"sol_balance": 0, "usd_value": 0, "tokens": [], "source": "no_wallet"}}
 
 @app.get("/api/miniapp/wallet/tokens")
 @app.get("/api/miniapp/wallet/balance")
 async def wallet_tokens(user_id: str = "0"):
-    return {"status": "success", "data": {"balance": 0, "tokens": []}}
+    portfolio = get_paper_portfolio(user_id)
+    return {"status": "success", "data": {"balance": portfolio.get("balance", 0), "tokens": portfolio.get("holdings", []), "source": "paper_portfolio_db"}}
 
 @app.post("/api/miniapp/deposit")
 async def deposit(data: dict = Body({})):
-    return {"status": "success", "data": {"message": "Deposit request received", "amount": data.get("amount", 0), "method": data.get("method", "upi")}}
+    # Add to paper portfolio balance
+    user_id = data.get("user_id", "0")
+    amount = float(data.get("amount", 0))
+    if amount > 0:
+        db = SessionLocal()
+        try:
+            from database import Portfolio as PortfolioModel
+            p = db.query(PortfolioModel).filter(PortfolioModel.user_id == str(user_id)).first()
+            if p:
+                p.total_value += amount
+            else:
+                p = PortfolioModel(user_id=str(user_id), total_value=10000 + amount)
+                db.add(p)
+            db.commit()
+        finally:
+            db.close()
+    return {"status": "success", "data": {"message": f"Deposited ${amount} to paper portfolio", "amount": amount, "source": "paper_portfolio"}}
 
 @app.post("/api/miniapp/deposit/verify")
 async def deposit_verify(data: dict = Body({})):
@@ -485,11 +677,33 @@ async def deposit_verify(data: dict = Body({})):
 
 @app.post("/api/miniapp/withdraw")
 async def withdraw(data: dict = Body({})):
-    return {"status": "success", "data": {"message": "Withdrawal initiated", "amount": data.get("amount", 0)}}
+    user_id = data.get("user_id", "0")
+    amount = float(data.get("amount", 0))
+    portfolio = get_paper_portfolio(user_id)
+    if amount > portfolio.get("balance", 0):
+        return {"status": "error", "data": {"message": "Insufficient balance"}}
+    if amount > 0:
+        db = SessionLocal()
+        try:
+            from database import Portfolio as PortfolioModel
+            p = db.query(PortfolioModel).filter(PortfolioModel.user_id == str(user_id)).first()
+            if p:
+                p.total_value -= amount
+                db.commit()
+        finally:
+            db.close()
+    return {"status": "success", "data": {"message": f"Withdrawn ${amount} from paper portfolio", "amount": amount}}
 
 @app.get("/api/miniapp/transactions")
 async def transactions(user_id: str = "0"):
-    return {"status": "success", "data": []}
+    # Real transactions from DB
+    db = SessionLocal()
+    try:
+        from database import Trade as TradeModel
+        trades = db.query(TradeModel).filter(TradeModel.user_id == str(user_id)).order_by(TradeModel.created_at.desc()).limit(50).all()
+        return {"status": "success", "data": [{"type": t.side, "symbol": t.symbol, "amount": t.quantity, "price": t.price, "total": t.total, "pnl": t.pnl, "time": t.created_at.isoformat()} for t in trades], "source": "database"}
+    finally:
+        db.close()
 
 
 # ════════════════════════════════════════════════════
@@ -611,13 +825,39 @@ async def market_regime(symbol: str = "BTC"):
 
 @app.get("/api/miniapp/global/india-impact")
 async def global_india():
-    return {"status": "success", "data": {
-        "us_futures": {"sp500": 0.3, "nasdaq": 0.5, "dow": 0.2},
-        "asia": {"nikkei": 0.4, "hang_seng": -0.3, "shanghai": 0.1},
-        "impact_on_india": "Mildly positive",
-        "gift_nifty": "Premium of 30 points",
-        "timestamp": datetime.utcnow().isoformat()
-    }}
+    # Real global data from Yahoo Finance
+    try:
+        from india_engine import _yahoo_multi_quote
+        quotes = await _yahoo_multi_quote(["ES=F", "NQ=F", "YM=F", "^N225", "^HSI", "000001.SS"])
+        
+        sp500 = quotes.get("ES=F", {})
+        nasdaq = quotes.get("NQ=F", {})
+        dow = quotes.get("YM=F", {})
+        nikkei = quotes.get("^N225", {})
+        hsi = quotes.get("^HSI", {})
+        shanghai = quotes.get("000001.SS", {})
+        
+        sp_chg = sp500.get("change", 0)
+        impact = "Positive" if sp_chg > 0.5 else "Negative" if sp_chg < -0.5 else "Neutral"
+        
+        return {"status": "success", "data": {
+            "us_futures": {
+                "sp500": {"change": sp500.get("change", 0), "last": sp500.get("last", 0)},
+                "nasdaq": {"change": nasdaq.get("change", 0), "last": nasdaq.get("last", 0)},
+                "dow": {"change": dow.get("change", 0), "last": dow.get("last", 0)}
+            },
+            "asia": {
+                "nikkei": {"change": nikkei.get("change", 0), "last": nikkei.get("last", 0)},
+                "hang_seng": {"change": hsi.get("change", 0), "last": hsi.get("last", 0)},
+                "shanghai": {"change": shanghai.get("change", 0), "last": shanghai.get("last", 0)}
+            },
+            "impact_on_india": impact,
+            "timestamp": datetime.utcnow().isoformat(),
+            "source": "real_yahoo_finance"
+        }}
+    except:
+        pass
+    return {"status": "success", "data": {"source": "unavailable"}}
 
 
 # ═══ OPTIONS ═══
@@ -644,18 +884,82 @@ async def options_traps(symbol: str = "NIFTY"):
 
 @app.get("/api/miniapp/options/budget-plays")
 async def options_budget(symbol: str = "NIFTY", budget: float = 5000):
-    return {"status": "success", "data": {"symbol": symbol, "budget": budget, "plays": [
-        {"type": "CE Buy", "strike": 24500, "premium": 150, "lots": int(budget / (150 * 25)), "risk": "limited"},
-        {"type": "PE Buy", "strike": 24400, "premium": 120, "lots": int(budget / (120 * 25)), "risk": "limited"},
-    ]}}
+    chain = await fetch_option_chain(symbol)
+    underlying = chain.get("data", {}).get("underlying", 24500)
+    strikes = chain.get("data", {}).get("strikes", [])
+    lot_size = 25 if symbol == "NIFTY" else 15  # NIFTY=25, BANKNIFTY=15
+    
+    plays = []
+    for s in strikes:
+        ce_premium = s.get("ce", {}).get("ltp", 0)
+        pe_premium = s.get("pe", {}).get("ltp", 0)
+        
+        if ce_premium > 0:
+            ce_cost = ce_premium * lot_size
+            if ce_cost <= budget and ce_cost > 0:
+                lots = int(budget / ce_cost)
+                plays.append({"type": "CE Buy", "strike": s["strike"], "premium": ce_premium, "cost_per_lot": round(ce_cost, 2), "lots": lots, "total_cost": round(ce_cost * lots, 2), "risk": "limited"})
+        
+        if pe_premium > 0:
+            pe_cost = pe_premium * lot_size
+            if pe_cost <= budget and pe_cost > 0:
+                lots = int(budget / pe_cost)
+                plays.append({"type": "PE Buy", "strike": s["strike"], "premium": pe_premium, "cost_per_lot": round(pe_cost, 2), "lots": lots, "total_cost": round(pe_cost * lots, 2), "risk": "limited"})
+    
+    # Sort by closest to ATM
+    plays.sort(key=lambda x: abs(x["strike"] - underlying))
+    return {"status": "success", "data": {"symbol": symbol, "budget": budget, "underlying": underlying, "lot_size": lot_size, "plays": plays[:10], "source": chain.get("source", "unknown")}}
 
 @app.get("/api/miniapp/options/strategy")
 async def options_strategy(symbol: str = "NIFTY", outlook: str = "bullish", budget: float = 10000):
-    return {"status": "success", "data": {"symbol": symbol, "outlook": outlook, "budget": budget,
-        "strategy": "Bull Call Spread" if outlook == "bullish" else "Bear Put Spread",
-        "legs": [{"action": "BUY", "strike": 24500, "type": "CE" if outlook == "bullish" else "PE"},
-                 {"action": "SELL", "strike": 24600, "type": "CE" if outlook == "bullish" else "PE"}],
-        "max_profit": 2500, "max_loss": 1250, "breakeven": 24525
+    chain = await fetch_option_chain(symbol)
+    underlying = chain.get("data", {}).get("underlying", 24500)
+    lot_size = 25 if symbol == "NIFTY" else 15
+    step = 50 if symbol == "NIFTY" else 100
+    atm = round(underlying / step) * step
+    
+    if outlook == "bullish":
+        strategy = "Bull Call Spread"
+        buy_strike = atm
+        sell_strike = atm + step * 2
+        buy_type = sell_type = "CE"
+    elif outlook == "bearish":
+        strategy = "Bear Put Spread"
+        buy_strike = atm
+        sell_strike = atm - step * 2
+        buy_type = sell_type = "PE"
+    else:
+        strategy = "Iron Condor"
+        buy_strike = atm
+        sell_strike = atm + step * 2
+        buy_type = "CE"
+        sell_type = "PE"
+    
+    # Estimate from chain data
+    buy_premium = 0
+    sell_premium = 0
+    for s in chain.get("data", {}).get("strikes", []):
+        if s["strike"] == buy_strike:
+            buy_premium = s.get("ce" if buy_type == "CE" else "pe", {}).get("ltp", 150)
+        if s["strike"] == sell_strike:
+            sell_premium = s.get("ce" if sell_type == "CE" else "pe", {}).get("ltp", 50)
+    
+    net_cost = (buy_premium - sell_premium) * lot_size
+    max_profit = (abs(sell_strike - buy_strike) - (buy_premium - sell_premium)) * lot_size
+    max_loss = net_cost
+    
+    return {"status": "success", "data": {
+        "symbol": symbol, "outlook": outlook, "budget": budget, "underlying": underlying,
+        "strategy": strategy,
+        "legs": [
+            {"action": "BUY", "strike": buy_strike, "type": buy_type, "premium": buy_premium},
+            {"action": "SELL", "strike": sell_strike, "type": sell_type, "premium": sell_premium}
+        ],
+        "net_cost": round(abs(net_cost), 2),
+        "max_profit": round(abs(max_profit), 2),
+        "max_loss": round(abs(max_loss), 2),
+        "breakeven": buy_strike + (buy_premium - sell_premium) if outlook == "bullish" else buy_strike - (buy_premium - sell_premium),
+        "source": chain.get("source", "unknown")
     }}
 
 
@@ -666,26 +970,63 @@ async def options_strategy(symbol: str = "NIFTY", outlook: str = "bullish", budg
 @app.get("/api/miniapp/solana/balance")
 async def sol_balance(wallet: str = ""):
     if not wallet:
-        return {"status": "success", "data": {"balance": 0}}
+        return {"status": "success", "data": {"balance": 0, "source": "no_wallet"}}
     try:
-        r = await http_client.post("https://api.mainnet-beta.solana.com", json={
-            "jsonrpc": "2.0", "id": 1, "method": "getBalance", "params": [wallet]
-        }, timeout=10)
-        if r.status_code == 200:
-            data = r.json()
-            lamports = data.get("result", {}).get("value", 0)
-            return {"status": "success", "data": {"balance": lamports / 1e9, "wallet": wallet}}
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.post("https://api.mainnet-beta.solana.com", json={
+                "jsonrpc": "2.0", "id": 1, "method": "getBalance", "params": [wallet]
+            })
+            if r.status_code == 200:
+                lamports = r.json().get("result", {}).get("value", 0)
+                return {"status": "success", "data": {"balance": round(lamports / 1e9, 4), "wallet": wallet, "source": "real_solana_rpc"}}
     except:
         pass
-    return {"status": "success", "data": {"balance": 0, "wallet": wallet}}
+    return {"status": "success", "data": {"balance": 0, "wallet": wallet, "source": "rpc_error"}}
 
 @app.get("/api/miniapp/solana/tokens")
 async def sol_tokens(wallet: str = ""):
-    return {"status": "success", "data": {"tokens": [], "wallet": wallet}}
+    if not wallet:
+        return {"status": "success", "data": {"tokens": [], "wallet": wallet}}
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.post("https://api.mainnet-beta.solana.com", json={
+                "jsonrpc": "2.0", "id": 1, "method": "getTokenAccountsByOwner",
+                "params": [wallet, {"programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"}, {"encoding": "jsonParsed"}]
+            })
+            if r.status_code == 200:
+                accounts = r.json().get("result", {}).get("value", [])
+                tokens = []
+                for acc in accounts[:20]:
+                    info = acc.get("account", {}).get("data", {}).get("parsed", {}).get("info", {})
+                    token_amount = info.get("tokenAmount", {})
+                    if float(token_amount.get("uiAmount", 0)) > 0:
+                        tokens.append({
+                            "mint": info.get("mint", ""),
+                            "balance": token_amount.get("uiAmount", 0),
+                            "decimals": token_amount.get("decimals", 0),
+                        })
+                return {"status": "success", "data": {"tokens": tokens, "wallet": wallet, "source": "real_solana_rpc"}}
+    except:
+        pass
+    return {"status": "success", "data": {"tokens": [], "wallet": wallet, "source": "rpc_error"}}
 
 @app.get("/api/miniapp/solana/transactions")
 async def sol_txns(wallet: str = ""):
-    return {"status": "success", "data": {"transactions": [], "wallet": wallet}}
+    if not wallet:
+        return {"status": "success", "data": {"transactions": [], "wallet": wallet}}
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.post("https://api.mainnet-beta.solana.com", json={
+                "jsonrpc": "2.0", "id": 1, "method": "getSignaturesForAddress",
+                "params": [wallet, {"limit": 20}]
+            })
+            if r.status_code == 200:
+                sigs = r.json().get("result", [])
+                txns = [{"signature": s.get("signature", ""), "slot": s.get("slot", 0), "err": s.get("err"), "time": s.get("blockTime")} for s in sigs]
+                return {"status": "success", "data": {"transactions": txns, "wallet": wallet, "source": "real_solana_rpc"}}
+    except:
+        pass
+    return {"status": "success", "data": {"transactions": [], "wallet": wallet, "source": "rpc_error"}}
 
 
 # ═══ INR Markets ═══
@@ -802,9 +1143,40 @@ async def dextools_hot(q: str = ""):
 
 @app.get("/api/miniapp/live/2min-signal")
 async def live_2min(symbol: str = "BTC"):
-    import random
-    signal = random.choice(["BUY", "SELL", "HOLD"])
-    return {"status": "success", "data": {"symbol": symbol, "signal": signal, "confidence": random.randint(55, 85), "timeframe": "2min"}}
+    # Real signal from live Binance data
+    try:
+        klines = await get_binance_klines(f"{symbol.upper()}USDT", "1m", 5)
+        if klines and len(klines) >= 3:
+            closes = [float(k[4]) for k in klines]
+            opens = [float(k[1]) for k in klines]
+            vols = [float(k[5]) for k in klines]
+            
+            # Short-term momentum
+            price_change = (closes[-1] - closes[0]) / closes[0] * 100 if closes[0] else 0
+            vol_surge = vols[-1] > sum(vols[:-1]) / max(1, len(vols) - 1) * 1.5
+            
+            if price_change > 0.3 and vol_surge:
+                signal, conf = "BUY", 75
+            elif price_change > 0.1:
+                signal, conf = "BUY", 60
+            elif price_change < -0.3 and vol_surge:
+                signal, conf = "SELL", 75
+            elif price_change < -0.1:
+                signal, conf = "SELL", 60
+            else:
+                signal, conf = "HOLD", 50
+            
+            return {"status": "success", "data": {
+                "symbol": symbol, "signal": signal, "confidence": conf,
+                "price": closes[-1], "change_pct": round(price_change, 3),
+                "volume_surge": vol_surge, "timeframe": "2min",
+                "source": "real_binance_1m"
+            }}
+    except:
+        pass
+    # Fallback
+    price = await get_crypto_price(symbol.lower())
+    return {"status": "success", "data": {"symbol": symbol, "signal": "HOLD", "confidence": 50, "price": price, "timeframe": "2min", "source": "coingecko"}}
 
 @app.get("/api/miniapp/live/investment")
 async def live_investment(symbol: str = "BTC", amount: float = 1000):
@@ -842,7 +1214,33 @@ async def angelone_positions():
 
 @app.post("/api/miniapp/voice/generate")
 async def voice_generate(data: dict = Body({})):
-    return {"status": "success", "data": {"text": data.get("text", ""), "audio_url": None, "message": "Voice generated"}}
+    text = data.get("text", "")
+    if not text:
+        return {"status": "error", "data": {"message": "No text provided"}}
+    
+    # Real TTS using edge-tts (Microsoft voices, free)
+    try:
+        import edge_tts, base64, tempfile
+        voice = data.get("voice", "hi-IN-SwaraNeural")  # Hindi female voice
+        
+        communicate = edge_tts.Communicate(text, voice)
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    f.write(chunk["data"])
+            f.flush()
+            f.seek(0)
+            audio_b64 = base64.b64encode(open(f.name, 'rb').read()).decode()
+        
+        return {"status": "success", "data": {
+            "text": text, "audio_base64": audio_b64, "format": "mp3",
+            "voice": voice, "source": "edge_tts_real"
+        }}
+    except ImportError:
+        return {"status": "success", "data": {"text": text, "audio_base64": None, "message": "edge-tts not installed", "source": "unavailable"}}
+    except Exception as e:
+        logger.warning(f"TTS error: {e}")
+        return {"status": "success", "data": {"text": text, "audio_base64": None, "message": str(e), "source": "error"}}
 
 
 # ════════════════════════════════════════════════════
@@ -900,7 +1298,47 @@ async def mega_transfers(user_id: str = "0"):
 
 @app.get("/api/miniapp/mega-trader/rug-check")
 async def mega_rug(mint: str = "", chain: str = "solana"):
-    return {"status": "success", "data": {"mint": mint, "safe": True, "score": 85, "chain": chain}}
+    if not mint:
+        return {"status": "success", "data": {"mint": mint, "safe": False, "score": 0, "message": "No address provided"}}
+    # Real rug check via DexScreener
+    dex_data = await search_dex(mint)
+    
+    score = 50  # base
+    checks = {"dex_listed": False, "liquidity": "unknown", "age": "unknown"}
+    
+    if dex_data and isinstance(dex_data, list) and len(dex_data) > 0:
+        pair = dex_data[0] if isinstance(dex_data[0], dict) else {}
+        liq = pair.get("liquidity", {}).get("usd", 0) if isinstance(pair.get("liquidity"), dict) else 0
+        age_h = pair.get("pairCreatedAt", 0)
+        
+        checks["dex_listed"] = True
+        score += 15
+        
+        if liq > 100000:
+            checks["liquidity"] = f"${liq:,.0f} (good)"
+            score += 20
+        elif liq > 10000:
+            checks["liquidity"] = f"${liq:,.0f} (moderate)"
+            score += 10
+        else:
+            checks["liquidity"] = f"${liq:,.0f} (LOW - risky)"
+            score -= 10
+        
+        if age_h and (time.time() * 1000 - age_h) > 86400000 * 7:  # > 7 days
+            checks["age"] = "7+ days (OK)"
+            score += 10
+        elif age_h and (time.time() * 1000 - age_h) > 86400000:
+            checks["age"] = "1-7 days (new)"
+        else:
+            checks["age"] = "< 1 day (VERY NEW - risky)"
+            score -= 15
+    
+    return {"status": "success", "data": {
+        "mint": mint, "chain": chain,
+        "safe": score >= 60, "score": min(100, max(0, score)),
+        "checks": checks, "dex_data": dex_data[:1] if dex_data else [],
+        "source": "real_dexscreener"
+    }}
 
 
 # ════════════════════════════════════════════════════
@@ -1051,7 +1489,7 @@ async def api_ai_chat(data: dict = Body({})):
     
     reply = None
     try:
-        reply = await ai_chat(msg, market_context=market_ctx)
+        reply = await ai_chat(msg, context=market_ctx)
     except:
         reply = await ai_chat(msg)
     

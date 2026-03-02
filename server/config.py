@@ -13,7 +13,7 @@ load_dotenv(env_path)
 SERVER_HOST = "0.0.0.0"
 SERVER_PORT = int(os.getenv("SERVER_PORT", "8000"))
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
-APP_VERSION = "4.0.0"
+APP_VERSION = "4.1.0"  # v36 — Everything REAL
 
 # ═══ SECURITY ═══
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", secrets.token_hex(64))
