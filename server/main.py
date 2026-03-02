@@ -1406,8 +1406,10 @@ async def auth_profile(user_id: str):
 
 
 # ════════════════════════════════════════════════════
-# ═══ AUTH (JWT) — /auth/ path (jarvisBackend.js) ═══
+# ═══ AUTH (JWT) — FULL AUTH SYSTEM ═══
 # ════════════════════════════════════════════════════
+# Owner username — first registered user OR this specific username gets admin
+OWNER_USERNAME = "DRD8077"
 
 class RegisterRequest(BaseModel):
     username: str
@@ -1418,10 +1420,33 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
-@app.post("/auth/register")
-async def register(req: RegisterRequest):
-    username = sanitize_input(req.username)
-    pwd_check = validate_password_strength(req.password)
+def _get_user_role(db, user) -> str:
+    """First registered user = admin/owner. OWNER_USERNAME always = admin."""
+    if user.username.lower() == OWNER_USERNAME.lower():
+        return "admin"
+    # First user in DB = admin
+    first = db.query(User).order_by(User.created_at.asc()).first()
+    if first and first.id == user.id:
+        return "admin"
+    return "trader"
+
+def _user_response(db, user):
+    """Build standard user response with role"""
+    role = _get_user_role(db, user)
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": getattr(user, 'email', '') or '',
+        "role": role,
+        "isAdmin": role == "admin",
+        "is_active": True
+    }
+
+async def _do_register(username, password, email=""):
+    username = sanitize_input(username)
+    if len(username) < 3:
+        raise HTTPException(400, "Username must be at least 3 characters")
+    pwd_check = validate_password_strength(password)
     if not pwd_check["valid"]:
         raise HTTPException(400, pwd_check["reason"])
     
@@ -1433,45 +1458,121 @@ async def register(req: RegisterRequest):
         
         user = User(
             username=username,
-            password_hash=hash_password(req.password),
-            email=req.email,
+            password_hash=hash_password(password),
+            email=email or "",
             is_active=True
         )
         db.add(user)
         db.commit()
         db.refresh(user)
         
-        access = create_access_token({"sub": str(user.id), "username": username})
+        user_data = _user_response(db, user)
+        access = create_access_token({"sub": str(user.id), "username": username, "role": user_data["role"]})
         refresh = create_refresh_token({"sub": str(user.id)})
         
-        return {"success": True, "access_token": access, "refresh_token": refresh, "user": {"id": user.id, "username": username}}
+        logger.info(f"New user registered: {username} (role: {user_data['role']})")
+        return {"success": True, "access_token": access, "refresh_token": refresh, "user": user_data}
     finally:
         db.close()
 
-@app.post("/auth/login")
-async def login(req: LoginRequest):
+async def _do_login(username, password):
     db = SessionLocal()
     try:
-        user = db.query(User).filter(User.username == req.username).first()
-        if not user or not verify_password(req.password, user.password_hash):
+        user = db.query(User).filter(User.username == username).first()
+        if not user or not verify_password(password, user.password_hash):
             raise HTTPException(401, "Invalid credentials")
         
-        access = create_access_token({"sub": str(user.id), "username": user.username})
+        user_data = _user_response(db, user)
+        access = create_access_token({"sub": str(user.id), "username": user.username, "role": user_data["role"]})
         refresh = create_refresh_token({"sub": str(user.id)})
         
-        return {"success": True, "access_token": access, "refresh_token": refresh, "user": {"id": user.id, "username": user.username}}
+        return {"success": True, "access_token": access, "refresh_token": refresh, "user": user_data}
     finally:
         db.close()
 
-@app.post("/auth/refresh")
-async def refresh_token(data: dict = Body({})):
-    token = data.get("refresh_token", "")
+async def _do_refresh(token_str):
     try:
-        payload = decode_token(token)
-        access = create_access_token({"sub": payload["sub"]})
+        payload = decode_token(token_str)
+        access = create_access_token({"sub": payload["sub"], "username": payload.get("username", ""), "role": payload.get("role", "trader")})
         return {"success": True, "access_token": access}
     except:
         raise HTTPException(401, "Invalid refresh token")
+
+# ── /api/auth/* paths (used by jarvisBackend.js frontend) ──
+
+@app.post("/api/auth/register")
+async def api_auth_register(req: RegisterRequest):
+    return await _do_register(req.username, req.password, req.email)
+
+@app.post("/api/auth/login")
+async def api_auth_login(req: LoginRequest):
+    return await _do_login(req.username, req.password)
+
+@app.post("/api/auth/refresh")
+async def api_auth_refresh(data: dict = Body({})):
+    return await _do_refresh(data.get("refresh_token", ""))
+
+@app.post("/api/auth/logout")
+async def api_auth_logout():
+    return {"success": True, "message": "Logged out"}
+
+@app.get("/api/auth/me")
+async def api_auth_me(request: Request):
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(401, "Not authenticated")
+    payload = decode_token(auth[7:])
+    user_id = payload.get("sub", "")
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(404, "User not found")
+        return _user_response(db, user)
+    finally:
+        db.close()
+
+@app.post("/api/auth/change-password")
+async def api_auth_change_password(data: dict = Body({}), request: Request = None):
+    auth = request.headers.get("Authorization", "") if request else ""
+    if not auth.startswith("Bearer "):
+        raise HTTPException(401, "Not authenticated")
+    payload = decode_token(auth[7:])
+    user_id = payload.get("sub", "")
+    
+    old_pw = data.get("oldPassword", "")
+    new_pw = data.get("newPassword", "")
+    
+    if not new_pw or len(new_pw) < 6:
+        raise HTTPException(400, "New password must be at least 6 characters")
+    
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(404, "User not found")
+        if not verify_password(old_pw, user.password_hash):
+            raise HTTPException(401, "Current password is incorrect")
+        
+        user.password_hash = hash_password(new_pw)
+        db.commit()
+        return {"success": True, "message": "Password changed successfully"}
+    finally:
+        db.close()
+
+# ── /auth/* paths (legacy, also works) ──
+
+@app.post("/auth/register")
+async def register(req: RegisterRequest):
+    return await _do_register(req.username, req.password, req.email)
+
+@app.post("/auth/login")
+async def login(req: LoginRequest):
+    return await _do_login(req.username, req.password)
+
+@app.post("/auth/refresh")
+async def refresh_token(data: dict = Body({})):
+    return await _do_refresh(data.get("refresh_token", ""))
 
 
 # ════════════════════════════════════════════════════

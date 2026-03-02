@@ -39,8 +39,8 @@ def decode_token(token: str) -> dict:
     except jwt.InvalidTokenError: raise HTTPException(401, "Invalid token")
 
 def validate_password_strength(password: str) -> dict:
-    if len(password) < 6:
-        return {"valid": False, "reason": "Password must be at least 6 characters"}
+    if len(password) < 8:
+        return {"valid": False, "reason": "Password must be at least 8 characters"}
     return {"valid": True, "reason": "OK"}
 
 def sanitize_input(text: str) -> str:
