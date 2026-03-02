@@ -31,10 +31,10 @@ export function isDesktopApp() {
   return typeof window !== 'undefined' && !!window.jarvisDesktop
 }
 
-// Production server URL — Railway permanent deployment
+// Production server URL — Codespace deployment
 const LIVE_SERVER = import.meta.env.VITE_SERVER_URL 
   || window?.__JARVIS_CONFIG__?.serverUrl
-  || 'https://jarvis-trading-production.up.railway.app'
+  || 'https://super-duper-funicular-gp99q655qw6cprr-8000.app.github.dev'
 
 function detectServerBase() {
   // 1. Build-time env override
